@@ -1,0 +1,20 @@
+# KiCad backup and lock files
+*-backups/
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*.kicad_prl
+fp-info-cache
+_autosave-*
+
+# Generated artefacts
+kicad/**/netlist/
+kicad/**/bom/
+kicad/**/gerber/
+
+# Brainstorm session content
+.superpowers/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
