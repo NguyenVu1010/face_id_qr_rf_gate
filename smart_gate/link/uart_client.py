@@ -26,9 +26,24 @@ SerialException: type[Exception] = _real_SerialException
 
 
 def _open_serial(port: str, baud: int, timeout: float = 1.0):
+    """Open a pyserial port without toggling DTR/RTS.
+
+    On boards using CP2102/CH340 USB-UART (typical ESP32 DevKits), DTR is wired
+    to the EN line so a port open with default DTR=HIGH resets the ESP32. We
+    explicitly disable hardware flow control and force DTR/RTS low after the
+    port is open so the daemon does not reboot the ESP32 every time it
+    reconnects.
+    """
     if _pyserial is None:
         raise RuntimeError("pyserial not installed")
-    return _pyserial.Serial(port, baud, timeout=timeout)
+    ser = _pyserial.Serial(port, baud, timeout=timeout,
+                           dsrdtr=False, rtscts=False)
+    try:
+        ser.dtr = False
+        ser.rts = False
+    except (AttributeError, OSError):
+        pass
+    return ser
 
 
 log = logging.getLogger(__name__)
