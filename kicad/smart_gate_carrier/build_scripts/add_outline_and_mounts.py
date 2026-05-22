@@ -60,18 +60,18 @@ def add_edge_cuts_rectangle(board) -> None:
         board.Add(seg)
 
 
+MOUNT_LIB = '/usr/share/kicad/footprints/MountingHole.pretty'
+MOUNT_FP_NAME = 'MountingHole_3.2mm_M3'
+
+
 def add_mounting_hole(board, ref: str, x_mm: float, y_mm: float) -> None:
-    fp = pcbnew.FOOTPRINT(board)
+    fp = pcbnew.FootprintLoad(MOUNT_LIB, MOUNT_FP_NAME)
+    if fp is None:
+        raise RuntimeError(
+            f'MountingHole footprint not found at {MOUNT_LIB}/{MOUNT_FP_NAME}'
+        )
     fp.SetReference(ref)
-    fp.SetValue('M3')
     fp.SetPosition(pcbnew.wxPoint(mm_to_iu(x_mm), mm_to_iu(y_mm)))
-    pad = pcbnew.PAD(fp)
-    pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-    pad.SetSize(pcbnew.wxSize(mm_to_iu(6.0), mm_to_iu(6.0)))
-    pad.SetDrillSize(pcbnew.wxSize(mm_to_iu(3.2), mm_to_iu(3.2)))
-    pad.SetAttribute(pcbnew.PAD_ATTRIB_NPTH)
-    pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-    fp.Add(pad)
     board.Add(fp)
 
 
