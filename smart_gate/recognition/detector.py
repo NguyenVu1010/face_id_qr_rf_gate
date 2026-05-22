@@ -1,10 +1,22 @@
-"""Detector thread: per-frame face encode + QR decode -> AuthEvent on bus."""
+"""Detector thread: per-frame face encode + QR decode -> AuthEvent on bus.
+
+Face detection backends (priority order):
+1. MediaPipe (`mp.solutions.face_detection.FaceDetection`) — fastest (~1 ms/frame
+   on Pi 4) but not available on Python 3.13 yet (no upstream wheel).
+2. face_recognition's HOG via `face_recognition.face_locations(model="hog")` —
+   ~100 ms/frame on Pi 4, pure dlib, available everywhere face_recognition is.
+
+If MediaPipe import fails at default-deps time, the HOG backend is used. Tests
+inject `deps` directly and can supply either backend.
+"""
 from __future__ import annotations
 
 import dataclasses
 import logging
 import threading
 import time
+
+import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -21,19 +33,27 @@ class AuthEvent:
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
                  *, deps=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
-        {"cv2":..., "mp_face":..., "face_recognition":..., "pyzbar":...}
+        {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
+    When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
+    is used instead.
     """
     if deps is None:
         import cv2 as _cv2
-        import mediapipe as _mp
         import face_recognition as _fr
         from pyzbar import pyzbar as _pz
-        deps = {
-            "cv2": _cv2,
-            "mp_face": _mp.solutions.face_detection.FaceDetection(
+        mp_face = None
+        try:
+            import mediapipe as _mp
+            mp_face = _mp.solutions.face_detection.FaceDetection(
                 model_selection=0,
                 min_detection_confidence=cfg.recognition.mediapipe_min_conf,
-            ),
+            )
+            log.info("face detector backend: mediapipe")
+        except Exception as e:
+            log.info("mediapipe unavailable (%s); falling back to HOG", e)
+        deps = {
+            "cv2": _cv2,
+            "mp_face": mp_face,
             "face_recognition": _fr,
             "pyzbar": _pz,
         }
@@ -52,7 +72,7 @@ def _process_frame(bgr, cfg, matcher, bus, deps):
     cv2 = deps["cv2"]
     pyzbar = deps["pyzbar"]
     fr = deps["face_recognition"]
-    mp_face = deps["mp_face"]
+    mp_face = deps.get("mp_face")
 
     # --- QR
     for sym in pyzbar.decode(bgr):
@@ -66,17 +86,12 @@ def _process_frame(bgr, cfg, matcher, bus, deps):
 
     # --- Face
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    result = mp_face.process(rgb)
-    if not getattr(result, "detections", None):
-        return
-    box = _best_box(result.detections, rgb.shape)
-    if box is None:
-        return
-    roi = _pad_and_crop(rgb, box, pad=0.20)
-    encs = fr.face_encodings(roi, num_jitters=1)
+    if mp_face is not None:
+        encs = _encode_via_mediapipe(rgb, mp_face, fr)
+    else:
+        encs = _encode_via_hog(rgb, fr)
     if not encs:
         return
-    import numpy as np
     probe = encs[0].astype("float32")
     user_id, distance = matcher.match_face(probe)
     if user_id is not None and distance < cfg.recognition.face_threshold:
@@ -85,6 +100,29 @@ def _process_frame(bgr, cfg, matcher, bus, deps):
     elif distance > cfg.recognition.uncertain_band[1]:
         bus.put(AuthEvent("face", None, granted=False,
                           detail={"distance": float(distance)}))
+
+
+def _encode_via_mediapipe(rgb, mp_face, fr):
+    result = mp_face.process(rgb)
+    if not getattr(result, "detections", None):
+        return []
+    box = _best_box(result.detections, rgb.shape)
+    if box is None:
+        return []
+    roi = _pad_and_crop(rgb, box, pad=0.20)
+    return fr.face_encodings(roi, num_jitters=1)
+
+
+def _encode_via_hog(rgb, fr):
+    # face_recognition.face_locations returns [(top, right, bottom, left), ...]
+    locations = fr.face_locations(rgb, model="hog",
+                                  number_of_times_to_upsample=1)
+    if not locations:
+        return []
+    # Keep the largest face only (matches single-face semantics of the MP path).
+    locations.sort(key=lambda l: (l[2] - l[0]) * (l[1] - l[3]), reverse=True)
+    return fr.face_encodings(rgb, known_face_locations=locations[:1],
+                             num_jitters=1)
 
 
 def _best_box(detections, rgb_shape):

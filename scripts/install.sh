@@ -4,11 +4,20 @@ set -euo pipefail
 # Run from repo root: sudo bash scripts/install.sh
 
 # 1. apt deps
+# Notes:
+# - Trixie renamed libzbar0 → libzbar0t64; we try both, ignore failure.
+# - python3-dlib and python3-mediapipe are dropped: dlib is pip-built below
+#   (no apt package on Trixie), and mediapipe has no Python 3.13 wheel — the
+#   detector falls back to face_recognition's HOG path automatically.
 sudo apt update
 sudo apt install -y \
-    python3 python3-venv \
-    python3-opencv python3-dlib python3-mediapipe \
-    libzbar0 ffmpeg sqlite3 v4l-utils curl
+    python3 python3-venv python3-pip python3-dev \
+    python3-opencv python3-numpy \
+    python3-flask python3-jinja2 python3-serial python3-qrcode \
+    ffmpeg sqlite3 v4l-utils curl \
+    build-essential cmake pkg-config \
+    libopenblas-dev liblapack-dev libboost-python-dev libx11-dev
+sudo apt install -y libzbar0t64 || sudo apt install -y libzbar0
 
 # 2. service user + dirs
 sudo adduser --system --group --no-create-home smart-gate || true
@@ -27,9 +36,12 @@ sudo rsync -a --delete \
     ./ /opt/smart-gate/
 
 # 4. venv (visible to apt python packages)
+# Pip installs only what apt does not cover. flask/jinja2/qrcode/pyserial/
+# numpy/opencv come from apt via --system-site-packages. dlib builds from
+# source via pip (≈ 20–40 min on Pi 4); pyzbar is a pure-Python wrapper.
 sudo python3 -m venv --system-site-packages /opt/smart-gate/.venv
-sudo /opt/smart-gate/.venv/bin/pip install --upgrade pip
-sudo /opt/smart-gate/.venv/bin/pip install -r /opt/smart-gate/requirements.txt
+sudo /opt/smart-gate/.venv/bin/pip install --upgrade pip setuptools wheel
+sudo /opt/smart-gate/.venv/bin/pip install dlib face_recognition pyzbar
 sudo chown -R smart-gate:smart-gate /opt/smart-gate
 
 # 5. config (don't overwrite)
