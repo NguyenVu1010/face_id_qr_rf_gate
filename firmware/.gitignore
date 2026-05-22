@@ -1,0 +1,12 @@
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+.clang_complete
+.gcc-flags.json
+build/
+*.o
+*.a
+*.elf
+*.bin
+*.hex
