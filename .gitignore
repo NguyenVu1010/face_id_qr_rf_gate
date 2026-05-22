@@ -16,5 +16,12 @@ kicad/**/gerber/
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+data/
+/var/

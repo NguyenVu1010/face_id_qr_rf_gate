@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart_gate"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Pi 5 application for the smart_gate access-control demo"
+
+[tool.setuptools.packages.find]
+include = ["smart_gate*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q --strict-markers"
+markers = [
+    "integration: integration tests using mocks",
+]
