@@ -795,10 +795,10 @@
       (outline (path signal 150  -21500 -10500  -21500 10500))
       (outline (path signal 150  -21500 10500  21500 10500))
       (outline (path signal 150  21500 -10500  -21500 -10500))
-      (pin Rect[A]Pad_2000x2000_um 1 -17500 7000)
-      (pin Round[A]Pad_2000_um 2 -17500 -7000)
-      (pin Round[A]Pad_2000_um 3 17500 -7000)
-      (pin Round[A]Pad_2000_um 4 17500 7000)
+      (pin Rect[A]Pad_2200x2200_um 1 -18500 6500)
+      (pin Round[A]Pad_2200_um 2 -18500 -6500)
+      (pin Round[A]Pad_2200_um 3 18500 -6500)
+      (pin Round[A]Pad_2200_um 4 18500 6500)
     )
     (image R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal::1
       (outline (path signal 120  8350 -1370  8350 1370))
@@ -1716,6 +1716,11 @@
       (shape (circle B.Cu 2000))
       (attach off)
     )
+    (padstack Round[A]Pad_2200_um
+      (shape (circle F.Cu 2200))
+      (shape (circle B.Cu 2200))
+      (attach off)
+    )
     (padstack Oval[A]Pad_1050x1500_um
       (shape (path F.Cu 1050  0 -225  0 225))
       (shape (path B.Cu 1050  0 -225  0 225))
@@ -1796,6 +1801,11 @@
     (padstack Rect[A]Pad_2000x2000_um
       (shape (rect F.Cu -1000 -1000 1000 1000))
       (shape (rect B.Cu -1000 -1000 1000 1000))
+      (attach off)
+    )
+    (padstack Rect[A]Pad_2200x2200_um
+      (shape (rect F.Cu -1100 -1100 1100 1100))
+      (shape (rect B.Cu -1100 -1100 1100 1100))
       (attach off)
     )
     (padstack Rect[A]Pad_2400x2400_um
