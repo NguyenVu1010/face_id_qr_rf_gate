@@ -1,21 +1,25 @@
 # Smart Gate — Architecture & Hardware Design Spec
 
-**Date:** 2026-05-21
+**Date:** 2026-05-21 (last revised 2026-05-22)
 **Status:** Design draft awaiting review
 **Scope:** This spec covers system architecture, video streaming pipeline, Pi ↔ ESP32 communication protocol, ESP32 pin assignment, and mechanical envelope for a demo/prototype barrier gate. Firmware implementation, Pi-side application code, and KiCad/FreeCAD files are deliverables of subsequent plans, not this spec.
+
+**2026-05-22 revision:** Architecture pivoted to a **single integrated motherboard** that hosts both the Raspberry Pi 5 (via a 2×20 GPIO socket the Pi plugs into) and the ESP32 DevKit (via a 30-pin socket). One 12 V power input feeds both subsystems through a 5 V/5 A buck regulator. Pi↔ESP32 communication uses a hardware UART over the Pi GPIO header instead of a USB-CDC cable. See decisions #19–#22.
 
 ---
 
 ## 1. Overview
 
-`smart_gate` is a demo/prototype access-control barrier with two compute nodes:
+`smart_gate` is a demo/prototype access-control barrier built around a **single integrated motherboard** (`smart_gate_combined`) that hosts two compute nodes side-by-side:
 
-- **Raspberry Pi 5** — runs vision pipeline (face recognition + QR scan from a USB webcam), Flask web admin (live MJPEG preview + event log), event recorder, and user database. It is the "host" of the system.
-- **ESP32-WROOM-32** (on a custom carrier PCB with socketed DevKit) — real-time controller for RFID reader (RC522), servo (SG90 barrier arm), LCD 20×4 status display, HC-SR04 ultrasonic passage sensor, and a buzzer.
+- **Raspberry Pi 5** plugs into a 2×20 female GPIO socket on the motherboard. It runs the vision pipeline (face recognition + QR scan from a USB webcam), Flask web admin (live MJPEG preview + event log), event recorder, and user database. It is the "host" of the system.
+- **ESP32-WROOM-32** (DOIT V1 30-pin DevKit) sockets into a 2×15 pin socket on the same motherboard. It is the real-time controller for the RFID reader (RC522), servo (SG90 barrier arm), LCD 20×4 status display, HC-SR04 ultrasonic passage sensor, and an active buzzer.
 
-Pi and ESP32 communicate over **a single USB cable** (Pi USB-A → DevKit micro-USB). The same cable is used for ESP32 firmware flashing (`esptool.py` from Pi) and runtime application messaging (`pyserial` + JSON Lines). **No Wi-Fi on ESP32; no MQTT.** ESP32 maintains its own NVS-stored RFID allowlist so it can authenticate RFID and operate the barrier independently if the Pi link is lost.
+Pi and ESP32 share a single **12 V DC power input** stepped down to 5 V/5 A by an on-board buck regulator. The 5 V rail powers the Pi via the GPIO header pins 2/4, and powers all peripheral modules. A 3.3 V LDO (AMS1117-3.3) on the 5 V rail powers the ESP32 logic; the Pi has its own onboard 3.3 V regulator.
 
-The mechanical demo is a tabletop barrier-arm style gate (~200 × 100 × 100 mm overall envelope) cut from 3 mm MDF/acrylic, with 3D-printed brackets for the servo.
+Pi↔ESP32 application communication uses **a hardware UART** routed through the Pi GPIO header pins 8 (TX0, GPIO14) and 10 (RX0, GPIO15) to two spare GPIOs on the ESP32 (5, 17) acting as UART1. A separate USB cable from the Pi to the DevKit micro-USB port is retained **only for ESP32 firmware flashing** (`esptool.py` needs DTR/RTS auto-reset; GPIO UART has no such lines). **No Wi-Fi on ESP32; no MQTT.** ESP32 maintains its own NVS-stored RFID allowlist so it can authenticate RFID and operate the barrier independently if the Pi link is lost.
+
+The mechanical demo is a tabletop barrier-arm style gate (~300 × 200 × 100 mm overall envelope) cut from 3 mm MDF/acrylic, with 3D-printed brackets for the servo. The motherboard PCB is ~250 × 150 mm to accommodate the Pi + ESP32 + peripherals on one substrate.
 
 ---
 
@@ -24,51 +28,72 @@ The mechanical demo is a tabletop barrier-arm style gate (~200 × 100 × 100 mm 
 ### 2.1 Block diagram
 
 ```
-┌─────────────────────────── Raspberry Pi 5 ───────────────────────────┐
-│                                                                       │
-│   USB Webcam ───▶ V4L2 (/dev/video0, MJPG, 640×480 @ 15fps)           │
-│                       │                                               │
-│                       ▼                                               │
-│                 cv2.VideoCapture ──▶ FrameHub (threading.Condition)   │
-│                                          │                            │
-│           ┌──────────────────────────────┼───────────────────────┐    │
-│           ▼                              ▼                       ▼    │
-│   Detector thread             Flask /stream.mjpeg          Recorder   │
-│   (MediaPipe + pyzbar)        (passthrough JPEG)           (ring buf  │
-│           │                       │                        → ffmpeg)  │
-│           ▼                       ▼                                   │
-│      SQLite user DB         Admin browser (LAN)                       │
-│           │                                                           │
-│           ▼                                                           │
-│   pyserial /dev/ttyUSB0 @ 115200 ◀────────────── esptool.py @ 921600  │
-└──────────────────┬────────────────────────────────────────────────────┘
-                   │ USB cable (1 sợi)
-┌──────────────────┴───────────────────────────────────────────────────┐
-│                          ESP32-WROOM-32 DevKit                       │
-│                                                                      │
-│   CP2102 ─── UART0 (TX/RX) ─── USB-CDC                               │
-│                                                                      │
-│   FreeRTOS tasks: rfid · uart_link · servo · sensor · lcd · buzzer   │
-│   NVS: authorized RFID UIDs + config                                 │
-│   Wi-Fi: DISABLED                                                    │
-│                                                                      │
-│   Peripherals (via carrier PCB headers):                             │
-│     RC522 (SPI) — LCD 20×4 (I2C) — HC-SR04 — SG90 servo — Buzzer     │
-└──────────────────────────────────────────────────────────────────────┘
+                       ┌────────────────────────────────────────┐
+                       │  Single motherboard ~250 × 150 mm      │
+                       │                                        │
+        ┌────────────┐ │  ┌──────────────────────────────────┐  │
+        │ 12V DC jack├─┤─▶│ Reverse-protect (1N5817) + bulk  │  │
+        │  3 A adapt │ │  │ 100 µF → Buck 5V/5A module       │  │
+        └────────────┘ │  └────────────┬─────────────────────┘  │
+                       │               │ +5V rail                │
+                       │               │                         │
+                       │   ┌───────────┴─────┐    ┌──────────┐  │
+                       │   │ Pi 5V (pin 2/4) │    │AMS1117LDO│  │
+                       │   │ +1000µF +ferrite│    │ +caps    │  │
+                       │   │ +TVS protection │    └────┬─────┘  │
+                       │   └────────┬────────┘         │ +3V3   │
+                       │            │                   │        │
+                       │      ┌─────┴───────┐          │        │
+                       │      │ 2×20 socket │          │        │
+                       │      │  Pi 5 plugs │          │        │
+                       │      │ into here   │          │        │
+                       │      └──┬─────┬────┘          │        │
+                       │         │  pin8/10 (UART)     │        │
+                       │         │     │               │        │
+                       │         │     ▼               │        │
+                       │         │  ┌────────────────┐ │        │
+                       │         │  │ ESP32 DevKit   │◀┘        │
+                       │         │  │ (2× 15p socket)│          │
+                       │         │  │ UART1 GPIO 5/17│          │
+                       │         │  └──┬──────┬──────┘          │
+                       │         │     │      │                 │
+                       │         │  Periphs   │                 │
+                       │         │  RC522 SPI │                 │
+                       │         │  LCD I2C   │                 │
+                       │         │  HC-SR04   │                 │
+                       │         │  Servo PWM │                 │
+                       │         │  Buzzer    │                 │
+                       │         │  J_EXP     │                 │
+                       │         └────────────┘                 │
+                       └────────────────────────────────────────┘
+
+        Pi 5 (plugged in)             ESP32 firmware flash path:
+        --------------                ----------------------
+        - USB webcam                  - Pi USB-A ─── micro-USB DevKit
+        - HDMI / Wi-Fi LAN            - esptool.py @ 921600
+        - power IN via GPIO 5V
+        - UART app comm via GPIO 14/15
 ```
 
 ### 2.2 Power
 
-- **Pi 5** has its own USB-C PD power supply (5 V / 5 A), independent of the ESP32 carrier.
-- **ESP32 carrier** is fed from a **12 V / 2 A barrel jack**, stepped down by a buck converter (MP1584 or LM2596 module) to a 5 V rail. A linear regulator (AMS1117-3.3) then derives 3.3 V from 5 V for ESP32 and RC522.
-- Ground is shared between Pi and ESP32 via the USB cable shield + signal ground.
+- **Input**: 12 V DC barrel jack, 3 A rated. Reverse-protection diode (1N5817), 100 µF bulk cap.
+- **5 V rail**: 12 V → 5 V/5 A buck converter module (XL4015, MP4560, or equivalent). Recommended ≥5 A continuous to cover Pi 5 peaks. Filter: 1000 µF + ferrite bead + 100 nF on the Pi GPIO 5V feed, plus a TVS diode (SMAJ5.0A) for transient protection.
+- **3.3 V rail (ESP32 only)**: 5 V → AMS1117-3.3 LDO → ESP32 + RC522. Pi has its own onboard 3.3 V regulator, so the Pi 3V3 pin is left unconnected on the motherboard.
+- **Pi power feed**: 5 V rail → Pi GPIO header pin 2 (5V) and pin 4 (5V). This bypasses the Pi's USB-C PD power management and the back-powering protection diode. The buck regulator's output stability is therefore safety-critical.
+- **Common ground**: 5 V GND → multiple Pi GND pins (6, 9, 14, 20, 25, 30, 34, 39) for low-impedance return.
 
 Estimated current draw (peak):
 - 3V3 rail: ESP32 (120 mA) + RC522 (30 mA) ≈ **150 mA**
-- 5V rail: LCD+backlight (50 mA) + HC-SR04 (15 mA) + SG90 inrush (500 mA) + buzzer (30 mA) ≈ **600 mA peak**
-- 12V input @ ~85% buck efficiency ≈ **300 mA peak** — well within 2 A adapter rating.
+- 5V rail: Pi 5 (3000 mA peak with camera + ML) + LCD (50 mA) + HC-SR04 (15 mA) + SG90 inrush (500 mA) + buzzer (30 mA) ≈ **3.6 A peak**
+- 12V input @ ~85% buck efficiency: 5 V × 3.6 A / 0.85 / 12 V ≈ **1.8 A peak** — well within 3 A adapter rating.
 
-A 470 µF electrolytic capacitor should be placed on the 5 V rail near the servo connector to absorb servo current spikes.
+Bulk caps required on the 5 V rail:
+- 1000 µF / 10 V near the Pi GPIO power pins (Pi PMIC needs steady supply)
+- 470 µF / 16 V near the SG90 servo connector (absorbs servo inrush)
+- 100 µF + 10 µF on the buck output before any branches
+
+A ferrite bead between the buck output and Pi feed isolates servo switching noise from Pi.
 
 ---
 
@@ -133,10 +158,10 @@ Three consumer threads block on the hub. Each is woken by `notify_all` on every 
 
 ### 4.1 Transport
 
-- Physical: USB cable, Pi USB-A → DevKit micro-USB.
-- Pi side: `/dev/ttyUSB0` (CP2102) at 115200 baud, 8N1, no flow control. (USB-CDC ignores baud rate at the USB layer; 115200 is the configured app rate for symmetry.)
-- ESP32 side: UART0 (GPIO 1 TX, GPIO 3 RX), connected internally to CP2102 on the DevKit.
-- The same physical cable is used for `esptool.py write_flash` at 921600 baud during firmware updates. Application comm is paused (Pi-side software closes the port) while flashing.
+- Physical: hardware UART over the motherboard's PCB traces from the Pi GPIO socket (pins 8, 10) to the ESP32 DevKit socket (GPIO 5, 17).
+- Pi side: `/dev/serial0` (or `/dev/ttyAMA0` after disabling the serial console in `raspi-config`) at 115200 baud, 8N1, no flow control. The Pi UART is 3.3 V CMOS — matches ESP32 GPIO levels directly, no level shifter needed.
+- ESP32 side: UART1 routed via the GPIO matrix to GPIO 5 (RX) and GPIO 17 (TX). GPIO 5 is a strap pin (HIGH at boot); UART idle line is HIGH so strap requirement is satisfied.
+- Firmware flashing of the ESP32 still uses a **separate USB cable** from the Pi to the DevKit micro-USB port (`esptool.py write_flash @ 921600`). The GPIO UART path has no DTR/RTS lines, so it cannot auto-trigger the ESP32 bootloader. This USB cable is also useful as a debug serial console.
 
 ### 4.2 Frame format
 
@@ -209,34 +234,67 @@ Repeated `cmd:open` while in OPEN_WAIT resets the 10 s passage timer (admin can 
 
 ---
 
-## 5. ESP32 Pin Assignment
+## 5. Pin Assignment
 
-Module: ESP32-WROOM-32 (classic). DevKit form-factor: **DOIT V1 30-pin** (confirmed 2026-05-22). Because the 30-pin variant does **not** expose IO18/19/21/22/23 on its headers, the default VSPI and I2C pin assignments cannot be used. Peripherals are remapped via the ESP32 GPIO matrix (any GPIO can be assigned to SPI/I2C in software).
+### 5.1 ESP32-WROOM-32 (DOIT V1 30-pin DevKit, socketed)
+
+Because the 30-pin variant does **not** expose IO18/19/21/22/23 on its headers, the default VSPI and I2C pin assignments cannot be used. Peripherals are remapped via the ESP32 GPIO matrix.
 
 | GPIO | Direction | Peripheral | Notes |
 | --- | --- | --- | --- |
-| 1 | OUT (UART0 TX) | USB-CDC TX | Reserved. Pi link + flash + debug. |
+| 1 | OUT (UART0 TX) | USB-CDC TX | Reserved. Firmware flash + debug log only. |
 | 3 | IN (UART0 RX) | USB-CDC RX | Reserved. |
 | 2 | OUT (strap) | Onboard status LED | Strap: must not be pulled HIGH at boot. Driver writes HIGH/LOW after boot. |
 | 14 | OUT | RC522 SCK | Remapped VSPI. |
 | 13 | OUT | RC522 MOSI | Remapped VSPI. |
-| 35 | IN only | RC522 MISO | Input-only pin; MISO is always input from RC522 → ESP32, so this is correct. No internal pull-up — RC522 module drives push-pull. |
+| 35 | IN only | RC522 MISO | Input-only pin; MISO is always input from RC522 → ESP32. RC522 drives push-pull, no pull-up needed. |
 | 15 | OUT (strap) | RC522 CS | Strap: HIGH at boot. RC522 CS idle HIGH ⇒ compatible. |
 | 4 | OUT | RC522 RST | Active LOW; pull HIGH during operation. |
 | 16 | IN | RC522 IRQ | Optional; FALLING edge interrupt. |
-| 32 | I/O | LCD I2C SDA | Remapped I2C. 4.7 kΩ pull-up to **3.3 V** (not 5 V — see §5.2). |
+| 32 | I/O | LCD I2C SDA | Remapped I2C. 4.7 kΩ pull-up to **3.3 V**. |
 | 33 | OUT | LCD I2C SCL | Remapped I2C. 4.7 kΩ pull-up to **3.3 V**. |
 | 25 | OUT | HC-SR04 TRIG | 10 µs pulse. 3.3 V output usually triggers HC-SR04 OK; add BS170 level shifter if marginal. |
 | 34 | IN only | HC-SR04 ECHO | **Voltage divider mandatory**: R1=1 kΩ in series, R2=2 kΩ to GND → 5 V echo becomes ~3.3 V at GPIO 34. |
 | 26 | OUT | Servo SG90 PWM | LEDC channel 0, 50 Hz, 1–2 ms pulse. 3.3 V exceeds SG90 input threshold. |
-| 27 | OUT (digital) | Active buzzer | Plain GPIO HIGH/LOW; buzzer has internal oscillator. Drive via NPN 2N3904 + 1 kΩ base resistor (buzzer current ~25 mA > GPIO 12 mA safe limit). |
+| 27 | OUT (digital) | Active buzzer | Plain GPIO HIGH/LOW; buzzer has internal oscillator. Drive via NPN 2N3904 + 1 kΩ base resistor. |
+| **17** | **OUT (UART1 TX)** | **→ Pi pin 10 (RX0)** | **Runtime app comm to Pi**. UART1 remapped via GPIO matrix. |
+| **5** | **IN (UART1 RX, strap)** | **← Pi pin 8 (TX0)** | **Runtime app comm from Pi**. Strap HIGH at boot ⇒ compatible with idle-HIGH UART RX line. |
 | 6–11 | — | **DO NOT USE** | Connected to internal SPI flash. Not exposed on the 30-pin header. |
 | 12 | — | **DO NOT USE** | Strap pin: must be LOW at boot for 3.3 V flash voltage. Leaving floating is safest. |
-| 17 | — | Unused / spare | Free for future use; bring out to expansion header. |
-| 5 | — | Unused / spare | Strap (HIGH at boot). Free; bring out to expansion header. |
 | 36, 39 | IN only | Unused / spare | ADC1 capable; bring out to expansion header. |
 
-Free GPIOs reserved for the 6-pin expansion header: 17, 5, 36, 39 (plus +3V3 and GND). GPIO 12 is excluded because of its strap requirement.
+Free GPIOs reserved for the expansion header: 36, 39 (plus +3V3 and GND). GPIO 12 excluded (strap), GPIO 17/5 now consumed by Pi UART.
+
+### 5.2 Raspberry Pi 5 GPIO header (2×20, plugged into motherboard)
+
+| Pi pin | BCM GPIO | Function | Motherboard connection |
+| --- | --- | --- | --- |
+| 1 | — | 3V3 (Pi out) | Not connected (Pi has its own LDO; ESP32 has its own LDO; isolate rails) |
+| **2** | — | **5V (Pi in)** | **Motherboard 5V buck output → Pi POWER IN** |
+| **4** | — | **5V (Pi in)** | **Motherboard 5V buck output → Pi POWER IN** (parallel pin 2) |
+| 6, 9, 14, 20, 25, 30, 34, 39 | — | GND | Common ground (multiple for low-impedance return) |
+| **8** | GPIO14 (TX0) | UART0 TX | **→ ESP32 GPIO 5 (UART1 RX)** |
+| **10** | GPIO15 (RX0) | UART0 RX | **← ESP32 GPIO 17 (UART1 TX)** |
+| Others (3, 5, 7, 11, 12, 13, ..., 40) | various | Spare | Left unconnected on the motherboard but routed to a Pi-side breakout header for future expansion |
+
+Pi UART0 console must be **disabled in `raspi-config`** (`Interface Options → Serial Port → No to login shell, Yes to serial hardware`) before the UART link works. Otherwise the kernel grabs `/dev/serial0` for login output and ESP32 messages collide with the boot log.
+
+### 5.3 LCD I2C level handling
+
+The PCF8574 backpack on most cheap LCD 20×4 modules runs at 5 V VCC and has 4.7 kΩ pull-ups to its 5 V rail. Driving its SDA/SCL with ESP32 3.3 V output is electrically OK in the LOW state, but the 5 V pull-up will back-drive the ESP32 protection diodes when the bus floats HIGH. The recommended fix is one of:
+
+1. **Cut the on-backpack pull-up traces**, add 4.7 kΩ pull-ups on the motherboard tied to 3.3 V.
+2. **Add a bidirectional level shifter** (BSS138 board, ~5 k VND) between ESP32 and LCD.
+
+Option 1 is cheaper and is the spec'd approach. Document the cut in the assembly notes.
+
+### 5.4 Strap pin discipline (ESP32)
+
+- GPIO 0 (BOOT button): unused by app; the BOOT button is for entering download mode at reset.
+- GPIO 2 (LED): driver writes HIGH/LOW for status; do not add external pull-up.
+- GPIO 5 (strap HIGH at boot): used as UART1 RX. UART idle line is HIGH ⇒ compatible.
+- GPIO 12 (strap LOW at boot): **left floating; do not route to expansion header**.
+- GPIO 15 (strap HIGH at boot): used as RC522 CS. CS idle HIGH ⇒ compatible.
 
 ### 5.1 Strap pin discipline
 
@@ -261,20 +319,20 @@ Option 1 is cheaper and is the spec'd approach. Document the cut in the assembly
 
 ### 6.1 Overall geometry
 
-Barrier-style demo gate. Two posts flank a 60 mm lane; an 80 mm arm rotates 90° between horizontal (CLOSED) and vertical (OPEN). Overall footprint ~200 × 100 mm, height ~100 mm including the camera stand omitted (camera stand is separate, ~250 mm tall).
+Barrier-style demo gate. Two posts flank a 60 mm lane; an 80 mm arm rotates 90° between horizontal (CLOSED) and vertical (OPEN). Overall footprint **~300 × 200 mm** (revised 2026-05-22 to accommodate the combined motherboard ~250×150 mm), height ~100 mm. Camera stand separate, ~250 mm tall.
 
 ### 6.2 Parts list
 
 | Part | Dimensions (mm) | Material | Notes |
 | --- | --- | --- | --- |
-| Base box | 200 × 100 × 40 | MDF 3 mm, laser-cut, finger joints | Houses Pi 5 + ESP32 carrier PCB + buck + cabling. |
+| Base box | 300 × 200 × 50 | MDF 3 mm, laser-cut, finger joints | Houses the combined motherboard (~250×150 mm) with Pi 5 plugged in on top via the 2×20 GPIO socket. Height increased for Pi-on-socket stack clearance (~25 mm above PCB). |
 | Left post (servo) | 30 × 30 × 60 | MDF 3 mm (6-panel hollow) | SG90 mounted horizontally; horn exits right face. |
 | Right post (rest) | 30 × 30 × 60 | MDF 3 mm (6-panel) | Top has a notched rest pad with foam liner. |
-| Arm | 80 × 8 × 3 | Balsa or acrylic | Painted red/yellow stripes; vit M2 to servo horn + glue. |
+| Arm | 80 × 8 × 3 | Balsa or acrylic | Painted red/yellow stripes; M2 screw to servo horn + glue. |
 | Servo bracket | ~25 × 25 × 25 | 3D printed PLA | Two M3 holes for SG90 ears; bolts down to inside of left post. |
-| Webcam stand | dia 8 × 250 + base 80 × 80 | Wooden dowel + MDF base | Webcam clips on top, faces lane at ~30° downward. |
-| Front panel of base | 200 × 40 | MDF 3 mm with cutouts | LCD 98 × 24, RC522 60 × 40, HC-SR04 2 × Ø16, LED Ø3, buzzer Ø8. |
-| Back panel of base | 200 × 40 | MDF 3 mm with cutouts | DC barrel jack Ø8, Pi USB-C 14 × 6, 4 ventilation slots. |
+| Webcam stand | dia 8 × 250 + base 80 × 80 | Wooden dowel + MDF base | Webcam clips on top, faces lane at ~30° downward. USB cable to Pi USB-A port. |
+| Front panel of base | 300 × 50 | MDF 3 mm with cutouts | LCD 98 × 24, RC522 60 × 40, HC-SR04 2 × Ø16, LED Ø3, buzzer Ø8. |
+| Back panel of base | 300 × 50 | MDF 3 mm with cutouts | 12 V DC barrel jack Ø8 (motherboard input), Pi 5 access cutouts (HDMI 18×7, USB ports 14×10 × 4, Ethernet 16×14), 6 ventilation slots. Note: Pi USB-C is unused since power comes via GPIO 5V. |
 
 ### 6.3 Servo motion parameters
 
@@ -320,6 +378,10 @@ Decisions made during 2026-05-21 design session, in order:
 16. **Barrier layout**: Two posts (one with servo, one rest pad) + base box for electronics. Arm 80 mm, lane 60 mm.
 17. **Material**: 3 mm MDF/acrylic laser-cut for box and posts; 3D-printed PLA bracket for servo mount.
 18. **DevKit variant** (2026-05-22): user confirmed **DOIT V1 30-pin**. Since IO18/19/21/22/23 are not exposed on the 30-pin header, the pin assignment in §5 was revised: SPI and I2C use remapped GPIOs via the ESP32 GPIO matrix (SCK=14, MOSI=13, MISO=35, SDA=32, SCL=33). VSPI/I2C default pins are no longer referenced.
+19. **Single combined motherboard** (2026-05-22): pivoted from two separate boards (Pi 5 standalone + ESP32 carrier connected by USB cable) to one ~250×150 mm motherboard that hosts both. Pi 5 plugs into a 2×20 female GPIO socket on the motherboard; ESP32 DevKit sockets in alongside. Existing ESP32-only KiCad project (`smart_gate_carrier_v1_esp32only`) preserved under `kicad/archive/` for reference. **Why:** user requested a single integrated PCB to reduce part count and inter-board cabling at the cost of a larger PCB.
+20. **Single 12 V PSU for both Pi and ESP32** (2026-05-22): the 12 V DC input is stepped down by an on-board 5 V/5 A buck regulator (XL4015 or MP4560-class module). The 5 V rail feeds the Pi via GPIO pin 2/4, the peripherals (LCD 5V, servo, HC-SR04, buzzer), and the AMS1117-3.3 LDO that derives 3.3 V for the ESP32. **Trade-off accepted:** powering Pi through GPIO bypasses its USB-C PD power-management chip, so 5 V rail stability (≥1000 µF bulk, ferrite bead, TVS) is now safety-critical for Pi.
+21. **UART app comm via Pi GPIO 14/15** (2026-05-22): runtime Pi↔ESP32 traffic moves from USB-CDC (`/dev/ttyUSB0`) to a hardware UART link on the Pi GPIO header pins 8/10 → ESP32 GPIO 5/17 (UART1 via the ESP32 GPIO matrix). Pi serial console must be disabled in `raspi-config` for `/dev/serial0` to be available.
+22. **USB cable retained for ESP32 firmware flashing only** (2026-05-22): the GPIO UART has no DTR/RTS to auto-reset the ESP32 bootloader, so a Pi-to-DevKit micro-USB cable is kept solely for `esptool.py write_flash`. Once flashed, the cable can be unplugged; app comm runs over the GPIO UART instead.
 
 ---
 
@@ -342,6 +404,9 @@ Decisions made during 2026-05-21 design session, in order:
 3. **Webcam autofocus & exposure variance** between different USB cams will affect face recognition accuracy. The vision pipeline should be tunable (target frame size, exposure mode) — not part of this design doc but should be a knob in the Pi plan.
 4. **Servo current spikes** on the same 5 V rail as RC522 / LCD may cause RC522 read errors during open/close. The 470 µF cap on the 5 V rail (§2.2) is the first line of defence; if RC522 reads still glitch during arm motion, add a ferrite bead in series between the servo connector and the rest of the rail during PCB revision.
 5. **Mechanical play in the arm-to-horn joint**: glue vs screw. First prototype: glue. If arm wobbles, add a 3D-printed coupler.
+6. **Pi 5 powered through GPIO 5V is a known-risk path** — bypasses the Pi's USB-C PD power management. The 5 V buck must deliver clean 5 V ±5% under transient load (Pi 5 can spike from 0.8 A idle to 5 A peak in milliseconds). If the rail dips below 4.75 V the Pi PMIC will brown-out. Mitigations specified: 1000 µF bulk cap at Pi GPIO, ferrite bead between buck output and Pi feed, TVS SMAJ5.0A for transient clamp. If reliability problems appear during prototyping, fall back to the dual-PSU architecture (Pi USB-C + separate 12 V motherboard input) — the motherboard layout has provision for jumpering the Pi 5V input pin to either source.
+7. **Pi serial console must be disabled** in `raspi-config` before the GPIO UART link works. Easy to forget; first boot of a fresh Pi image typically has the console enabled, so the ESP32 will see garbage data interleaved with kernel boot output. Document this in the Pi setup guide.
+8. **Buck regulator current rating** — many "5A" buck modules on Vietnamese marketplaces are mislabeled and actually only deliver 3 A continuous. Source the module from a reputable seller or use a name-brand IC (TI TPS54561, MPS MP4560) on the motherboard. Verify with a load test before powering the Pi.
 
 ---
 
