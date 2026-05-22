@@ -8,6 +8,7 @@ pair has its own last-seen seq tracked via threading.local.
 from __future__ import annotations
 
 import threading
+import time
 
 
 class FrameHub:
@@ -16,6 +17,7 @@ class FrameHub:
         self._jpeg: bytes | None = None
         self._bgr = None
         self._seq = 0                  # incremented on every publish
+        self._last_publish_mono: float | None = None
         self._tls = threading.local()  # per-thread dict[channel_name -> last_seen_seq]
 
     def publish(self, jpeg: bytes | None, bgr) -> None:
@@ -23,6 +25,7 @@ class FrameHub:
             self._jpeg = jpeg
             self._bgr = bgr
             self._seq += 1
+            self._last_publish_mono = time.monotonic()
             self._cond.notify_all()
 
     def _last_seen(self, channel: str) -> int:

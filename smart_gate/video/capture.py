@@ -18,7 +18,10 @@ def run_capture(cfg, hub, ring, shutdown: threading.Event,
     if cv2_module is None:
         import cv2 as cv2_module                   # imported lazily
 
-    cap = _open_camera(cv2_module, cfg)
+    cap = _open_camera(cv2_module, cfg, shutdown)
+    if cap is None:
+        hub.publish(None, None)
+        return
     fail_streak = 0
     while not shutdown.is_set():
         ok, frame = cap.read()
@@ -27,8 +30,11 @@ def run_capture(cfg, hub, ring, shutdown: threading.Event,
             if fail_streak >= 30:
                 log.error("camera read failed 30x — reopening")
                 cap.release()
-                time.sleep(0.5)
-                cap = _open_camera(cv2_module, cfg)
+                if shutdown.wait(0.5):
+                    break
+                cap = _open_camera(cv2_module, cfg, shutdown)
+                if cap is None:
+                    break
                 fail_streak = 0
             continue
         fail_streak = 0
@@ -41,11 +47,12 @@ def run_capture(cfg, hub, ring, shutdown: threading.Event,
         if ring is not None:
             ring.push(jpg_bytes, time.monotonic())
     hub.publish(None, None)
-    cap.release()
+    if cap is not None:
+        cap.release()
 
 
-def _open_camera(cv2_module, cfg):
-    while True:
+def _open_camera(cv2_module, cfg, shutdown: threading.Event | None = None):
+    while shutdown is None or not shutdown.is_set():
         cap = cv2_module.VideoCapture(cfg.video.camera_index, cv2_module.CAP_V4L2)
         if cap.isOpened():
             cap.set(cv2_module.CAP_PROP_FOURCC,
@@ -59,4 +66,8 @@ def _open_camera(cv2_module, cfg):
                      cfg.video.height, cfg.video.fps)
             return cap
         log.warning("camera not available, retry in 5s")
-        time.sleep(5)
+        if shutdown is None:
+            time.sleep(5)
+        elif shutdown.wait(5.0):
+            return None
+    return None

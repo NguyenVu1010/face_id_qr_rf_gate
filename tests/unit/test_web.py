@@ -82,9 +82,28 @@ def test_clip_missing_returns_404(setup):
 
 
 def test_healthz(setup):
-    app, *_ = setup
+    app, _db, hub, _uart, _data_dir = setup
+    hub._last_publish_mono = None        # MagicMock would otherwise satisfy 'is not None'
     with app.test_client() as c:
         r = c.get("/healthz")
         assert r.status_code == 200
         body = r.get_json()
         assert body["link_alive"] is True
+        assert "uptime_s" in body
+        assert "last_frame_ago_s" in body
+        assert "threads_ok" in body
+
+
+def test_clip_serves_correct_event(setup):
+    app, db, _hub, _uart, data_dir = setup
+    eid_old = db.insert_event("face", None, True)
+    eid_new = db.insert_event("face", None, True)
+    db.update_event_clip(eid_old, f"clips/{eid_old}.mp4")
+    (data_dir / "clips").mkdir(exist_ok=True)
+    (data_dir / f"clips/{eid_old}.mp4").write_bytes(b"OLDCLIP")
+    with app.test_client() as c:
+        r = c.get(f"/clips/{eid_old}.mp4")
+        assert r.status_code == 200
+        assert r.data == b"OLDCLIP"
+        r2 = c.get(f"/clips/{eid_new}.mp4")
+        assert r2.status_code == 404
