@@ -9,3 +9,5 @@ void setup() {
 void loop() {
   delay(1000);
 }
+
+extern "C" void outbound_post(const struct outbound_msg_t*) { /* stub, removed in Task 5 */ }
