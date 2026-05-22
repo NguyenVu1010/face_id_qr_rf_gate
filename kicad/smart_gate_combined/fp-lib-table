@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "smart_gate_combined")(type "KiCad")(uri "${KIPRJMOD}/footprints.pretty")(options "")(descr "Custom footprints for smart_gate_combined motherboard"))
+)

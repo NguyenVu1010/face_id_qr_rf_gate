@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block body %}
+<div class="grid">
+  <article>
+    <header>Live</header>
+    <img src="/stream.mjpeg" alt="live" style="width:100%; max-width:640px;">
+    <footer>
+      <button hx-post="/api/gate/open" hx-target="#flash">Open</button>
+      <button class="secondary" hx-post="/api/gate/close" hx-target="#flash">Close</button>
+      <span id="flash"></span>
+    </footer>
+  </article>
+  <article>
+    <header>Events</header>
+    <table>
+      <thead><tr><th>time</th><th>method</th><th>user</th><th>ok</th><th>clip</th></tr></thead>
+      <tbody id="events-tbody"
+             hx-get="/events.json?format=html"
+             hx-trigger="load, every 2s"
+             hx-target="this" hx-swap="innerHTML">
+      </tbody>
+    </table>
+  </article>
+</div>
+{% endblock %}

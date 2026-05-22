@@ -1,0 +1,1449 @@
+(export 
+  (version "D")
+  (design
+    (source "build_combined.py")
+    (date "05/23/2026 02:23 AM")
+    (tool "SKiDL (2.2.3)")
+    (sheet
+      (number 1)
+      (name "/")
+      (tstamps "/")
+      (title_block
+        (title)
+        (company)
+        (rev)
+        (date)
+        (source "../build_combined.py")
+        (comment
+          (number "1")
+          (value ""))
+        (comment
+          (number "2")
+          (value ""))
+        (comment
+          (number "3")
+          (value ""))
+        (comment
+          (number "4")
+          (value ""))
+        (comment
+          (number "5")
+          (value ""))
+        (comment
+          (number "6")
+          (value ""))
+        (comment
+          (number "7")
+          (value ""))
+        (comment
+          (number "8")
+          (value ""))
+        (comment
+          (number "9")
+          (value "")))))
+  (components
+    (comp
+      (ref "C_5V_BULK")
+      (value "1000uF/10V")
+      (description "")
+      (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "EM8wKYEKed")
+        (field
+          (name "SKiDL Line") "build_combined.py:104"))
+      (libsource
+        (lib "Device")
+        (part "C_Polarized"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "19a7e0cc-2c3e-5546-8829-28456219b9c5"))
+    (comp
+      (ref "C_5V_BYP")
+      (value "100nF")
+      (description "")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "HJWRTtovlj")
+        (field
+          (name "SKiDL Line") "build_combined.py:106"))
+      (libsource
+        (lib "Device")
+        (part "C"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "8c3d9ba8-bee5-525f-a087-9805349f76ed"))
+    (comp
+      (ref "C_BULK")
+      (value "100uF/25V")
+      (description "")
+      (footprint "Capacitor_THT:CP_Radial_D8.0mm_P3.50mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:CP_Radial_D8.0mm_P3.50mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "QVTuodO4p_")
+        (field
+          (name "SKiDL Line") "build_combined.py:77"))
+      (libsource
+        (lib "Device")
+        (part "C_Polarized"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "549addff-80e1-5c8d-8ad3-f526c74d6cfe"))
+    (comp
+      (ref "C_ESP_3V3_1")
+      (value "100nF")
+      (description "")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "oLSxGJiQp8")
+        (field
+          (name "SKiDL Line") "build_combined.py:247"))
+      (libsource
+        (lib "Device")
+        (part "C"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "5242139c-614e-5b30-869e-45a544989726"))
+    (comp
+      (ref "C_ESP_3V3_2")
+      (value "10uF")
+      (description "")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "XmYfCEys9i")
+        (field
+          (name "SKiDL Line") "build_combined.py:249"))
+      (libsource
+        (lib "Device")
+        (part "C"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "2ee04c41-c8b0-5bb9-94d6-60a2ca3eba90"))
+    (comp
+      (ref "C_PI_BULK")
+      (value "1000uF/10V")
+      (description "")
+      (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "e4HYpbx1Y2")
+        (field
+          (name "SKiDL Line") "build_combined.py:115"))
+      (libsource
+        (lib "Device")
+        (part "C_Polarized"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "926edb1e-95e3-567d-ada6-e7021eedc146"))
+    (comp
+      (ref "C_PI_BYP")
+      (value "100nF")
+      (description "")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "RhD3BuZRSd")
+        (field
+          (name "SKiDL Line") "build_combined.py:117"))
+      (libsource
+        (lib "Device")
+        (part "C"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "20b983ec-7b11-59a9-96fe-d6955174694b"))
+    (comp
+      (ref "C_SVO")
+      (value "470uF/16V")
+      (description "")
+      (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "_Feauq1K5T")
+        (field
+          (name "SKiDL Line") "build_combined.py:305"))
+      (libsource
+        (lib "Device")
+        (part "C_Polarized"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "90dc2647-f5e2-51f0-b2ca-31fd097e6e68"))
+    (comp
+      (ref "D_REV")
+      (value "1N5817")
+      (description "")
+      (footprint "Diode_THT:D_DO-201AD_P15.24mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Diode_THT:D_DO-201AD_P15.24mm_Horizontal")
+        (field
+          (name "Datasheet") "http://www.vishay.com/docs/88525/1n5817.pdf")
+        (field
+          (name "SKiDL Tag") "6hjJlW53Bz")
+        (field
+          (name "SKiDL Line") "build_combined.py:75"))
+      (libsource
+        (lib "Diode")
+        (part "1N5817"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "fb9c8786-9c1e-5105-8600-d098f51c5713"))
+    (comp
+      (ref "D_TVS")
+      (value "SMAJ5.0A")
+      (description "")
+      (footprint "Diode_THT:D_DO-15_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Diode_THT:D_DO-15_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "_O8el3klef")
+        (field
+          (name "SKiDL Line") "build_combined.py:123"))
+      (libsource
+        (lib "Device")
+        (part "D_TVS"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "99690e25-517d-54e1-8c9e-5fd76cadbbe2"))
+    (comp
+      (ref "J_BUCK")
+      (value "LM2596_Mini_Buck")
+      (description "")
+      (footprint "smart_gate_combined:LM2596_Mini_Buck")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "smart_gate_combined:LM2596_Mini_Buck")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "EDdkfJWvtO")
+        (field
+          (name "SKiDL Line") "build_combined.py:91"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x04"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "78dd82c2-0bff-543d-ad23-0093cf8d07b5"))
+    (comp
+      (ref "J_BUZ")
+      (value "Buzzer_Active")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "xBxo0WROk9")
+        (field
+          (name "SKiDL Line") "build_combined.py:309"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x02"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "2b468a11-161c-5893-ac98-da280db6267a"))
+    (comp
+      (ref "J_ESP")
+      (value "ESP32_DevKit_V1")
+      (description "")
+      (footprint "smart_gate_combined:ESP32_DevKit_V1_30pin")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "smart_gate_combined:ESP32_DevKit_V1_30pin")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "VMihTpS5u9")
+        (field
+          (name "SKiDL Line") "build_combined.py:202"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_02x15_Odd_Even"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "c2b71c6b-f999-5670-8bbc-7b630aeddc61"))
+    (comp
+      (ref "J_EXP")
+      (value "Expansion")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "raYbgvlbhk")
+        (field
+          (name "SKiDL Line") "build_combined.py:323"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x04"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "8ca32034-60de-5b12-b2ef-f884f6575ca0"))
+    (comp
+      (ref "J_LCD")
+      (value "LCD_20x4_I2C")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "fq3dnE1lWB")
+        (field
+          (name "SKiDL Line") "build_combined.py:270"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x04"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "9aca3daa-e66e-5d61-be7a-7bd5f9f622b5"))
+    (comp
+      (ref "J_PI")
+      (value "Pi_5_GPIO_2x20")
+      (description "")
+      (footprint "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "XcXUrgwtMN")
+        (field
+          (name "SKiDL Line") "build_combined.py:144"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_02x20_Odd_Even"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "880e7811-17dd-561a-b091-b0a73473c388"))
+    (comp
+      (ref "J_PWR")
+      (value "12V_IN")
+      (description "")
+      (footprint "Connector_BarrelJack:BarrelJack_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_BarrelJack:BarrelJack_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "1TVHpbMwe4")
+        (field
+          (name "SKiDL Line") "build_combined.py:73"))
+      (libsource
+        (lib "Connector")
+        (part "Barrel_Jack"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "017fcfd1-fe83-51de-aba4-851c0050925c"))
+    (comp
+      (ref "J_RFID")
+      (value "RC522")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "j2uqTsGKal")
+        (field
+          (name "SKiDL Line") "build_combined.py:259"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x08"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "b8f982de-c7f2-564f-962d-e52217b4b8d5"))
+    (comp
+      (ref "J_SVO")
+      (value "Servo_SG90")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "HCt_LglYq7")
+        (field
+          (name "SKiDL Line") "build_combined.py:300"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x03"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "ec7c452f-761f-5050-bb81-c480f6ba84d4"))
+    (comp
+      (ref "J_USR")
+      (value "HC-SR04")
+      (description "")
+      (footprint "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "idKYZpwW0J")
+        (field
+          (name "SKiDL Line") "build_combined.py:284"))
+      (libsource
+        (lib "Connector_Generic")
+        (part "Conn_01x04"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "78765799-bb78-5c3e-914e-1f52e7235877"))
+    (comp
+      (ref "Q_BUZ")
+      (value "2N3904")
+      (description "")
+      (footprint "Package_TO_SOT_THT:TO-92_Inline")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Package_TO_SOT_THT:TO-92_Inline")
+        (field
+          (name "Datasheet") "https://www.onsemi.com/pub/Collateral/2N3903-D.PDF")
+        (field
+          (name "SKiDL Tag") "BBExm5trZB")
+        (field
+          (name "SKiDL Line") "build_combined.py:311"))
+      (libsource
+        (lib "Transistor_BJT")
+        (part "2N3904"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "2bfc7b95-1c91-58ce-8561-71c8a8580b81"))
+    (comp
+      (ref "R_BUZ")
+      (value "1k")
+      (description "")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "kkCPyBXKJl")
+        (field
+          (name "SKiDL Line") "build_combined.py:313"))
+      (libsource
+        (lib "Device")
+        (part "R"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "5ed96096-ad72-5122-9807-4352ec12c07e"))
+    (comp
+      (ref "R_SCL")
+      (value "4.7k")
+      (description "")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "4bfrpD8CSY")
+        (field
+          (name "SKiDL Line") "build_combined.py:279"))
+      (libsource
+        (lib "Device")
+        (part "R"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "ef5045e1-94fa-5cf5-890c-b504fd17422f"))
+    (comp
+      (ref "R_SDA")
+      (value "4.7k")
+      (description "")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "02gvGltagC")
+        (field
+          (name "SKiDL Line") "build_combined.py:277"))
+      (libsource
+        (lib "Device")
+        (part "R"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "55544c8e-7a19-582c-8638-80012595ef53"))
+    (comp
+      (ref "R_USR1")
+      (value "1k")
+      (description "")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "im3VTfVSLc")
+        (field
+          (name "SKiDL Line") "build_combined.py:291"))
+      (libsource
+        (lib "Device")
+        (part "R"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "8be94866-8f46-59ab-aa17-fe382c53db4f"))
+    (comp
+      (ref "R_USR2")
+      (value "2k")
+      (description "")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+      (fields
+        (field
+          (name "Description"))
+        (field
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
+        (field
+          (name "Datasheet") "~")
+        (field
+          (name "SKiDL Tag") "Hi0NHVnD4B")
+        (field
+          (name "SKiDL Line") "build_combined.py:293"))
+      (libsource
+        (lib "Device")
+        (part "R"))
+      (sheetpath
+        (names "/")
+        (tstamps "/"))
+      (component_classes)
+      (tstamps "32fcb606-cef2-51ee-9bac-ee785c02ce9c")))
+  (nets
+    (net
+      (code 1)
+      (name "+12V")
+      (class "Default")
+      (node
+        (ref "C_BULK")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "D_REV")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_BUCK")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 2)
+      (name "+3V3")
+      (class "Default")
+      (node
+        (ref "C_ESP_3V3_1")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_ESP_3V3_2")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_ESP")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_EXP")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "8")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_SCL")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_SDA")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 3)
+      (name "+5V")
+      (class "Default")
+      (node
+        (ref "C_5V_BULK")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_5V_BYP")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_PI_BULK")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_PI_BYP")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_SVO")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "D_TVS")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_BUCK")
+        (pin "4")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_BUZ")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_ESP")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_LCD")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "4")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_SVO")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_USR")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 4)
+      (name "BUZ_COLLECTOR")
+      (class "Default")
+      (node
+        (ref "J_BUZ")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "Q_BUZ")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 5)
+      (name "BUZ_DRIVE")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "21")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_BUZ")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 6)
+      (name "ESP_TX_PI_RX")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "17")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "10")
+        (pintype "PASSIVE")))
+    (net
+      (code 7)
+      (name "GND")
+      (class "Default")
+      (node
+        (ref "C_5V_BULK")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_5V_BYP")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_BULK")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_ESP_3V3_1")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_ESP_3V3_2")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_PI_BULK")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_PI_BYP")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "C_SVO")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "D_TVS")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_BUCK")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_BUCK")
+        (pin "3")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_ESP")
+        (pin "27")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_ESP")
+        (pin "4")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_EXP")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_LCD")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "14")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "20")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "25")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "30")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "34")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "39")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "6")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "9")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PWR")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "6")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_SVO")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_USR")
+        (pin "4")
+        (pintype "PASSIVE"))
+      (node
+        (ref "Q_BUZ")
+        (pin "3")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_USR2")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 8)
+      (name "HCSR_ECHO_3V3")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "9")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_USR1")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_USR2")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 9)
+      (name "HCSR_ECHO_5V")
+      (class "Default")
+      (node
+        (ref "J_USR")
+        (pin "3")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_USR1")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 10)
+      (name "HCSR_TRIG")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "24")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_USR")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 11)
+      (name "I2C_SCL")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "15")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_LCD")
+        (pin "4")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_SCL")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 12)
+      (name "I2C_SDA")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "20")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_LCD")
+        (pin "3")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_SDA")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 13)
+      (name "IO36")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "5")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_EXP")
+        (pin "3")
+        (pintype "PASSIVE")))
+    (net
+      (code 14)
+      (name "IO39")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "7")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_EXP")
+        (pin "4")
+        (pintype "PASSIVE")))
+    (net
+      (code 15)
+      (name "N$1")
+      (class "Default")
+      (node
+        (ref "D_REV")
+        (pin "2")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PWR")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 16)
+      (name "N$2")
+      (class "Default")
+      (node
+        (ref "Q_BUZ")
+        (pin "1")
+        (pintype "PASSIVE"))
+      (node
+        (ref "R_BUZ")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 17)
+      (name "PI_TX_ESP_RX")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "13")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_PI")
+        (pin "8")
+        (pintype "PASSIVE")))
+    (net
+      (code 18)
+      (name "RC522_CS")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "30")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "1")
+        (pintype "PASSIVE")))
+    (net
+      (code 19)
+      (name "RC522_IRQ")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "26")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "5")
+        (pintype "PASSIVE")))
+    (net
+      (code 20)
+      (name "RC522_MISO")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "11")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "4")
+        (pintype "PASSIVE")))
+    (net
+      (code 21)
+      (name "RC522_MOSI")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "29")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_ESP")
+        (pin "6")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "3")
+        (pintype "PASSIVE")))
+    (net
+      (code 22)
+      (name "RC522_RST")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "28")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "7")
+        (pintype "PASSIVE")))
+    (net
+      (code 23)
+      (name "RC522_SCK")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "23")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_RFID")
+        (pin "2")
+        (pintype "PASSIVE")))
+    (net
+      (code 24)
+      (name "SERVO_PWM")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "19")
+        (pintype "PASSIVE"))
+      (node
+        (ref "J_SVO")
+        (pin "3")
+        (pintype "PASSIVE")))
+    (net
+      (code 25)
+      (name "_NC_EN_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "3")
+        (pintype "PASSIVE")))
+    (net
+      (code 26)
+      (name "_NC_FLASH_CLK_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "14")
+        (pintype "PASSIVE")))
+    (net
+      (code 27)
+      (name "_NC_FLASH_CMD_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "12")
+        (pintype "PASSIVE")))
+    (net
+      (code 28)
+      (name "_NC_FLASH_D2_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "8")
+        (pintype "PASSIVE")))
+    (net
+      (code 29)
+      (name "_NC_FLASH_D3_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "10")
+        (pintype "PASSIVE")))
+    (net
+      (code 30)
+      (name "_NC_FLASH_SD0_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "16")
+        (pintype "PASSIVE")))
+    (net
+      (code 31)
+      (name "_NC_FLASH_SD1_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "18")
+        (pintype "PASSIVE")))
+    (net
+      (code 32)
+      (name "_NC_IO12_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "25")
+        (pintype "PASSIVE")))
+    (net
+      (code 33)
+      (name "_NC_IO2_LED_")
+      (class "Default")
+      (node
+        (ref "J_ESP")
+        (pin "22")
+        (pintype "PASSIVE")))
+    (net
+      (code 34)
+      (name "_NC_PI11_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "11")
+        (pintype "PASSIVE")))
+    (net
+      (code 35)
+      (name "_NC_PI12_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "12")
+        (pintype "PASSIVE")))
+    (net
+      (code 36)
+      (name "_NC_PI13_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "13")
+        (pintype "PASSIVE")))
+    (net
+      (code 37)
+      (name "_NC_PI15_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "15")
+        (pintype "PASSIVE")))
+    (net
+      (code 38)
+      (name "_NC_PI16_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "16")
+        (pintype "PASSIVE")))
+    (net
+      (code 39)
+      (name "_NC_PI17_3V3_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "17")
+        (pintype "PASSIVE")))
+    (net
+      (code 40)
+      (name "_NC_PI18_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "18")
+        (pintype "PASSIVE")))
+    (net
+      (code 41)
+      (name "_NC_PI19_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "19")
+        (pintype "PASSIVE")))
+    (net
+      (code 42)
+      (name "_NC_PI21_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "21")
+        (pintype "PASSIVE")))
+    (net
+      (code 43)
+      (name "_NC_PI22_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "22")
+        (pintype "PASSIVE")))
+    (net
+      (code 44)
+      (name "_NC_PI23_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "23")
+        (pintype "PASSIVE")))
+    (net
+      (code 45)
+      (name "_NC_PI24_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "24")
+        (pintype "PASSIVE")))
+    (net
+      (code 46)
+      (name "_NC_PI26_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "26")
+        (pintype "PASSIVE")))
+    (net
+      (code 47)
+      (name "_NC_PI27_ID_SD")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "27")
+        (pintype "PASSIVE")))
+    (net
+      (code 48)
+      (name "_NC_PI28_ID_SC")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "28")
+        (pintype "PASSIVE")))
+    (net
+      (code 49)
+      (name "_NC_PI29_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "29")
+        (pintype "PASSIVE")))
+    (net
+      (code 50)
+      (name "_NC_PI31_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "31")
+        (pintype "PASSIVE")))
+    (net
+      (code 51)
+      (name "_NC_PI32_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "32")
+        (pintype "PASSIVE")))
+    (net
+      (code 52)
+      (name "_NC_PI33_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "33")
+        (pintype "PASSIVE")))
+    (net
+      (code 53)
+      (name "_NC_PI35_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "35")
+        (pintype "PASSIVE")))
+    (net
+      (code 54)
+      (name "_NC_PI36_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "36")
+        (pintype "PASSIVE")))
+    (net
+      (code 55)
+      (name "_NC_PI37_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "37")
+        (pintype "PASSIVE")))
+    (net
+      (code 56)
+      (name "_NC_PI38_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "38")
+        (pintype "PASSIVE")))
+    (net
+      (code 57)
+      (name "_NC_PI3_SDA1_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "3")
+        (pintype "PASSIVE")))
+    (net
+      (code 58)
+      (name "_NC_PI40_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "40")
+        (pintype "PASSIVE")))
+    (net
+      (code 59)
+      (name "_NC_PI5_SCL1_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "5")
+        (pintype "PASSIVE")))
+    (net
+      (code 60)
+      (name "_NC_PI7_GPIO4_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "7")
+        (pintype "PASSIVE")))
+    (net
+      (code 61)
+      (name "_NC_PI_3V3_")
+      (class "Default")
+      (node
+        (ref "J_PI")
+        (pin "1")
+        (pintype "PASSIVE")))))

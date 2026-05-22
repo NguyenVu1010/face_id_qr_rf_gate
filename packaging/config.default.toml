@@ -1,0 +1,44 @@
+[video]
+camera_index = 0
+width = 640
+height = 480
+fps = 15
+
+[recognition]
+face_threshold = 0.55
+uncertain_band = [0.55, 0.65]
+auth_cooldown_s = 5
+stranger_cooldown_s = 30
+mediapipe_min_conf = 0.6
+face_samples_per_user = 5
+
+[link]
+# GPIO UART (Pi pin 8/10 → ESP32 GPIO 32/25). Was /dev/ttyUSB0 in earlier
+# USB-CDC variant; switched 2026-05-23 to free Pi USB ports and avoid VBUS
+# contention. See decision #26 in the architecture spec.
+# /dev/serial0 is a symlink to /dev/ttyAMA0 (PL011) or /dev/ttyS0 (mini UART);
+# raspi-config "Serial Port" → login shell NO, serial hw YES is required first.
+port = "/dev/serial0"
+baud = 115200
+ping_interval_s = 5
+heartbeat_timeout_s = 30
+
+[recorder]
+pre_seconds = 5
+post_seconds = 5
+max_age_days = 30
+max_total_gb = 5
+ffmpeg_timeout_s = 30
+
+[web]
+host = "0.0.0.0"
+port = 8080
+
+[paths]
+data_dir = "/var/lib/smart-gate"
+log_dir = "/var/log/smart-gate"
+
+[logging]
+level = "INFO"
+rotate_mb = 50
+backup_count = 5

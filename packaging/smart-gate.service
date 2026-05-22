@@ -1,0 +1,22 @@
+[Unit]
+Description=Smart Gate daemon (Pi 5 side)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=smart-gate
+Group=smart-gate
+SupplementaryGroups=video dialout
+WorkingDirectory=/opt/smart-gate
+ExecStart=/opt/smart-gate/.venv/bin/python -m smart_gate --config /etc/smart-gate/config.toml
+Restart=on-failure
+RestartSec=3
+RuntimeDirectory=smart-gate
+StateDirectory=smart-gate
+LogsDirectory=smart-gate
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
