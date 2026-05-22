@@ -3,7 +3,7 @@
 
 Per spec rev 2026-05-22:
   - Single 12V input, on-board buck 5V/5A feeds both Pi (via GPIO pin 2/4)
-    and ESP32 (via AMS1117-3.3 LDO for 3.3V logic).
+    and ESP32 (via LM1117-3.3 LDO for 3.3V logic).
   - Pi 5 plugs into 2x20 GPIO socket; ESP32 DevKit into 2x15 socket.
   - Runtime UART app comm: Pi pin 8/10 (GPIO14/15) <-> ESP32 GPIO 5/17.
   - USB cable from Pi to DevKit micro-USB retained for esptool flashing only.
@@ -98,13 +98,13 @@ J_BUCK[4] += V5    # VOUT+
 C_5V_BULK = Part('Device', 'C_Polarized', ref='C_5V_BULK', value='1000uF/10V',
                  footprint='Capacitor_THT:CP_Radial_D10.0mm_P5.00mm')
 C_5V_BYP  = Part('Device', 'C', ref='C_5V_BYP', value='100nF',
-                 footprint='Capacitor_SMD:C_0805_2012Metric')
+                 footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 C_5V_BULK[1] += V5; C_5V_BULK[2] += GND
 C_5V_BYP[1] += V5;  C_5V_BYP[2] += GND
 
 # Ferrite bead between buck output and Pi 5V feed (isolates servo noise)
 FB_PI  = Part('Device', 'L_Small', ref='FB_PI', value='FB_600R_3A',
-              footprint='Inductor_SMD:L_0805_2012Metric')
+              footprint='Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC')
 PI_5V_NET = Net('PI_5V_FILTERED')
 FB_PI[1] += V5
 FB_PI[2] += PI_5V_NET
@@ -112,13 +112,13 @@ FB_PI[2] += PI_5V_NET
 C_PI_BULK = Part('Device', 'C_Polarized', ref='C_PI_BULK', value='1000uF/10V',
                  footprint='Capacitor_THT:CP_Radial_D10.0mm_P5.00mm')
 C_PI_BYP  = Part('Device', 'C', ref='C_PI_BYP', value='100nF',
-                 footprint='Capacitor_SMD:C_0805_2012Metric')
+                 footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 C_PI_BULK[1] += PI_5V_NET; C_PI_BULK[2] += GND
 C_PI_BYP[1]  += PI_5V_NET; C_PI_BYP[2]  += GND
 
 # TVS clamp for transient protection (5.0 V working, clamps ~9 V)
 D_TVS = Part('Device', 'D_TVS', ref='D_TVS', value='SMAJ5.0A',
-             footprint='Diode_SMD:D_SMA')
+             footprint='Diode_THT:D_DO-15_P10.16mm_Horizontal')
 D_TVS[1] += GND       # cathode = anode reversed for unidirectional TVS
 D_TVS[2] += PI_5V_NET
 
@@ -127,12 +127,12 @@ D_TVS[2] += PI_5V_NET
 # 3.3 V LDO for ESP32 only (Pi has its own)
 # =============================================================================
 
-U_LDO    = Part('Regulator_Linear', 'AMS1117-3.3', ref='U_LDO',
-                footprint='Package_TO_SOT_SMD:SOT-223-3_TabPin2')
+U_LDO    = Part('Regulator_Linear', 'LM1117-3.3', ref='U_LDO',
+                footprint='Package_TO_SOT_THT:TO-220-3_Vertical')
 C_LDOIN  = Part('Device', 'C', ref='C_LDOIN',  value='10uF',
-                footprint='Capacitor_SMD:C_0805_2012Metric')
+                footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 C_LDOOUT = Part('Device', 'C', ref='C_LDOOUT', value='10uF',
-                footprint='Capacitor_SMD:C_0805_2012Metric')
+                footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 U_LDO[1] += GND
 U_LDO[2] += V3V3
 U_LDO[3] += V5
@@ -240,9 +240,9 @@ J_ESP_R[15] += PI_TX_TO_ESP_RX          # IO5  = UART1 RX <- Pi TX
 
 # ESP32 decoupling on 3V3
 C_ESP_3V3_1 = Part('Device', 'C', ref='C_ESP_3V3_1', value='100nF',
-                   footprint='Capacitor_SMD:C_0805_2012Metric')
+                   footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 C_ESP_3V3_2 = Part('Device', 'C', ref='C_ESP_3V3_2', value='10uF',
-                   footprint='Capacitor_SMD:C_0805_2012Metric')
+                   footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
 C_ESP_3V3_1[1] += V3V3;  C_ESP_3V3_1[2] += GND
 C_ESP_3V3_2[1] += V3V3;  C_ESP_3V3_2[2] += GND
 
@@ -270,9 +270,9 @@ J_LCD[3] += I2C_SDA
 J_LCD[4] += I2C_SCL
 
 R_SDA = Part('Device', 'R', ref='R_SDA', value='4.7k',
-             footprint='Resistor_SMD:R_0805_2012Metric')
+             footprint='Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal')
 R_SCL = Part('Device', 'R', ref='R_SCL', value='4.7k',
-             footprint='Resistor_SMD:R_0805_2012Metric')
+             footprint='Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal')
 R_SDA[1] += I2C_SDA; R_SDA[2] += V3V3
 R_SCL[1] += I2C_SCL; R_SCL[2] += V3V3
 
@@ -284,9 +284,9 @@ J_USR[3] += HCSR_ECHO_5V
 J_USR[4] += GND
 
 R_USR1 = Part('Device', 'R', ref='R_USR1', value='1k',
-              footprint='Resistor_SMD:R_0805_2012Metric')
+              footprint='Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal')
 R_USR2 = Part('Device', 'R', ref='R_USR2', value='2k',
-              footprint='Resistor_SMD:R_0805_2012Metric')
+              footprint='Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal')
 R_USR1[1] += HCSR_ECHO_5V
 R_USR1[2] += HCSR_ECHO_3V3
 R_USR2[1] += HCSR_ECHO_3V3
@@ -306,7 +306,7 @@ J_BUZ = Part('Connector_Generic', 'Conn_01x02', ref='J_BUZ', value='Buzzer_Activ
 Q_BUZ = Part('Transistor_BJT', '2N3904', ref='Q_BUZ',
              footprint='Package_TO_SOT_THT:TO-92_Inline')
 R_BUZ = Part('Device', 'R', ref='R_BUZ', value='1k',
-             footprint='Resistor_SMD:R_0805_2012Metric')
+             footprint='Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal')
 BUZ_COLLECTOR = Net('BUZ_COLLECTOR')
 Q_BUZ[1] += R_BUZ[2]
 R_BUZ[1] += BUZ_DRIVE

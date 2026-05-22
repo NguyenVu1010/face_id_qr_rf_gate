@@ -20,16 +20,16 @@ build_combined = SchLib(tool=SKIDL).add_parts(*[
             Pin(num='2',name='Pin_2',func=pin_types.PASSIVE,unit=1),
             Pin(num='3',name='Pin_3',func=pin_types.PASSIVE,unit=1),
             Pin(num='4',name='Pin_4',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'C', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'C'}), 'ref_prefix':'C', 'fplist':[''], 'footprint':'Capacitor_SMD:C_0805_2012Metric', 'keywords':'cap capacitor', 'description':'', 'datasheet':'~', 'pins':[
+        Part(**{ 'name':'C', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'C'}), 'ref_prefix':'C', 'fplist':[''], 'footprint':'Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm', 'keywords':'cap capacitor', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='~',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='~',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'L_Small', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'L_Small'}), 'ref_prefix':'L', 'fplist':[''], 'footprint':'Inductor_SMD:L_0805_2012Metric', 'keywords':'inductor choke coil reactor magnetic', 'description':'', 'datasheet':'~', 'pins':[
+        Part(**{ 'name':'L_Small', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'L_Small'}), 'ref_prefix':'L', 'fplist':[''], 'footprint':'Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC', 'keywords':'inductor choke coil reactor magnetic', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='~',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='~',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'D_TVS', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'D_TVS'}), 'ref_prefix':'D', 'fplist':[''], 'footprint':'Diode_SMD:D_SMA', 'keywords':'diode TVS thyrector', 'description':'', 'datasheet':'~', 'pins':[
+        Part(**{ 'name':'D_TVS', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'D_TVS'}), 'ref_prefix':'D', 'fplist':[''], 'footprint':'Diode_THT:D_DO-15_P10.16mm_Horizontal', 'keywords':'diode TVS thyrector', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='A1',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='A2',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'AMS1117-3.3', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'AMS1117-3.3'}), 'ref_prefix':'U', 'fplist':['Package_TO_SOT_SMD:SOT-223-3_TabPin2', 'Package_TO_SOT_SMD:SOT-223-3_TabPin2'], 'footprint':'Package_TO_SOT_SMD:SOT-223-3_TabPin2', 'keywords':'linear regulator ldo fixed positive', 'description':'', 'datasheet':'http://www.advanced-monolithic.com/pdf/ds1117.pdf', 'pins':[
+        Part(**{ 'name':'LM1117-3.3', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'LM1117-3.3'}), 'ref_prefix':'U', 'fplist':['', ''], 'footprint':'Package_TO_SOT_THT:TO-220-3_Vertical', 'keywords':'linear regulator ldo fixed positive', 'description':'', 'datasheet':'http://www.ti.com/lit/ds/symlink/lm1117.pdf', 'pins':[
             Pin(num='1',name='GND',func=pin_types.PWRIN,unit=1),
             Pin(num='2',name='VO',func=pin_types.PWROUT,unit=1),
             Pin(num='3',name='VI',func=pin_types.PWRIN,unit=1)], 'unit_defs':[] }),
@@ -99,7 +99,7 @@ build_combined = SchLib(tool=SKIDL).add_parts(*[
             Pin(num='6',name='Pin_6',func=pin_types.PASSIVE,unit=1),
             Pin(num='7',name='Pin_7',func=pin_types.PASSIVE,unit=1),
             Pin(num='8',name='Pin_8',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'R', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'R'}), 'ref_prefix':'R', 'fplist':[''], 'footprint':'Resistor_SMD:R_0805_2012Metric', 'keywords':'R res resistor', 'description':'', 'datasheet':'~', 'pins':[
+        Part(**{ 'name':'R', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'R'}), 'ref_prefix':'R', 'fplist':[''], 'footprint':'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal', 'keywords':'R res resistor', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='~',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='~',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
         Part(**{ 'name':'Conn_01x03', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'Conn_01x03'}), 'ref_prefix':'J', 'fplist':[''], 'footprint':'Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical', 'keywords':'connector', 'description':'', 'datasheet':'~', 'pins':[

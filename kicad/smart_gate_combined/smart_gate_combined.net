@@ -2,7 +2,7 @@
   (version "D")
   (design
     (source "build_combined.py")
-    (date "05/22/2026 08:11 PM")
+    (date "05/22/2026 08:19 PM")
     (tool "SKiDL (2.2.3)")
     (sheet
       (number 1)
@@ -55,7 +55,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "b5_rlZKoHF")
+          (name "SKiDL Tag") "MgteyPAxdE")
         (field
           (name "SKiDL Line") "build_combined.py:98"))
       (libsource
@@ -65,21 +65,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "63e6732f-1841-5509-b90d-c5c531a649bd"))
+      (tstamps "576631dd-5f96-59c9-a5e1-fa5fbcc245ef"))
     (comp
       (ref "C_5V_BYP")
       (value "100nF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "dpQCRScRve")
+          (name "SKiDL Tag") "GR2GtL8vdk")
         (field
           (name "SKiDL Line") "build_combined.py:100"))
       (libsource
@@ -89,7 +89,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "1531671d-86fc-5cfb-8fbd-ac2394438480"))
+      (tstamps "9f84db2a-530d-50ac-888d-ef95e125a9f8"))
     (comp
       (ref "C_BULK")
       (value "100uF/25V")
@@ -103,7 +103,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "6Xs5ujAsEU")
+          (name "SKiDL Tag") "fi6ogqmQwO")
         (field
           (name "SKiDL Line") "build_combined.py:76"))
       (libsource
@@ -113,21 +113,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "9d2c8230-4a28-566c-a750-d604aec60fd9"))
+      (tstamps "ecf46396-49aa-5ec3-a136-60545ef74c1d"))
     (comp
       (ref "C_ESP_3V3_1")
       (value "100nF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "3UgyHhBmXY")
+          (name "SKiDL Tag") "qPocMyRGNg")
         (field
           (name "SKiDL Line") "build_combined.py:242"))
       (libsource
@@ -137,21 +137,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e07da84c-9572-5383-b0bf-393791467404"))
+      (tstamps "cb5be7ce-a594-5d36-815f-ca22e4f269a7"))
     (comp
       (ref "C_ESP_3V3_2")
       (value "10uF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "w8zRaUKZkK")
+          (name "SKiDL Tag") "gO8JEzUMCP")
         (field
           (name "SKiDL Line") "build_combined.py:244"))
       (libsource
@@ -161,21 +161,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "b7cfcd8e-66dd-5dce-be13-0bfce24bc0c5"))
+      (tstamps "97aeba49-4da7-50a0-8000-3a3de68f5aba"))
     (comp
       (ref "C_LDOIN")
       (value "10uF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "TJ6JEWYsEn")
+          (name "SKiDL Tag") "DS7vcPfDe7")
         (field
           (name "SKiDL Line") "build_combined.py:132"))
       (libsource
@@ -185,21 +185,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "5be0e0b1-9c4b-5596-953e-a128d93e635c"))
+      (tstamps "6688ca50-0d47-5abb-86c9-a0bb552fc954"))
     (comp
       (ref "C_LDOOUT")
       (value "10uF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "Iayu2zw0aZ")
+          (name "SKiDL Tag") "lakODvt6Uw")
         (field
           (name "SKiDL Line") "build_combined.py:134"))
       (libsource
@@ -209,7 +209,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "8122f55e-acee-510c-977c-3f75bf86b621"))
+      (tstamps "bde80300-a7cb-51d0-89c9-ab015b44cae6"))
     (comp
       (ref "C_PI_BULK")
       (value "1000uF/10V")
@@ -223,7 +223,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "Ef70tmWjpJ")
+          (name "SKiDL Tag") "ExwQUlRmP6")
         (field
           (name "SKiDL Line") "build_combined.py:112"))
       (libsource
@@ -233,21 +233,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "58ece114-ec3f-544b-85cd-d678f5177bcf"))
+      (tstamps "0f7383b0-d274-5a00-9275-055085bf1ec8"))
     (comp
       (ref "C_PI_BYP")
       (value "100nF")
       (description "")
-      (footprint "Capacitor_SMD:C_0805_2012Metric")
+      (footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Capacitor_SMD:C_0805_2012Metric")
+          (name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "qAkpHnyAiA")
+          (name "SKiDL Tag") "VIs62pBLgd")
         (field
           (name "SKiDL Line") "build_combined.py:114"))
       (libsource
@@ -257,7 +257,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "d8973c5c-83d7-553c-a402-f9e22d662068"))
+      (tstamps "836bf1e0-965a-52bb-a6c9-51b5affdad6d"))
     (comp
       (ref "C_SVO")
       (value "470uF/16V")
@@ -271,7 +271,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "ZXjbrzUVvx")
+          (name "SKiDL Tag") "4WJBgl6zHI")
         (field
           (name "SKiDL Line") "build_combined.py:300"))
       (libsource
@@ -281,7 +281,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "6ccb0d35-c68e-55b5-a71b-49783ed6b1b2"))
+      (tstamps "41b6862d-a6de-5966-a6ae-c09109d1deed"))
     (comp
       (ref "D_REV")
       (value "1N5817")
@@ -295,7 +295,7 @@
         (field
           (name "Datasheet") "http://www.vishay.com/docs/88525/1n5817.pdf")
         (field
-          (name "SKiDL Tag") "tqxZe1LQwr")
+          (name "SKiDL Tag") "PraGA5DpXd")
         (field
           (name "SKiDL Line") "build_combined.py:74"))
       (libsource
@@ -305,21 +305,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "f83ac6f2-68e8-5172-8dbe-0806f0acfa9b"))
+      (tstamps "317328ff-c50b-5ecd-a673-b4f5d58b6ad4"))
     (comp
       (ref "D_TVS")
       (value "SMAJ5.0A")
       (description "")
-      (footprint "Diode_SMD:D_SMA")
+      (footprint "Diode_THT:D_DO-15_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Diode_SMD:D_SMA")
+          (name "Footprint") "Diode_THT:D_DO-15_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "N4ttiL7vQc")
+          (name "SKiDL Tag") "J5xk6NNaTv")
         (field
           (name "SKiDL Line") "build_combined.py:120"))
       (libsource
@@ -329,21 +329,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "7affd69a-9cf4-587e-a92c-11e1bb84369c"))
+      (tstamps "11687cbf-ee01-52ea-a98a-980c4c637bb0"))
     (comp
       (ref "FB_PI")
       (value "FB_600R_3A")
       (description "")
-      (footprint "Inductor_SMD:L_0805_2012Metric")
+      (footprint "Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Inductor_SMD:L_0805_2012Metric")
+          (name "Footprint") "Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "E17S3MuUUY")
+          (name "SKiDL Tag") "jplzju_FNG")
         (field
           (name "SKiDL Line") "build_combined.py:106"))
       (libsource
@@ -353,7 +353,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "859f7c58-ae1e-5b60-857b-40894e1161ed"))
+      (tstamps "27bb246c-bc4b-5702-b723-979dac5e51d4"))
     (comp
       (ref "J_BUCK")
       (value "Buck_12V_to_5V_5A")
@@ -367,7 +367,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "35D2JMSKFX")
+          (name "SKiDL Tag") "UlhCjr87O0")
         (field
           (name "SKiDL Line") "build_combined.py:90"))
       (libsource
@@ -377,7 +377,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "2bf511bf-c78a-54ec-b57a-0886b1779b01"))
+      (tstamps "227239c1-0d1b-5b64-976f-dc844daa376b"))
     (comp
       (ref "J_BUZ")
       (value "Buzzer_Active")
@@ -391,7 +391,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "pKfPb94Ohs")
+          (name "SKiDL Tag") "JHXvYGQ7IF")
         (field
           (name "SKiDL Line") "build_combined.py:304"))
       (libsource
@@ -401,7 +401,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e8a60cf0-485f-5e79-b2fc-0b3c476488e4"))
+      (tstamps "f2d0f35e-68a4-537a-adae-c509abfcc0d2"))
     (comp
       (ref "J_ESP_L")
       (value "DevKit_L")
@@ -415,7 +415,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "wctE37sd7M")
+          (name "SKiDL Tag") "f8hmdKaBZ3")
         (field
           (name "SKiDL Line") "build_combined.py:202"))
       (libsource
@@ -425,7 +425,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "58c60380-30c9-531a-a3a2-f90c05733325"))
+      (tstamps "c53d18d8-1f43-5d86-9cf1-5036a369dc5a"))
     (comp
       (ref "J_ESP_R")
       (value "DevKit_R")
@@ -439,7 +439,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "zQEG9sk6mG")
+          (name "SKiDL Tag") "pssxHYQ31r")
         (field
           (name "SKiDL Line") "build_combined.py:204"))
       (libsource
@@ -449,7 +449,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "f44b8dc3-6bb4-548a-a39c-327d1dd5ad97"))
+      (tstamps "cc80a3a6-f2be-5a5a-8890-877a165a9511"))
     (comp
       (ref "J_EXP")
       (value "Expansion")
@@ -463,7 +463,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "VE6d2qQsnU")
+          (name "SKiDL Tag") "fGhvouUbg5")
         (field
           (name "SKiDL Line") "build_combined.py:318"))
       (libsource
@@ -473,7 +473,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "ec0e7112-e6be-5021-a52b-27d2e241695d"))
+      (tstamps "85adb42f-e5ea-5f33-97df-1d73d2c1cd64"))
     (comp
       (ref "J_LCD")
       (value "LCD_20x4_I2C")
@@ -487,7 +487,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "H6_vOxsfcp")
+          (name "SKiDL Tag") "_PHprQVcJz")
         (field
           (name "SKiDL Line") "build_combined.py:265"))
       (libsource
@@ -497,7 +497,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e9de7e5d-84b5-5554-a597-9b53b1901746"))
+      (tstamps "c671a8da-ce44-5eb5-a2e9-d0c8351ccf40"))
     (comp
       (ref "J_PI")
       (value "Pi_5_GPIO_2x20")
@@ -511,7 +511,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "7iGJ9XTy8I")
+          (name "SKiDL Tag") "tpUwrMAQ9g")
         (field
           (name "SKiDL Line") "build_combined.py:148"))
       (libsource
@@ -521,7 +521,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "70244d3f-b0c5-58ce-9484-ffc0a6ecb292"))
+      (tstamps "121b1293-5e94-5423-9eb7-f9fde9b621f4"))
     (comp
       (ref "J_PWR")
       (value "12V_IN")
@@ -535,7 +535,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "YoHHlzDRjK")
+          (name "SKiDL Tag") "V5xMZ44oyp")
         (field
           (name "SKiDL Line") "build_combined.py:72"))
       (libsource
@@ -545,7 +545,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "8989899d-624b-5055-a861-bad486aa3ae5"))
+      (tstamps "7f384a41-10da-5845-9e49-962496ca4d27"))
     (comp
       (ref "J_RFID")
       (value "RC522")
@@ -559,7 +559,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "QdD0NohNax")
+          (name "SKiDL Tag") "ZJW2qJXVB_")
         (field
           (name "SKiDL Line") "build_combined.py:254"))
       (libsource
@@ -569,7 +569,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "49cca09e-e4c6-58f5-b7ea-61a6e92f4366"))
+      (tstamps "6972c72e-a8f9-5a25-a219-b918404149b7"))
     (comp
       (ref "J_SVO")
       (value "Servo_SG90")
@@ -583,7 +583,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "QlK_9NEA_n")
+          (name "SKiDL Tag") "pZXnhLR9ow")
         (field
           (name "SKiDL Line") "build_combined.py:295"))
       (libsource
@@ -593,7 +593,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "cba90f2e-174f-5aa5-812a-db484d4894d2"))
+      (tstamps "51bf2229-be15-522f-978e-48e2a404e389"))
     (comp
       (ref "J_USR")
       (value "HC-SR04")
@@ -607,7 +607,7 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "e8PxfKfS_m")
+          (name "SKiDL Tag") "vFO7hAGW2Y")
         (field
           (name "SKiDL Line") "build_combined.py:279"))
       (libsource
@@ -617,7 +617,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "d09025c8-d424-5ede-af79-048ab6704a27"))
+      (tstamps "6b2a12dd-8b6f-55b8-b2c6-6616a83eb918"))
     (comp
       (ref "Q_BUZ")
       (value "2N3904")
@@ -631,7 +631,7 @@
         (field
           (name "Datasheet") "https://www.onsemi.com/pub/Collateral/2N3903-D.PDF")
         (field
-          (name "SKiDL Tag") "yAHgbrV53t")
+          (name "SKiDL Tag") "it8qkwx7uu")
         (field
           (name "SKiDL Line") "build_combined.py:306"))
       (libsource
@@ -641,21 +641,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "6ec9bda5-23f4-59da-affe-4e4891309871"))
+      (tstamps "64a95e2d-f197-578e-a23a-fad67f347594"))
     (comp
       (ref "R_BUZ")
       (value "1k")
       (description "")
-      (footprint "Resistor_SMD:R_0805_2012Metric")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Resistor_SMD:R_0805_2012Metric")
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "jhgAJ_yaIU")
+          (name "SKiDL Tag") "5D0pjEOddS")
         (field
           (name "SKiDL Line") "build_combined.py:308"))
       (libsource
@@ -665,21 +665,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e692b4b8-18d0-53d8-b09c-5f36cc209428"))
+      (tstamps "a8045d78-e3f4-5c51-a986-df4e08e762fb"))
     (comp
       (ref "R_SCL")
       (value "4.7k")
       (description "")
-      (footprint "Resistor_SMD:R_0805_2012Metric")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Resistor_SMD:R_0805_2012Metric")
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "wx0F1mB_6j")
+          (name "SKiDL Tag") "m1SwyZZczu")
         (field
           (name "SKiDL Line") "build_combined.py:274"))
       (libsource
@@ -689,21 +689,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "28e2b213-8435-5455-b21d-ffc4d7cbd35a"))
+      (tstamps "72648f44-ba63-5ff9-94ac-fe4155c4caa0"))
     (comp
       (ref "R_SDA")
       (value "4.7k")
       (description "")
-      (footprint "Resistor_SMD:R_0805_2012Metric")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Resistor_SMD:R_0805_2012Metric")
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "UfcYYj6ACe")
+          (name "SKiDL Tag") "BT3AnXywZ4")
         (field
           (name "SKiDL Line") "build_combined.py:272"))
       (libsource
@@ -713,21 +713,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "fa8f8cef-cfa0-5751-8922-412c0cf72b88"))
+      (tstamps "3cff760c-cbf7-5da1-b1fc-cc3659db8c30"))
     (comp
       (ref "R_USR1")
       (value "1k")
       (description "")
-      (footprint "Resistor_SMD:R_0805_2012Metric")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Resistor_SMD:R_0805_2012Metric")
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "6woo99aqxP")
+          (name "SKiDL Tag") "4nRemME6e3")
         (field
           (name "SKiDL Line") "build_combined.py:286"))
       (libsource
@@ -737,21 +737,21 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "74225091-ef58-5122-a891-d86a953aec77"))
+      (tstamps "48e82595-ff02-5a8e-9d11-366d9f514036"))
     (comp
       (ref "R_USR2")
       (value "2k")
       (description "")
-      (footprint "Resistor_SMD:R_0805_2012Metric")
+      (footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Resistor_SMD:R_0805_2012Metric")
+          (name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal")
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "wFO7enz8jl")
+          (name "SKiDL Tag") "J8sCSAGf8l")
         (field
           (name "SKiDL Line") "build_combined.py:288"))
       (libsource
@@ -761,31 +761,31 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "455a8ce7-66db-591d-a311-fa94061bffac"))
+      (tstamps "ff899402-db7c-5290-82a0-1063aedd4d98"))
     (comp
       (ref "U_LDO")
-      (value "AMS1117-3.3")
+      (value "LM1117-3.3")
       (description "")
-      (footprint "Package_TO_SOT_SMD:SOT-223-3_TabPin2")
+      (footprint "Package_TO_SOT_THT:TO-220-3_Vertical")
       (fields
         (field
           (name "Description"))
         (field
-          (name "Footprint") "Package_TO_SOT_SMD:SOT-223-3_TabPin2")
+          (name "Footprint") "Package_TO_SOT_THT:TO-220-3_Vertical")
         (field
-          (name "Datasheet") "http://www.advanced-monolithic.com/pdf/ds1117.pdf")
+          (name "Datasheet") "http://www.ti.com/lit/ds/symlink/lm1117.pdf")
         (field
-          (name "SKiDL Tag") "YNlfQ00ofa")
+          (name "SKiDL Tag") "FDvdlTLZd5")
         (field
           (name "SKiDL Line") "build_combined.py:130"))
       (libsource
         (lib "Regulator_Linear")
-        (part "AMS1117-3.3"))
+        (part "LM1117-3.3"))
       (sheetpath
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "622f48cf-6c87-554a-ab74-81d7049214fe")))
+      (tstamps "133c9c51-93c7-578a-86ba-03190eb6e10d")))
   (nets
     (net
       (code 1)
