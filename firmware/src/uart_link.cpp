@@ -85,17 +85,22 @@ static void parse_line() {
   translate_and_enqueue(doc);
 }
 
+// Pi link uses ESP32 UART1 (Serial1) on GPIO 32 (RX) / GPIO 25 (TX).
+// UART0 (Serial, GPIO 1/3) is intentionally NOT used here — it stays free for
+// `pio device monitor` debug log and `esptool.py` firmware flashing per
+// architecture spec §4.1 / decision #26.
+
 void uart_link_init() {
-  Serial.begin(UART_BAUD);
-  Serial.setRxBufferSize(1024);
-  Serial.setTimeout(10);
+  Serial1.begin(UART_BAUD, SERIAL_8N1, PIN_PI_UART_RX, PIN_PI_UART_TX);
+  Serial1.setRxBufferSize(1024);
+  Serial1.setTimeout(10);
 }
 
 void uart_link_task(void* /*arg*/) {
   for (;;) {
-    // RX: drain whatever bytes are available.
-    while (Serial.available() > 0) {
-      int b = Serial.read();
+    // RX: drain whatever bytes are available on the Pi UART link.
+    while (Serial1.available() > 0) {
+      int b = Serial1.read();
       if (b < 0) break;
       char c = (char)b;
       if (c == '\r') continue;
@@ -113,12 +118,12 @@ void uart_link_task(void* /*arg*/) {
       }
     }
 
-    // TX: drain outbound queue.
+    // TX: drain outbound queue → Pi UART link.
     if (g_outbound_q) {
       outbound_msg_t out;
       while (xQueueReceive(g_outbound_q, &out, 0) == pdTRUE) {
-        Serial.write((const uint8_t*)out.json, strlen(out.json));
-        Serial.write('\n');
+        Serial1.write((const uint8_t*)out.json, strlen(out.json));
+        Serial1.write('\n');
       }
     }
 

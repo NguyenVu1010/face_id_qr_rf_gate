@@ -60,7 +60,10 @@ void setup() {
   pinMode(PIN_LED_STATUS, OUTPUT);
   digitalWrite(PIN_LED_STATUS, LOW);
 
-  // 2. UART up early (so logs work)
+  // 2. UARTs up early (so logs work).
+  //    Serial  (UART0, GPIO 1/3, USB-CDC) → `pio device monitor` debug + ESP_LOG sink.
+  //    Serial1 (UART1, GPIO 32/25)        → Pi app comm; configured inside uart_link_init().
+  Serial.begin(UART_BAUD);
   uart_link_init();
 
   // 3. NVS / allowlist

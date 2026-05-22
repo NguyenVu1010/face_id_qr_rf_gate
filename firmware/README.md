@@ -14,8 +14,8 @@ Talks JSON Lines over USB-CDC to a Raspberry Pi 5. Operates the gate independent
 
 | GPIO | Peripheral |
 | --- | --- |
-| 1   | UART0 TX (USB-CDC) |
-| 3   | UART0 RX (USB-CDC) |
+| 1   | UART0 TX — `pio device monitor` debug + `esptool.py` flashing only |
+| 3   | UART0 RX — `pio device monitor` + `esptool.py` flashing only |
 | 2   | Onboard status LED |
 | 5   | RC522 CS |
 | 18  | RC522 SCK |
@@ -25,12 +25,14 @@ Talks JSON Lines over USB-CDC to a Raspberry Pi 5. Operates the gate independent
 | 16  | RC522 IRQ (reserved; polling mode) |
 | 21  | LCD I2C SDA |
 | 22  | LCD I2C SCL |
+| **25**  | **UART1 TX → Pi pin 10 (BCM15, RX0)** — Pi app comm |
+| **32**  | **UART1 RX ← Pi pin 8  (BCM14, TX0)** — Pi app comm |
 | 27  | HC-SR04 TRIG |
 | 26  | HC-SR04 ECHO (via voltage divider) |
 | 13  | Servo SG90 PWM |
 | 14  | Buzzer (via 2N3904 NPN) |
 
-LCD I2C pull-up cut required — see architecture spec §5.2.
+Runtime Pi↔ESP32 app comm uses the **3-wire GPIO UART link** (decision #26, 2026-05-23): ESP32 GPIO 32/25 ↔ Pi header pins 8/10. USB cable to the DevKit is needed only for flashing — unplugged at runtime. The Pi serial console must be disabled in `raspi-config` so `/dev/serial0` is free. LCD I2C pull-up cut required — see architecture spec §5.2.
 
 ## Build
 
