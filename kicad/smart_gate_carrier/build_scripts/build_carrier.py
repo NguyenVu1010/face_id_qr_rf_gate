@@ -293,18 +293,19 @@ J_EXP[6] += IO39
 
 
 # =============================================================================
-# Power flags — required for ERC to recognize power sources
+# Power flags — intentionally OMITTED
 # =============================================================================
-
-# KiCad's PWR_FLAG symbol marks a net as having a power source. Without it,
-# ERC complains "power input not driven by a power output". One flag per rail
-# is enough. Skip +3V3 — the AMS1117 LDO output pin is already a POWER-OUT.
-PWR_FLAG_12V = Part('power', 'PWR_FLAG', ref='#FLG01')
-PWR_FLAG_5V  = Part('power', 'PWR_FLAG', ref='#FLG02')
-PWR_FLAG_GND = Part('power', 'PWR_FLAG', ref='#FLG03')
-PWR_FLAG_12V[1] += V12
-PWR_FLAG_5V[1]  += V5
-PWR_FLAG_GND[1] += GND
+#
+# In normal KiCad Eeschema→Pcbnew flow, PWR_FLAG is a virtual symbol KiCad
+# recognises and excludes from PCB transfer. When importing an external
+# netlist directly (our SKiDL flow), Pcbnew does NOT skip it and errors out
+# with "no footprint assigned". Since SKiDL's own ERC already passes clean
+# without PWR_FLAGs, we simply do not emit them. The power sources (J_PWR
+# barrel jack for +12V, J_BUCK header pin 4 for +5V, U_LDO pin 2 for +3V3,
+# J_PWR pin 2 for GND) are real — KiCad's strict POWER-IN vs POWER-OUT
+# check is satisfied by the LDO output for +3V3; the passive-source nets
+# (+12V, +5V, GND) would only trigger non-fatal ERC warnings in pure-KiCad
+# flow that we intentionally tolerate here.
 
 
 # =============================================================================
