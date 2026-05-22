@@ -23,9 +23,6 @@ build_combined = SchLib(tool=SKIDL).add_parts(*[
         Part(**{ 'name':'C', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'C'}), 'ref_prefix':'C', 'fplist':[''], 'footprint':'Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm', 'keywords':'cap capacitor', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='~',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='~',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'L_Small', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'L_Small'}), 'ref_prefix':'L', 'fplist':[''], 'footprint':'Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC', 'keywords':'inductor choke coil reactor magnetic', 'description':'', 'datasheet':'~', 'pins':[
-            Pin(num='1',name='~',func=pin_types.PASSIVE,unit=1),
-            Pin(num='2',name='~',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
         Part(**{ 'name':'D_TVS', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'D_TVS'}), 'ref_prefix':'D', 'fplist':[''], 'footprint':'Diode_THT:D_DO-15_P10.16mm_Horizontal', 'keywords':'diode TVS thyrector', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='A1',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='A2',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),

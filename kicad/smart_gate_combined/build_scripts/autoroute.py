@@ -40,6 +40,17 @@ def main() -> None:
         sys.exit(1)
     print(f'  wrote {DSN_FILE} ({os.path.getsize(DSN_FILE)} bytes)')
 
+    # Strong bias: change F.Cu layer type from 'signal' to 'power' so
+    # FreeRouting refuses to use it for routing. Forces all signal nets to
+    # B.Cu (the "wires on bottom, components on top" layout).
+    print('Forcing F.Cu to be power-only (signal routing on B.Cu only) ...', flush=True)
+    with open(DSN_FILE) as f:
+        dsn = f.read()
+    dsn = dsn.replace('(layer F.Cu\n      (type signal)',
+                      '(layer F.Cu\n      (type power)', 1)
+    with open(DSN_FILE, 'w') as f:
+        f.write(dsn)
+
     print('Running FreeRouting (this may take 1-3 minutes) ...', flush=True)
     cmd = [
         FREEROUTING_BIN,

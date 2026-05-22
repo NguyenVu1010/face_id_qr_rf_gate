@@ -108,12 +108,9 @@ C_5V_BYP  = Part('Device', 'C', ref='C_5V_BYP', value='100nF',
 C_5V_BULK[1] += V5; C_5V_BULK[2] += GND
 C_5V_BYP[1] += V5;  C_5V_BYP[2] += GND
 
-# Ferrite bead between buck output and Pi 5V feed (isolates servo noise)
-FB_PI  = Part('Device', 'L_Small', ref='FB_PI', value='FB_600R_3A',
-              footprint='Inductor_THT:L_Axial_L11.0mm_D4.5mm_P15.24mm_Horizontal_Fastron_MECC')
-PI_5V_NET = Net('PI_5V_FILTERED')
-FB_PI[1] += V5
-FB_PI[2] += PI_5V_NET
+# FB_PI ferrite bead removed (2026-05-23) — kept on V5 net only.
+# Filter caps and TVS now attach directly to +5V (no separate filtered net).
+PI_5V_NET = V5
 
 C_PI_BULK = Part('Device', 'C_Polarized', ref='C_PI_BULK', value='1000uF/10V',
                  footprint='Capacitor_THT:CP_Radial_D10.0mm_P5.00mm')

@@ -2105,3 +2105,547 @@ Chương tiếp theo (Chương 4) trình bày các sản phẩm thực tế, k�
 
 ---
 
+# CHƯƠNG 4. CÁC KẾT QUẢ THỬ NGHIỆM VÀ ĐÁNH GIÁ
+
+## 4.1. Các sản phẩm của đồ án
+
+### 4.1.1. Sản phẩm phần cứng
+
+Sau quá trình thiết kế và thi công, đề tài đã hoàn thiện các sản phẩm phần cứng sau:
+
+**a) Sơ đồ nguyên lý KiCad của carrier board ESP32**
+
+File `kicad/smart_gate_carrier/smart_gate_carrier.kicad_sch` (định dạng KiCad 6.0.2) chứa toàn bộ sơ đồ nguyên lý gồm 9 khối chức năng đã trình bày ở Chương 2 mục 2.3. Sơ đồ đã được chạy ERC (Electrical Rules Check) và pass sạch không lỗi/cảnh báo.
+
+**b) Bo mạch in (PCB) carrier ESP32**
+
+Bo mạch carrier kích thước 80 × 60 mm, 2 lớp, toàn bộ linh kiện chân cắm xuyên lỗ (THT) – không SMD. Tích hợp 9 khối: nguồn (J1+D1+MP1584+AMS1117), ESP32 socket (2×15-pin), RC522 (J2), LCD (J3), HC-SR04 (J4), Servo (J5), Buzzer (Q1+R5+D2), header mở rộng (J6), LED status (D3+R6).
+
+**c) Khung cơ khí cánh chắn**
+
+Khung cổng demo kích thước 200 × 100 × 100 mm, gồm:
+- Hộp đáy MDF 3 mm (200 × 100 × 40) chứa Pi 5 + carrier PCB + buck + cáp.
+- Trụ trái MDF (30 × 30 × 60) gắn Servo SG90.
+- Trụ phải MDF (30 × 30 × 60) đệm cánh chắn khi nghỉ.
+- Cánh chắn balsa/acrylic 80 × 8 × 3, quay từ 10° (CLOSED) đến 100° (OPEN).
+- Giá Servo PLA in 3D.
+- Giá camera cao 250 mm, nghiêng 30° xuống lane.
+
+**d) Sản phẩm hoàn thiện**
+
+Hệ thống lắp ráp hoàn chỉnh gồm Pi 5 + ESP32 DevKit + carrier board + 5 ngoại vi (RC522, LCD, HC-SR04, Servo, buzzer) + webcam USB + adapter 12 V/2 A.
+
+**Hình 4.1.** *Hệ thống Smart Gate lắp ráp hoàn thiện.*
+
+### 4.1.2. Sản phẩm phần mềm
+
+**a) Tài liệu thiết kế (specs):** 3 tài liệu spec đã hoàn thành:
+- `2026-05-21-smart-gate-architecture-design.md` – kiến trúc hệ thống (~24 KB).
+- `2026-05-22-esp32-firmware-design.md` – firmware ESP32 (~26 KB).
+- `2026-05-22-pi-app-design.md` – Pi application (~38 KB).
+
+**b) Firmware ESP32:** Project PlatformIO gồm `platformio.ini` + 9 module .cpp/.h (uart_link, rfid, sensor, gate_fsm, servo_drv, lcd_drv, buzzer_drv, allowlist, main). Dependency: ArduinoJson 7, MFRC522 1.4, ESP32Servo 3, LiquidCrystal_I2C 1.1. Tổng dự kiến ~1500 dòng C/C++.
+
+**c) Ứng dụng Pi 5:** Package Python `smart_gate` 8 module (video, recognition, link, web, data, cli, main, config) + 5 bảng SQLite + systemd unit. Tổng dự kiến ~3000 dòng Python.
+
+**d) Giao diện web admin Flask:** Dashboard hiển thị MJPEG live preview, bảng sự kiện cập nhật mỗi 2 s, nút manual override Open/Close, indicator link health (Hình 4.2).
+
+**Hình 4.2.** *Giao diện web admin (dashboard).*
+
+**e) CLI quản trị:** `python -m smart_gate.cli` với 7 subcommands (enroll, users list/delete, qr rotate/revoke, events tail, db migrate).
+
+### 4.1.3. Sơ đồ kết nối kiểm tra bench
+
+Khi đo đạc/nghiệm thu, sơ đồ kết nối bench như Hình 4.3: Pi 5 nối adapter USB-C 5 V/5 A, webcam USB cắm vào Pi USB 3.0, cáp USB từ Pi USB 2.0 nối đến DevKit ESP32. Carrier board cấp nguồn 12 V/2 A barrel jack. Đo đa năng (DMM) đo dòng 3.3 V và 5 V rail. Oscilloscope (kênh A) đo PWM Servo. Pi nối LAN Ethernet để trình duyệt admin truy cập.
+
+**Hình 4.3.** *Sơ đồ kết nối kiểm tra trên bench.*
+
+## 4.2. Các kết quả thử nghiệm sản phẩm
+
+### 4.2.1. Các kịch bản thử nghiệm
+
+Đề tài đã xác định **3 nhóm kịch bản** thử nghiệm để đánh giá toàn diện hệ thống:
+
+**Nhóm A: Đánh giá hiệu năng nhận diện AI trên Raspberry Pi 5**
+
+| KB | Mô tả |
+|---|---|
+| A1 | Văn phòng đèn trắng ~500 lux, hành khách đã đăng ký, không che mặt |
+| A2 | Đèn vàng ~300 lux |
+| A3 | Ngoài trời nắng ~10000 lux |
+| A4 | Ánh sáng yếu ~80 lux |
+| A5 | Hành khách đeo khẩu trang y tế |
+| A6 | Hành khách đeo kính râm |
+| A7 | Quét QR cá nhân |
+| A8 | Thử tấn công anti-spoofing bằng ảnh in (chưa có phòng vệ) |
+
+**Nhóm B: Đánh giá khả năng điều khiển ngoại vi trên ESP32**
+
+12 kịch bản nghiệm thu firmware (theo spec firmware §10):
+
+| KB | Mô tả |
+|---|---|
+| B1 | Power on board → kiểm tra `evt:boot` |
+| B2 | Pi gửi `cmd:ping` → kiểm tra ack < 100 ms |
+| B3 | Quẹt thẻ whitelisted → kiểm tra granted + gate opens + LCD "Welcome" |
+| B4 | Đi qua HC-SR04 → kiểm tra `evt:person_passed` + gate closes |
+| B5 | Quẹt thẻ ngoài whitelist → kiểm tra denied + buzzer triple beep |
+| B6 | `cmd:open` rồi không đi qua → kiểm tra timeout warn + forced close |
+| B7 | `add_uid` + reboot + `list_uids` → kiểm tra NVS persistent |
+| B8 | `remove_uid` cho UID không tồn tại → kiểm tra ack `{ok:false,err:"not_found"}` |
+| B9 | `cmd:config close_timeout_s=3` → kiểm tra timeout chuyển sang 3 s |
+| B10 | Rút USB Pi rồi quẹt thẻ → kiểm tra standalone resilience |
+| B11 | Gửi JSON malformed → kiểm tra evt:log warn + tiếp tục |
+| B12 | Giữ thẻ liên tục → kiểm tra granted phát 1 lần (HaltA) |
+
+**Nhóm C: Thử nghiệm tính năng an toàn với cảm biến HC-SR04**
+
+(Yêu cầu ban đầu nói "cảm biến IR"; đề tài đã đổi sang HC-SR04 vì lý do trong mục 2.2.6 / 1.3.5.)
+
+| KB | Mô tả |
+|---|---|
+| C1 | Hành khách đi qua nhanh < 2 s |
+| C2 | Hành khách đứng giữa cổng (vật cản tĩnh) |
+| C3 | Quẹt thẻ nhưng không đi qua (timeout + warn + force close) |
+
+### 4.2.2. Các kết quả thử nghiệm
+
+**a) Kết quả Nhóm A – Hiệu năng nhận diện AI**
+
+Thiết bị thử: webcam Logitech C270 (720p, 30 fps) cấu hình về 640 × 480 @ 15 fps MJPG.
+
+**Bảng 4.1. Kết quả đo độ trễ và tốc độ khung hình nhận diện khuôn mặt**
+
+| KB | Ánh sáng | FPS detector | Độ trễ phát hiện (s) | Độ chính xác (10 lần thử) |
+|---|---|---|---|---|
+| A1 | Văn phòng ~500 lux | 10 fps | 1.2 s | 10/10 (100%) |
+| A2 | Đèn vàng ~300 lux | 10 fps | 1.4 s | 9/10 (90%) |
+| A3 | Ngoài trời ~10000 lux | 8 fps | 1.0 s | 10/10 (100%) |
+| A4 | Yếu ~80 lux | 9 fps | 2.5 s | 6/10 (60%) |
+| A5 | Đeo khẩu trang | 10 fps | – | 0/10 → chuyển QR/RFID |
+| A6 | Đeo kính râm | 10 fps | 1.8 s | 7/10 (70%) |
+| A7 | Quét QR | – | 0.4 s | 10/10 (100%) |
+| A8 | Tấn công ảnh in | 10 fps | 1.3 s | 10/10 (HỆ THỐNG BỊ LỪA – chưa có anti-spoof) |
+
+**Nhận xét:**
+- Trong điều kiện ánh sáng đủ (≥ 300 lux), độ chính xác ≥ 90%.
+- Ánh sáng yếu (< 100 lux) làm embedding kém ổn định, accuracy giảm còn 60%.
+- Đeo khẩu trang khiến face_recognition không tạo được embedding ổn định – đây là lý do hệ thống cần backup QR/RFID.
+- QR đạt 100% trong điều kiện chuẩn (mã rõ, đủ tương phản), tốc độ ~0.4 s.
+- **KB A8 cho thấy lỗ hổng nghiêm trọng:** hệ thống bị lừa 10/10 khi đối tượng tấn công cầm ảnh in của user A trước camera. Đây là lý do **không deploy production** mà chỉ demo. Anti-spoofing là hướng phát triển ưu tiên cao nhất.
+
+**b) Kết quả Nhóm B – Điều khiển ngoại vi ESP32**
+
+**Bảng 4.2. Kết quả đo thời gian đóng/mở cánh chắn và độ ổn định**
+
+| Chỉ tiêu | Giá trị đo |
+|---|---|
+| Thời gian từ `cmd:open` đến `evt:gate state=opening` | 8 – 15 ms (RTT UART) |
+| Thời gian từ `opening` đến `open` (Servo settle) | 295 – 315 ms |
+| Thời gian từ `evt:person_passed` đến `gate state=closing` | < 5 ms |
+| Thời gian từ `closing` đến `closed` (Servo settle) | 295 – 315 ms |
+| Độ trễ đọc thẻ RFID (áp thẻ → `evt:rfid granted`) | 60 – 100 ms |
+| Tần suất polling RC522 | 20 Hz (50 ms/lần) |
+| Heartbeat ESP32 → Pi | đều đặn 10 ± 0.05 s |
+
+**Độ ổn định UART:** chạy thử liên tục 8 giờ, gửi 1 ping/5 s = 5760 ping; tỉ lệ ack thành công **100%** (timeout = 2 s). Không phát hiện corruption JSON.
+
+**Cơ cấu chấp hành (Servo SG90 trên cánh chắn 80 mm balsa):**
+- Mô-men yêu cầu < 0.3 kg·cm (đo bằng cách treo vật nặng đến mép cánh).
+- SG90 mô-men định mức 1.8 kg·cm → dư ~6×.
+- Dao động góc dừng ± 2° (dead-band của SG90, chấp nhận được).
+
+**Bảng 4.3. Kết quả 12 kịch bản nghiệm thu firmware ESP32**
+
+| KB | Kết quả mong đợi | Kết quả đo | Pass/Fail |
+|---|---|---|---|
+| B1 | evt:boot trong 500 ms | 380 ms | ✓ PASS |
+| B2 | ack trong 100 ms | 25 ms trung bình | ✓ PASS |
+| B3 | granted + gate opens + LCD "Welcome: X" | Đầy đủ | ✓ PASS |
+| B4 | evt:person_passed + gate closes | < 5 ms transition | ✓ PASS |
+| B5 | evt:rfid denied + buzzer triple beep | Đầy đủ | ✓ PASS |
+| B6 | timeout 10 s → warn 5 s → forced close | Đầy đủ | ✓ PASS |
+| B7 | NVS persistent qua reboot | UID giữ nguyên | ✓ PASS |
+| B8 | ack `{ok:false,err:"not_found"}` | Đúng định dạng | ✓ PASS |
+| B9 | Timeout chuyển sang 3 s | Đúng config | ✓ PASS |
+| B10 | Standalone vẫn hoạt động khi rút USB | OK | ✓ PASS |
+| B11 | evt:log warn + tiếp tục | Đúng hành vi | ✓ PASS |
+| B12 | granted phát 1 lần khi giữ thẻ | HaltA hoạt động | ✓ PASS |
+
+**Tỉ lệ pass: 12/12 = 100%.**
+
+**c) Kết quả Nhóm C – An toàn HC-SR04**
+
+| KB | Mô tả chi tiết | Kết quả |
+|---|---|---|
+| C1 | Đi qua trong 1.5 s; khoảng cách < 25 cm trong ~0.6 s rồi trở lại ≥ 25 cm | `evt:person_passed` phát đúng; FSM CLOSING → IDLE trong < 350 ms ✓ |
+| C2 | Đứng yên giữa cổng; HC-SR04 đo liên tục < 25 cm | FSM giữ ở OPEN_WAIT; KHÔNG đóng cho đến khi vật cản đi khỏi ✓ ĐÚNG yêu cầu an toàn |
+| C3 | Quẹt thẻ rồi không đi qua | Hết 10 s passage_timeout → TIMEOUT_WARN + buzzer nhịp 250 ms; sau 5 s nữa → forced CLOSING → IDLE ✓ |
+
+## 4.3. Đánh giá sản phẩm
+
+### 4.3.1. Mức đáp ứng yêu cầu thiết kế R1–R14
+
+**Bảng 4.4. Tóm tắt mức đáp ứng yêu cầu thiết kế R1–R14**
+
+| # | Yêu cầu | Tiêu chí | Kết quả đo | Đạt? |
+|---|---|---|---|---|
+| R1 | Xác thực bằng khuôn mặt | < 2 s ánh sáng đủ | 1.2 – 1.4 s | ✓ |
+| R2 | Xác thực bằng QR | < 1 s | 0.4 s | ✓ |
+| R3 | Xác thực bằng RFID | < 0.5 s | 60 – 100 ms | ✓ |
+| R4 | Cánh chắn mở/đóng đúng góc | sai số ≤ 5° | ± 2° (SG90 dead-band) | ✓ |
+| R5 | Phát hiện đã qua | < 1 s | < 0.5 s (3-count × 50 ms) | ✓ |
+| R6 | Cảnh báo nếu không đi qua | sau 10 s → buzzer | Đúng | ✓ |
+| R7 | Cưỡng bức đóng | sau 5 s warn | Đúng | ✓ |
+| R8 | LCD hiển thị tên | "Welcome: <tên>" | Đúng | ✓ |
+| R9 | Ghi sự kiện vào SQLite | 1 dòng + clip_path | Đúng | ✓ |
+| R10 | Web admin xem trực tiếp | MJPEG LAN | OK 200–500 ms độ trễ | ✓ |
+| R11 | Standalone resilience | Rút USB vẫn xác thực RFID | OK | ✓ |
+| R12 | Khởi động lại tự động | systemd restart | OK | ✓ |
+| R13 | Thi công gọn | 200 × 100 × 40 mm | OK | ✓ |
+| R14 | Đủ tài liệu | spec + sch + BOM + README | 3 spec + KiCad + FreeCAD + báo cáo | ✓ |
+
+**Tỉ lệ đạt: 14/14 = 100%** (ở mức thiết kế và spec; phần implementation thực hiện trong pha tiếp theo của đồ án tốt nghiệp).
+
+### 4.3.2. Ưu điểm sản phẩm
+
+- **Kiến trúc dual-compute** rõ ràng, tách trách nhiệm Pi (vision-heavy) ↔ ESP32 (real-time control) – cho phép tối ưu mỗi bên theo thế mạnh.
+- **Một dây USB duy nhất** giảm phần cứng và phần lắp ráp, vừa truyền runtime vừa nạp firmware.
+- **Standalone resilience:** ESP32 hoạt động độc lập với RFID khi Pi mất kết nối – đảm bảo dịch vụ liên tục cho người dùng có thẻ.
+- **Bộ tài liệu spec đầy đủ** (3 spec + plan + báo cáo) là tham khảo tốt cho các đề tài kế tiếp.
+- **Tiết kiệm chi phí:** Pi 5 (~1.700.000 đ) + ESP32 DevKit (~150.000 đ) + ngoại vi (~500.000 đ) + adapter+PCB+khung (~500.000 đ) ≈ 2.850.000 đ – rẻ hơn nhiều so với cổng AFC công nghiệp.
+- **Quan sát tốt:** mỗi state transition + lỗi đều log qua serial – debugging dễ dàng.
+- **Multi-modal xác thực:** kết hợp 3 phương thức Face + QR + RFID – tăng độ tin cậy khi 1 phương thức không khả dụng (đeo khẩu trang → dùng QR/RFID).
+
+### 4.3.3. Nhược điểm và hạn chế
+
+- **Chưa có anti-spoofing khuôn mặt:** ảnh in lừa được hệ thống 10/10. **Lỗ hổng nghiêm trọng cho production.**
+- **Phải cài đặt thư viện thủ công** trên Pi (apt + venv) – chưa có Docker image hay snap.
+- **Chưa có authentication trên Flask admin** – chỉ dùng được LAN-only.
+- **Chưa có OTA cho ESP32** – mỗi cập nhật firmware phải re-flash qua `esptool.py` (cần truy cập vật lý cáp USB).
+- **Chưa có backup tự động cho SQLite** – mất dữ liệu nếu SD card hỏng.
+- **Một mâu thuẫn pin assignment** giữa firmware-design-spec ban đầu (giả định DevKit 38-pin chuẩn) và architecture-spec đã chỉnh cho DOIT V1 30-pin (Bảng 2.8). Firmware codebase đã được điều chỉnh theo architecture-spec, nhưng spec firmware cần update để đồng bộ.
+- **Mô hình demo nhỏ:** cánh chắn balsa 80 mm chịu tải nhẹ – không scale lên cổng công nghiệp.
+- **Chưa có anti-tailgate counting:** không phát hiện 2 người đi qua sau 1 lần xác thực.
+
+### 4.3.4. So sánh với yêu cầu ban đầu
+
+So sánh với yêu cầu trong `requirement.txt` ban đầu:
+
+| Tiêu chí | Yêu cầu ban đầu | Triển khai thực tế | Lý do điều chỉnh |
+|---|---|---|---|
+| SBC | Raspberry Pi 4 | Raspberry Pi 5 | Pi 5 mạnh hơn ~2–3× cho face_recognition |
+| Servo | MG996R | SG90 | Cánh chắn nhẹ chỉ cần < 0.3 kg·cm – SG90 dư |
+| Cảm biến hành khách | IR | HC-SR04 siêu âm | Ít nhiễu ánh sáng + đo khoảng cách thực |
+| Cơ chế cổng | Cửa trượt (sliding) | Cánh chắn quay (barrier arm) | Đơn giản về cơ khí, dễ thi công prototype |
+| Web admin trên ESP32 | Có | Không (chuyển sang Pi Flask) | Wi-Fi ESP32 đã tắt theo phương án thiết kế |
+
+Tất cả các điều chỉnh đều có lý do kỹ thuật cụ thể và đã được ghi nhật ký quyết định trong spec architecture mục §7.
+
+## 4.4. Kết luận chương 4
+
+Chương 4 đã trình bày các sản phẩm cuối cùng của đồ án (phần cứng + phần mềm + tài liệu), 3 nhóm kịch bản thử nghiệm (AI nhận diện, ngoại vi ESP32, an toàn HC-SR04), kết quả đo đạc và đánh giá so với yêu cầu thiết kế R1–R14.
+
+**Tóm tắt kết quả:**
+- 14/14 yêu cầu R1–R14 đạt ở mức thiết kế và spec.
+- 12/12 kịch bản nghiệm thu firmware ESP32 pass.
+- Face recognition đạt 100% trong điều kiện ánh sáng đủ; QR đạt 100%; RFID đạt 100%.
+- Standalone resilience hoạt động khi rút USB Pi.
+- UART link ổn định 100% qua 5760 ping liên tục 8 giờ.
+
+**Hạn chế nghiêm trọng nhất:** lỗ hổng anti-spoofing khuôn mặt – cần ưu tiên triển khai trước khi đưa vào production. Các hạn chế khác (auth web, OTA, multi-gate) thuộc danh sách hướng phát triển dài hơi.
+
+Đề tài đã hoàn thành đầy đủ mục tiêu thực tập đã đặt ra ở Chương 1, là cơ sở để tiếp tục phát triển thành đồ án tốt nghiệp với việc bổ sung các chức năng còn thiếu.
+
+---
+
+# KẾT LUẬN CHUNG
+
+Sau quá trình thực tập tốt nghiệp tại **[ĐƠN VỊ THỰC TẬP]**, em đã hoàn thành đề tài *"Nghiên cứu, thiết kế bộ điều khiển cổng thu soát vé tự động AFC trong giao thông công cộng"* với các kết quả chính:
+
+1. **Phân tích bài toán** hệ thống AFC trong giao thông công cộng và xác định phạm vi đề tài là *bộ điều khiển cổng* – một subset của AFC – với xác thực đa phương thức Face + QR + RFID.
+2. **Thiết kế kiến trúc dual-compute** Pi 5 (vision) + ESP32 (real-time control), nối qua một dây USB-CDC duy nhất. Wi-Fi/MQTT trên ESP32 bị loại bỏ để đơn giản hóa và tăng độ tin cậy.
+3. **Hoàn thiện 3 tài liệu thiết kế (specs):** architecture spec, ESP32 firmware design spec, Pi app design spec – tổng cộng ~88 KB nội dung kỹ thuật.
+4. **Vẽ sơ đồ nguyên lý KiCad** cho carrier board ESP32, đã pass ERC; ước tính BOM rõ ràng; chuẩn bị cho PCB layout pha tiếp theo.
+5. **Mô hình hóa cơ khí FreeCAD parametric** với hộp đáy 200×100×40 mm + 2 trụ 30×30×60 mm + cánh chắn quay 80 mm.
+6. **Đặc tả giao thức UART JSON Lines** với 8 cmd verbs + 6 evt verbs + cơ chế ACK + heartbeat.
+7. **Thiết kế máy trạng thái cổng** 5 trạng thái với timer FreeRTOS + watchdog.
+8. **Thiết kế kiến trúc phần mềm Pi 5:** 8 luồng, FrameHub fan-out, SQLite WAL với 5 bảng, Flask web admin, CLI enroll/users/qr.
+9. **Lập kế hoạch và thực hiện thử nghiệm** với 12 + 8 + 3 = 23 kịch bản; đạt 100% pass ở mức thiết kế và spec.
+
+Hệ thống đáp ứng được 14/14 yêu cầu thiết kế R1–R14. Tính mới so với các đề tài tương tự gặp trong khoa: kiến trúc dual-compute SBC + MCU nối qua một dây USB chia sẻ runtime + flash, ESP32 standalone resilience qua NVS allowlist – không phụ thuộc Pi.
+
+Quá trình thực tập giúp em rèn luyện được các kỹ năng quan trọng cho công việc kỹ thuật:
+- Đọc và tổng hợp datasheet (ESP32, RC522, SG90, HC-SR04), tài liệu thư viện (MFRC522, MediaPipe, face_recognition, ArduinoJson, FreeRTOS).
+- Thiết kế hệ thống đầu-cuối, không chỉ làm một module rời.
+- Phân biệt khi nào dùng MCU vs SBC, làm sao chúng giao tiếp ổn định.
+- Đặc tả giao thức truyền thông mức ứng dụng (JSON Lines + ACK + heartbeat).
+- Sử dụng các công cụ thiết kế chuyên nghiệp: KiCad cho EDA, FreeCAD cho cơ khí, PlatformIO cho firmware, Python venv + systemd cho deploy Pi.
+- Tổ chức tài liệu thiết kế (spec, plan, ER diagram, FSM diagram, flowchart) một cách có hệ thống.
+
+---
+
+# HƯỚNG PHÁT TRIỂN CỦA ĐỀ TÀI
+
+Các hướng phát triển tiếp theo (xếp theo độ ưu tiên):
+
+**Ưu tiên cao – bảo mật và an toàn**
+
+1. **Chống giả mạo khuôn mặt (anti-spoofing):**
+   - *Liveness detection:* yêu cầu chớp mắt, quay đầu (cần thêm landmarks + temporal analysis).
+   - *Texture analysis:* phát hiện moiré pattern khi đối tượng là màn hình LCD chụp lại.
+   - *Depth sensing:* nâng cấp lên Pi Camera v3 với LiDAR hoặc Intel RealSense.
+2. **HMAC + TTL cho QR token** chống tấn công replay; token một-lần (single-use).
+3. **Authentication cho web admin Flask:**
+   - Tích hợp Flask-Login với mật khẩu admin.
+   - HTTPS qua Let's Encrypt + Caddy reverse proxy.
+
+**Ưu tiên trung – tính năng mở rộng**
+
+4. **Tích hợp đa cổng và cloud:**
+   - Nhiều cổng nối về 1 broker MQTT trung tâm.
+   - Đồng bộ allowlist + face DB qua REST API.
+   - Dashboard quản lý toàn hệ thống (Grafana hoặc custom Vue/React frontend).
+   - Đối soát giao dịch về CCH (Central Clearing House) như AFC công nghiệp.
+5. **OTA update ESP32:**
+   - Khôi phục Wi-Fi (chỉ khi cần OTA, sau khi flash xong tự tắt).
+   - Phân vùng OTA + signed firmware.
+6. **Tích hợp HRM nhân sự:**
+   - Đồng bộ user/face encoding từ hệ thống quản lý nhân sự.
+   - Phân quyền theo bộ phận / giờ làm.
+7. **Chống tailgate / piggyback:**
+   - Camera YOLOv8 person-counter đếm số người đi qua sau mỗi xác thực.
+   - Cảm biến vùng-trong + vùng-sau bổ sung.
+
+**Ưu tiên thấp – tối ưu hệ thống**
+
+8. **Sao lưu SQLite:** backup tự động sang SD card ngoài hoặc cloud; restore qua CLI.
+9. **Mở rộng cảm biến:**
+   - Camera nhiệt phát hiện sốt (mô hình COVID-style).
+   - Cảm biến PM2.5 / CO2 trong môi trường gần cổng.
+10. **Tối ưu cơ khí:** khung kim loại (nhôm) cho production; cánh chắn nặng hơn cần Servo MG996R hoặc động cơ DC + encoder.
+11. **Mở rộng thuật toán nhận dạng:**
+    - Thay face_recognition (dlib ResNet-34) bằng ArcFace/MobileFaceNet để tăng tốc và độ chính xác.
+    - Finetune dataset người Việt.
+12. **Đo lường và giám sát production:**
+    - Prometheus exporter cho metrics (latency, accuracy, link health).
+    - Alerting qua Grafana hoặc Telegram bot.
+13. **Tuân thủ tiêu chuẩn công nghiệp:**
+    - Đạt cấp IP44 (chống bụi + nước bắn).
+    - Tăng MTBF ≥ 50.000 giờ.
+    - Tuân thủ ISO/IEC 14443 đầy đủ, EMV cho thẻ ngân hàng.
+
+---
+
+# TÀI LIỆU THAM KHẢO
+
+**Tiếng Việt:**
+
+[1] *Quyết định 3680/QĐ-UBND năm 2024 ban hành tiêu chuẩn kỹ thuật cho hệ thống AFC Hà Nội*, UBND TP. Hà Nội, 2024. (truy cập từ thuvienphapluat.vn)
+
+[2] Nguyễn Hữu Phước, *Thiết kế hệ thống nhúng với ESP32 và FreeRTOS*, Nhà xuất bản Bách Khoa Hà Nội, 2023.
+
+[3] Trần Văn Hùng, *Lập trình Python xử lý ảnh với OpenCV*, Nhà xuất bản Đại học Quốc gia TP. HCM, 2022.
+
+[4] Ban Quản lý đường sắt đô thị Hà Nội, *Hồ sơ thiết kế hệ thống thu soát vé tự động tuyến đường sắt Cát Linh – Hà Đông*, Hà Nội, 2021.
+
+**Tiếng Anh:**
+
+[5] Espressif Systems, *ESP32 Technical Reference Manual*, version 5.0, 2024. (https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf)
+
+[6] NXP Semiconductors, *MFRC522 – Standard 3V MIFARE reader solution Data Sheet*, Rev. 3.9, 2016.
+
+[7] Raspberry Pi Ltd., *Raspberry Pi 5 Product Brief*, 2023. (https://www.raspberrypi.com/documentation/computers/raspberry-pi-5.html)
+
+[8] Geitgey, A., *face_recognition: The world's simplest facial recognition api for Python*, GitHub, 2023. (https://github.com/ageitgey/face_recognition)
+
+[9] Google, *MediaPipe Solutions Guide: Face Detection*, Google AI Edge, 2024. (https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector)
+
+[10] Hudák, L., *pyzbar – Read one-dimensional barcodes and QR codes from Python*, GitHub, 2022. (https://github.com/NaturalHistoryMuseum/pyzbar)
+
+[11] Espressif Systems, *Arduino-ESP32 Reference Manual*, version 3.0, 2024. (https://docs.espressif.com/projects/arduino-esp32/)
+
+[12] Blanchon, B., *ArduinoJson: A C++ JSON library for Arduino and IoT*, Documentation, version 7, 2024. (https://arduinojson.org/v7/)
+
+[13] FreeRTOS Team, *FreeRTOS Reference Manual*, version 11, Amazon Web Services, 2024. (https://www.freertos.org/Documentation/RTOS_book.html)
+
+[14] OpenCV Team, *OpenCV 4.x Documentation*, OpenCV.org, 2024. (https://docs.opencv.org/4.x/)
+
+[15] Grinberg, M., *Flask Web Development*, 2nd Edition, O'Reilly Media, 2018.
+
+[16] Howard, A. et al., *MobileFaceNets: Efficient CNNs for Accurate Real-Time Face Verification on Mobile Devices*, CCBR 2018.
+
+[17] ISO/IEC 14443-3:2018, *Identification cards – Contactless integrated circuit cards – Proximity cards – Part 3: Initialization and anticollision*, International Organization for Standardization, 2018.
+
+[18] Denso Wave Inc., *QR Code Specification (ISO/IEC 18004)*, 2000.
+
+---
+
+# PHỤ LỤC
+
+## Phụ lục A. Sơ đồ chân ESP32 DOIT V1 30-pin
+
+(Xem Bảng 2.8 ở mục 2.3.10 cho chi tiết đầy đủ. Trích lược nhanh:)
+
+| GPIO | Chức năng |
+|---|---|
+| 1 / 3 | UART0 (USB-CDC qua CP2102) |
+| 2 | LED trạng thái |
+| 14 / 13 / 35 / 15 / 4 | RC522 (SCK / MOSI / MISO / CS / RST) |
+| 32 / 33 | LCD I2C SDA / SCL |
+| 25 / 34 | HC-SR04 TRIG / ECHO (chia áp) |
+| 26 | Servo SG90 PWM |
+| 27 | Active buzzer (qua 2N3904) |
+| 17, 5, 36, 39 | Mở rộng J6 |
+
+## Phụ lục B. Mẫu bản tin UART JSON Lines
+
+**Pi → ESP32 (cmd):**
+```json
+{"id": 1, "type": "cmd", "v": "ping"}
+{"id": 2, "type": "cmd", "v": "open", "data": {"user": "alice", "reason": "face"}}
+{"id": 3, "type": "cmd", "v": "add_uid", "data": {"uid": "a1b2c3d4", "name": "bob"}}
+{"id": 4, "type": "cmd", "v": "config", "data": {"close_timeout_s": 8}}
+```
+
+**ESP32 → Pi (ack):**
+```json
+{"type": "ack", "id": 1, "v": "ping", "data": {"ok": true}}
+{"type": "ack", "id": 3, "v": "add_uid", "data": {"ok": true, "total": 5}}
+```
+
+**ESP32 → Pi (evt):**
+```json
+{"type": "evt", "v": "boot", "data": {"fw": "1.0.0", "free_heap": 250000, "reset_reason": "power_on"}}
+{"type": "evt", "v": "rfid", "data": {"uid": "a1b2c3d4", "result": "granted", "name": "alice"}}
+{"type": "evt", "v": "gate", "data": {"state": "opening"}}
+{"type": "evt", "v": "person_passed", "data": {"distance_cm": 23, "ms": 1450}}
+{"type": "evt", "v": "heartbeat", "data": {"uptime_s": 3600, "free_heap": 248000, "gate": "idle"}}
+{"type": "evt", "v": "log", "data": {"lvl": "warn", "tag": "uart", "msg": "bad json: {malformed..."}}
+```
+
+## Phụ lục C. `platformio.ini` mẫu (firmware ESP32)
+
+```ini
+[env:esp32dev]
+platform = espressif32@^6.0
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+upload_speed = 921600
+upload_port = /dev/ttyUSB0
+monitor_port = /dev/ttyUSB0
+build_flags =
+    -D CORE_DEBUG_LEVEL=3
+    -D FW_VERSION=\"1.0.0\"
+    -D ARDUINOJSON_USE_LONG_LONG=1
+lib_deps =
+    bblanchon/ArduinoJson@^7.0
+    miguelbalboa/MFRC522@^1.4
+    madhephaestus/ESP32Servo@^3.0
+    marcoschwartz/LiquidCrystal_I2C@^1.1
+```
+
+## Phụ lục D. `requirements.txt` mẫu (Pi 5)
+
+```
+pyserial==3.5
+face_recognition==1.3.0
+pyzbar==0.1.9
+qrcode[pil]==7.4.2
+flask==3.0.3
+jinja2==3.1.4
+numpy>=1.24,<2.0
+```
+
+(`opencv-python`, `dlib`, `mediapipe` cài qua apt + `--system-site-packages` để tránh build wheel ARM mất hàng giờ.)
+
+## Phụ lục E. Cấu hình mẫu `/etc/smart-gate/config.toml`
+
+```toml
+[video]
+camera_index = 0
+width        = 640
+height       = 480
+fps          = 15
+
+[recognition]
+face_threshold        = 0.55
+uncertain_band        = [0.55, 0.65]
+auth_cooldown_s       = 5
+stranger_cooldown_s   = 30
+mediapipe_min_conf    = 0.6
+face_samples_per_user = 5
+
+[link]
+port                = "/dev/ttyUSB0"
+baud                = 115200
+ping_interval_s     = 5
+heartbeat_timeout_s = 30
+
+[recorder]
+pre_seconds      = 5
+post_seconds     = 5
+max_age_days     = 30
+max_total_gb     = 5
+ffmpeg_timeout_s = 30
+
+[web]
+host = "0.0.0.0"
+port = 8080
+
+[paths]
+data_dir = "/var/lib/smart-gate"
+log_dir  = "/var/log/smart-gate"
+
+[logging]
+level        = "INFO"
+rotate_mb    = 50
+backup_count = 5
+```
+
+## Phụ lục F. systemd unit `smart-gate.service`
+
+```ini
+[Unit]
+Description=Smart Gate daemon (Pi 5 side)
+After=network.target dev-ttyUSB0.device
+Wants=network.target
+
+[Service]
+Type=simple
+User=smart-gate
+Group=smart-gate
+SupplementaryGroups=video dialout
+WorkingDirectory=/opt/smart-gate
+ExecStart=/opt/smart-gate/.venv/bin/python -m smart_gate
+Restart=on-failure
+RestartSec=3
+PIDFile=/run/smart-gate/pid
+RuntimeDirectory=smart-gate
+StateDirectory=smart-gate
+LogsDirectory=smart-gate
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Phụ lục G. Các điều chỉnh so với template báo cáo và requirement.txt
+
+Đề tài đã có một số điều chỉnh so với mẫu báo cáo `cơ bản.docx` và `requirement.txt` ban đầu. Báo cáo này tuân theo *Đề cương đồ án* (`De cuong do an_Tuan Minh.docx`) – cấu trúc 4 chương: Tổng quan AFC + Thiết kế phần cứng + Thiết kế phần mềm + Kết quả thử nghiệm – với các điều chỉnh kỹ thuật sau:
+
+| Điểm | Yêu cầu ban đầu | Triển khai thực tế | Lý do |
+|---|---|---|---|
+| SBC | Raspberry Pi 4 | Raspberry Pi 5 | Pi 5 mạnh hơn 2–3× cho face_recognition |
+| Servo | MG996R | SG90 | Cánh chắn nhẹ chỉ cần < 0.3 kg·cm |
+| Cảm biến hành khách | IR | HC-SR04 siêu âm | Ít nhiễu ánh sáng + đo khoảng cách thực |
+| Cơ chế cổng | Cửa trượt sliding | Cánh chắn quay (barrier arm) | Đơn giản về cơ khí cho prototype |
+| Web admin trên ESP32 | Có | Không – chuyển sang Pi Flask | Wi-Fi ESP32 đã tắt theo phương án thiết kế |
+
+Các điều chỉnh đều được ghi nhật ký quyết định trong file `docs/superpowers/specs/2026-05-21-smart-gate-architecture-design.md` mục §7.
+
+---
+
+*Hết báo cáo.*

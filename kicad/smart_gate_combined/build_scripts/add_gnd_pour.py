@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add a GND copper pour zone on the bottom layer (B.Cu) covering the board.
+"""Add a GND copper pour zone on the TOP layer (F.Cu) covering the board.
 
 Zone parameters:
   - Net: GND
@@ -34,15 +34,15 @@ def main() -> None:
         print('GND net not found on board', file=sys.stderr)
         sys.exit(1)
 
-    bcu = board.GetLayerID('B.Cu')
+    fcu = board.GetLayerID('F.Cu')
 
-    # Remove any previously-added GND zone on B.Cu (idempotency)
+    # Remove any previously-added GND zone (on either layer, for idempotency)
     for zone in list(board.Zones()):
-        if zone.GetNetname() == 'GND' and zone.GetLayer() == bcu:
+        if zone.GetNetname() == 'GND':
             board.Remove(zone)
 
     zone = pcbnew.ZONE(board)
-    zone.SetLayer(bcu)
+    zone.SetLayer(fcu)
     zone.SetNet(gnd_net)
     zone.SetIsRuleArea(False)
     zone.SetLocalClearance(mm_to_iu(0.25))

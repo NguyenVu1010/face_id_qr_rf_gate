@@ -44,7 +44,7 @@ PLACEMENT = {
     # 5 V filter chain (top edge below Pi)
     'C_5V_BULK':   (BOARD_ORIGIN_X + 55,  BOARD_ORIGIN_Y + 45,  0),
     'C_5V_BYP':    (BOARD_ORIGIN_X + 60,  BOARD_ORIGIN_Y + 50,  0),
-    'FB_PI':       (BOARD_ORIGIN_X + 75,  BOARD_ORIGIN_Y + 45,  0),
+    # FB_PI removed 2026-05-23
     'C_PI_BULK':   (BOARD_ORIGIN_X + 90,  BOARD_ORIGIN_Y + 45,  0),
     'C_PI_BYP':    (BOARD_ORIGIN_X + 95,  BOARD_ORIGIN_Y + 50,  0),
     'D_TVS':       (BOARD_ORIGIN_X + 110, BOARD_ORIGIN_Y + 45,  0),
