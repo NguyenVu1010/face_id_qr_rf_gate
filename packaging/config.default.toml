@@ -13,7 +13,12 @@ mediapipe_min_conf = 0.6
 face_samples_per_user = 5
 
 [link]
-port = "/dev/ttyUSB0"
+# GPIO UART (Pi pin 8/10 → ESP32 GPIO 32/25). Was /dev/ttyUSB0 in earlier
+# USB-CDC variant; switched 2026-05-23 to free Pi USB ports and avoid VBUS
+# contention. See decision #26 in the architecture spec.
+# /dev/serial0 is a symlink to /dev/ttyAMA0 (PL011) or /dev/ttyS0 (mini UART);
+# raspi-config "Serial Port" → login shell NO, serial hw YES is required first.
+port = "/dev/serial0"
 baud = 115200
 ping_interval_s = 5
 heartbeat_timeout_s = 30
