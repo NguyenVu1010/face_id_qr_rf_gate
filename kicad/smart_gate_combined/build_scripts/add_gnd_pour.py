@@ -19,12 +19,23 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pcbnew  # type: ignore[import]
 
-from pcb_common import (
-    BOARD_H, BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_W,
-    PCB_FILE, mm_to_iu, open_board, save_board,
-)
+from pcb_common import PCB_FILE, mm_to_iu, open_board, save_board
 
 ZONE_MARGIN = 0.5   # mm from board edge
+
+
+def get_board_outline_bbox(board):
+    """Return (xmin, ymin, xmax, ymax) in mm from Edge.Cuts geometry."""
+    edge_layer = board.GetLayerID('Edge.Cuts')
+    xs, ys = [], []
+    for d in board.GetDrawings():
+        if d.GetLayer() != edge_layer:
+            continue
+        xs.extend([d.GetStart().x / 1e6, d.GetEnd().x / 1e6])
+        ys.extend([d.GetStart().y / 1e6, d.GetEnd().y / 1e6])
+    if not xs:
+        raise RuntimeError('No Edge.Cuts geometry on board')
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def main() -> None:
@@ -50,11 +61,16 @@ def main() -> None:
     zone.SetThermalReliefGap(mm_to_iu(0.5))
     zone.SetThermalReliefSpokeWidth(mm_to_iu(0.5))
 
-    # Build polygon outline (rectangle just inside board edge)
-    x0 = BOARD_ORIGIN_X + ZONE_MARGIN
-    y0 = BOARD_ORIGIN_Y + ZONE_MARGIN
-    x1 = BOARD_ORIGIN_X + BOARD_W - ZONE_MARGIN
-    y1 = BOARD_ORIGIN_Y + BOARD_H - ZONE_MARGIN
+    # Detect actual board outline at runtime (so the pour always fits the
+    # current Edge.Cuts geometry, regardless of pcb_common.BOARD_* values
+    # which can drift from PCB content after manual edits / restores).
+    xmin, ymin, xmax, ymax = get_board_outline_bbox(board)
+    x0 = xmin + ZONE_MARGIN
+    y0 = ymin + ZONE_MARGIN
+    x1 = xmax - ZONE_MARGIN
+    y1 = ymax - ZONE_MARGIN
+    print(f'Board outline: ({xmin:.1f},{ymin:.1f}) -> ({xmax:.1f},{ymax:.1f})')
+    print(f'Zone outline:  ({x0:.1f},{y0:.1f}) -> ({x1:.1f},{y1:.1f})')
     outline = pcbnew.wxPoint_Vector()
     for (x, y) in [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]:
         outline.append(pcbnew.wxPoint(mm_to_iu(x), mm_to_iu(y)))
@@ -67,7 +83,7 @@ def main() -> None:
     filler.Fill(board.Zones())
 
     save_board(board)
-    print(f'Added GND zone on B.Cu, filled, saved to {PCB_FILE}')
+    print(f'Added GND zone on F.Cu, filled, saved to {PCB_FILE}')
 
 
 if __name__ == '__main__':

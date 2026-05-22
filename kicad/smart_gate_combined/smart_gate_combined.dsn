@@ -2051,5 +2051,9 @@
     )
   )
   (wiring
+    (via "Via[0-1]_800:400_um"  244974 -107835 (net +3V3)(type protect))
+    (via "Via[0-1]_800:400_um"  204224 -49530 (net +5V)(type protect))
+    (via "Via[0-1]_800:400_um"  206965 -72060.3 (net BUZ_DRIVE)(type protect))
+    (via "Via[0-1]_800:400_um"  248387 -57907 (net I2C_SDA)(type protect))
   )
 )

@@ -28,6 +28,10 @@ SES_FILE = os.path.join(PROJECT_DIR, 'smart_gate_combined.ses')
 # SES unit -> nm. FreeRouting emits coords in 100nm steps (resolution um 10).
 SES_TO_NM = 100
 
+# Override SES-encoded track width (FreeRouting writes 0.25mm by default).
+# 0.7 mm = 700_000 nm — more current capacity + easier to hand-route/fix.
+FORCE_TRACK_WIDTH_NM = 700_000
+
 
 def sym_str(x):
     return x.value() if isinstance(x, sexpdata.Symbol) else x
@@ -117,7 +121,7 @@ def main() -> None:
                 x2, y2 = pts[i + 1]
                 trk = pcbnew.PCB_TRACK(board)
                 trk.SetLayer(lid)
-                trk.SetWidth(width)
+                trk.SetWidth(FORCE_TRACK_WIDTH_NM if FORCE_TRACK_WIDTH_NM else width)
                 trk.SetStart(pcbnew.wxPoint(x1, y1))
                 trk.SetEnd(pcbnew.wxPoint(x2, y2))
                 trk.SetNet(net_item)
