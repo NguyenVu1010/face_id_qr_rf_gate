@@ -146,6 +146,13 @@ class Database:
             LIMIT ?
         """, (after_id, limit)))
 
+    def get_event_clip(self, event_id: int) -> str | None:
+        conn = self.connect()
+        row = conn.execute("SELECT clip_path FROM events WHERE id=?", (event_id,)).fetchone()
+        if row is None:
+            return None
+        return row[0]
+
     def events_for_cleanup(self) -> list[tuple]:
         conn = self.connect()
         return list(conn.execute(

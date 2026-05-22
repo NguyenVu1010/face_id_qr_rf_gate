@@ -42,13 +42,16 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
     @app.route("/stream.mjpeg")
     def stream():
         def gen():
-            while True:
-                jpg = hub.wait_jpeg(timeout=2.0)
-                if jpg is None:
-                    jpg = _PLACEHOLDER_JPEG
-                yield (b"--FRAME\r\nContent-Type: image/jpeg\r\n"
-                       b"Content-Length: " + str(len(jpg)).encode() + b"\r\n\r\n"
-                       + jpg + b"\r\n")
+            try:
+                while True:
+                    jpg = hub.wait_jpeg(timeout=2.0)
+                    if jpg is None:
+                        jpg = _PLACEHOLDER_JPEG
+                    yield (b"--FRAME\r\nContent-Type: image/jpeg\r\n"
+                           b"Content-Length: " + str(len(jpg)).encode() + b"\r\n\r\n"
+                           + jpg + b"\r\n")
+            except (GeneratorExit, OSError):
+                return
         return Response(gen(),
                         mimetype="multipart/x-mixed-replace; boundary=FRAME")
 
@@ -67,10 +70,9 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/clips/<int:event_id>.mp4")
     def clip(event_id: int):
-        rows = db.recent_events(limit=1, after_id=event_id - 1)
-        if not rows or rows[0][7] is None:
+        clip_path = db.get_event_clip(event_id)
+        if clip_path is None:
             abort(404)
-        clip_path = rows[0][7]
         return send_from_directory(data_dir, clip_path, mimetype="video/mp4")
 
     @app.route("/api/gate/open", methods=["POST"])
@@ -92,9 +94,19 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/healthz")
     def healthz():
+        import threading
+        expected = {"cap", "detect", "rec", "bus-consumer", "flask",
+                    "cleanup", "uart-rx", "uart-tx", "uart-hb"}
+        active = {t.name for t in threading.enumerate()}
+        last_frame_ago = None
+        last_ts = getattr(hub, "_last_publish_mono", None)
+        if last_ts is not None:
+            last_frame_ago = max(0.0, time.monotonic() - last_ts)
         return jsonify({
             "uptime_s": int(time.monotonic() - start_time),
             "link_alive": bool(uart.link_alive()),
+            "last_frame_ago_s": last_frame_ago,
+            "threads_ok": expected.issubset(active),
         })
 
     return app
