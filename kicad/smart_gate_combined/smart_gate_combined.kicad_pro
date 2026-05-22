@@ -128,7 +128,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "smart_gate_carrier.kicad_pro",
+    "filename": "smart_gate_combined.kicad_pro",
     "version": 1
   },
   "net_settings": {
@@ -160,7 +160,7 @@
     "last_paths": {
       "gencad": "",
       "idf": "",
-      "netlist": "smart_gate_carrier.net",
+      "netlist": "smart_gate_combined.net",
       "specctra_dsn": "",
       "step": "",
       "vrml": ""

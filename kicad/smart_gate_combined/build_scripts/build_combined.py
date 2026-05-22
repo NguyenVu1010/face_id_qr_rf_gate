@@ -19,7 +19,8 @@ os.environ['KICAD6_SYMBOL_DIR'] = '/usr/share/kicad/symbols'
 os.environ['KICAD6_FOOTPRINT_DIR'] = '/usr/share/kicad/footprints'
 
 from skidl import (
-    Part, Net, ERC, generate_netlist, set_default_tool, KICAD,
+    Part, Net, ERC, generate_netlist, generate_svg, generate_schematic,
+    set_default_tool, KICAD,
     lib_search_paths, footprint_search_paths,
 )
 
@@ -331,9 +332,15 @@ J_EXP[4] += IO39
 if __name__ == '__main__':
     print('Running ERC ...', file=sys.stderr)
     ERC()
-    out_file = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'smart_gate_combined.net',
-    )
+    proj_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out_file = os.path.join(proj_dir, 'smart_gate_combined.net')
     generate_netlist(file_=out_file)
     print(f'Netlist written: {out_file}', file=sys.stderr)
+
+    # Visualize the circuit (graphviz-driven auto layout — functional, not pretty)
+    try:
+        svg_file = os.path.join(proj_dir, 'smart_gate_combined.svg')
+        generate_svg(file_=svg_file)
+        print(f'SVG schematic written: {svg_file}', file=sys.stderr)
+    except Exception as exc:   # noqa: BLE001
+        print(f'generate_svg failed: {exc}', file=sys.stderr)

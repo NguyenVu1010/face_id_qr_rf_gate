@@ -2,7 +2,7 @@
   (version "D")
   (design
     (source "build_combined.py")
-    (date "05/22/2026 08:45 PM")
+    (date "05/23/2026 01:09 AM")
     (tool "SKiDL (2.2.3)")
     (sheet
       (number 1)
@@ -55,9 +55,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "YoQVjcsVwN")
+          (name "SKiDL Tag") "TpuCRP9IBh")
         (field
-          (name "SKiDL Line") "build_combined.py:103"))
+          (name "SKiDL Line") "build_combined.py:104"))
       (libsource
         (lib "Device")
         (part "C_Polarized"))
@@ -65,7 +65,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "bf4eb312-d249-58e0-ae19-5ebdd02ae398"))
+      (tstamps "a56bd82c-3cf4-5497-ad4f-4e888fbad90b"))
     (comp
       (ref "C_5V_BYP")
       (value "100nF")
@@ -79,9 +79,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "xKGrCC8tt5")
+          (name "SKiDL Tag") "LryjRYFNUQ")
         (field
-          (name "SKiDL Line") "build_combined.py:105"))
+          (name "SKiDL Line") "build_combined.py:106"))
       (libsource
         (lib "Device")
         (part "C"))
@@ -89,7 +89,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "7b6eac57-769c-54a4-9c54-3c397a61b18a"))
+      (tstamps "deca2d9a-4d0d-54cc-92b6-bb5ed14db6dc"))
     (comp
       (ref "C_BULK")
       (value "100uF/25V")
@@ -103,9 +103,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "vI2RjuIhzH")
+          (name "SKiDL Tag") "rFt2Sl2myO")
         (field
-          (name "SKiDL Line") "build_combined.py:76"))
+          (name "SKiDL Line") "build_combined.py:77"))
       (libsource
         (lib "Device")
         (part "C_Polarized"))
@@ -113,7 +113,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "64624aac-f0e8-5398-a8d9-8e6fe1007783"))
+      (tstamps "2e221c70-7e81-519f-8bec-39d17d7e21f4"))
     (comp
       (ref "C_ESP_3V3_1")
       (value "100nF")
@@ -127,9 +127,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "VpHs7QnTgd")
+          (name "SKiDL Tag") "dslfXVqeX4")
         (field
-          (name "SKiDL Line") "build_combined.py:243"))
+          (name "SKiDL Line") "build_combined.py:244"))
       (libsource
         (lib "Device")
         (part "C"))
@@ -137,7 +137,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "6af7081f-a9ab-5823-8cdc-036982e52c91"))
+      (tstamps "9105452f-a7e0-5a82-9ccf-561bb2ef8991"))
     (comp
       (ref "C_ESP_3V3_2")
       (value "10uF")
@@ -151,9 +151,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "7zLB3mC00M")
+          (name "SKiDL Tag") "VRaeG7kLtf")
         (field
-          (name "SKiDL Line") "build_combined.py:245"))
+          (name "SKiDL Line") "build_combined.py:246"))
       (libsource
         (lib "Device")
         (part "C"))
@@ -161,7 +161,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "017edab3-488f-54af-9c05-480f42807845"))
+      (tstamps "b9c54839-83a9-51dc-9625-5a9bf067fa54"))
     (comp
       (ref "C_PI_BULK")
       (value "1000uF/10V")
@@ -175,9 +175,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "zbUrb72kWw")
+          (name "SKiDL Tag") "TQ7kcrjl3y")
         (field
-          (name "SKiDL Line") "build_combined.py:117"))
+          (name "SKiDL Line") "build_combined.py:118"))
       (libsource
         (lib "Device")
         (part "C_Polarized"))
@@ -185,7 +185,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "060a42e9-48dc-54d9-ba05-578a3878db14"))
+      (tstamps "ffc9cb85-5e90-5716-b9cc-d4ec74ff6a25"))
     (comp
       (ref "C_PI_BYP")
       (value "100nF")
@@ -199,9 +199,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "KMBgvmVGx8")
+          (name "SKiDL Tag") "fWrcZ8cvc0")
         (field
-          (name "SKiDL Line") "build_combined.py:119"))
+          (name "SKiDL Line") "build_combined.py:120"))
       (libsource
         (lib "Device")
         (part "C"))
@@ -209,7 +209,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "d573a208-8880-5386-a69d-399f37176386"))
+      (tstamps "f9e64b9d-16c8-596a-b96e-0b02e6a2bf28"))
     (comp
       (ref "C_SVO")
       (value "470uF/16V")
@@ -223,9 +223,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "ErdejkIjJV")
+          (name "SKiDL Tag") "OPKpTfVtnK")
         (field
-          (name "SKiDL Line") "build_combined.py:301"))
+          (name "SKiDL Line") "build_combined.py:302"))
       (libsource
         (lib "Device")
         (part "C_Polarized"))
@@ -233,7 +233,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "b4c5e8df-145c-5aeb-85dd-b225293f8491"))
+      (tstamps "78cf7030-cce3-5795-af9a-4574949b7099"))
     (comp
       (ref "D_REV")
       (value "1N5817")
@@ -247,9 +247,9 @@
         (field
           (name "Datasheet") "http://www.vishay.com/docs/88525/1n5817.pdf")
         (field
-          (name "SKiDL Tag") "TMq0X7kgTF")
+          (name "SKiDL Tag") "GH22k5AIkr")
         (field
-          (name "SKiDL Line") "build_combined.py:74"))
+          (name "SKiDL Line") "build_combined.py:75"))
       (libsource
         (lib "Diode")
         (part "1N5817"))
@@ -257,7 +257,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "b907596e-ad20-51df-9c4a-ea4520105848"))
+      (tstamps "a1dd5a55-46ee-506d-90e7-fc308506f32a"))
     (comp
       (ref "D_TVS")
       (value "SMAJ5.0A")
@@ -271,9 +271,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "qZXalUyDVJ")
+          (name "SKiDL Tag") "7JgGqSbZHH")
         (field
-          (name "SKiDL Line") "build_combined.py:125"))
+          (name "SKiDL Line") "build_combined.py:126"))
       (libsource
         (lib "Device")
         (part "D_TVS"))
@@ -281,7 +281,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "99bf6a98-24dd-55fa-a77a-de001199e4a2"))
+      (tstamps "ab7ef9d0-b086-500e-b7b5-1fc2cabaf878"))
     (comp
       (ref "FB_PI")
       (value "FB_600R_3A")
@@ -295,9 +295,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "dtEqtXab3x")
+          (name "SKiDL Tag") "CNwdiX_hLe")
         (field
-          (name "SKiDL Line") "build_combined.py:111"))
+          (name "SKiDL Line") "build_combined.py:112"))
       (libsource
         (lib "Device")
         (part "L_Small"))
@@ -305,7 +305,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "63dc4bd8-86ac-57ae-87bb-2ab4ee32446f"))
+      (tstamps "1b807f80-bd8e-5dbc-bfb0-81a8a86ba5b0"))
     (comp
       (ref "J_BUCK")
       (value "LM2596_Mini_Buck")
@@ -319,9 +319,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "wqZjKLe326")
+          (name "SKiDL Tag") "0xjXNUAuFT")
         (field
-          (name "SKiDL Line") "build_combined.py:90"))
+          (name "SKiDL Line") "build_combined.py:91"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x04"))
@@ -329,7 +329,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "faa74545-899f-5e83-a1ea-b8c3526f4433"))
+      (tstamps "52e9e863-33a0-5b69-9975-08edb99c2839"))
     (comp
       (ref "J_BUZ")
       (value "Buzzer_Active")
@@ -343,9 +343,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "MIbZrkp7N4")
+          (name "SKiDL Tag") "4k1zv4qADk")
         (field
-          (name "SKiDL Line") "build_combined.py:305"))
+          (name "SKiDL Line") "build_combined.py:306"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x02"))
@@ -353,7 +353,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "494f783d-eaf1-532e-9373-1e69187eb51c"))
+      (tstamps "0655fae4-1297-5813-8f95-47e4d2d876ab"))
     (comp
       (ref "J_ESP")
       (value "ESP32_DevKit_V1")
@@ -367,9 +367,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "b_n4Zm01fs")
+          (name "SKiDL Tag") "XvF79dCHX4")
         (field
-          (name "SKiDL Line") "build_combined.py:204"))
+          (name "SKiDL Line") "build_combined.py:205"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_02x15_Odd_Even"))
@@ -377,7 +377,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "726ed02f-8790-51c5-bbbd-daa37bf17f78"))
+      (tstamps "5be0b1c5-2b1b-54ab-9d41-ac3c52a68f73"))
     (comp
       (ref "J_EXP")
       (value "Expansion")
@@ -391,9 +391,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "On7GgBxTBA")
+          (name "SKiDL Tag") "cQV_R_YNK3")
         (field
-          (name "SKiDL Line") "build_combined.py:319"))
+          (name "SKiDL Line") "build_combined.py:320"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x04"))
@@ -401,7 +401,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "eee5b65f-8901-564f-b541-d2884568b2d1"))
+      (tstamps "38fb8d8c-174a-53e5-bc94-86dd8363fed3"))
     (comp
       (ref "J_LCD")
       (value "LCD_20x4_I2C")
@@ -415,9 +415,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "3YDRQzADLG")
+          (name "SKiDL Tag") "GUVcipi_0p")
         (field
-          (name "SKiDL Line") "build_combined.py:266"))
+          (name "SKiDL Line") "build_combined.py:267"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x04"))
@@ -425,7 +425,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "c8d154a0-1a2f-56e2-822a-185257624f23"))
+      (tstamps "3c2fcde8-5477-5d98-8c8a-d1103e6a45d6"))
     (comp
       (ref "J_PI")
       (value "Pi_5_GPIO_2x20")
@@ -439,9 +439,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "j91awpobUM")
+          (name "SKiDL Tag") "oFw8dqJbKZ")
         (field
-          (name "SKiDL Line") "build_combined.py:146"))
+          (name "SKiDL Line") "build_combined.py:147"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_02x20_Odd_Even"))
@@ -449,7 +449,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "42b88ce9-7369-5561-b887-52a66332982f"))
+      (tstamps "5fb65b40-9fa1-51e4-bdda-5f795063b058"))
     (comp
       (ref "J_PWR")
       (value "12V_IN")
@@ -463,9 +463,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "Uu6gsVjMps")
+          (name "SKiDL Tag") "el4XUVYvMe")
         (field
-          (name "SKiDL Line") "build_combined.py:72"))
+          (name "SKiDL Line") "build_combined.py:73"))
       (libsource
         (lib "Connector")
         (part "Barrel_Jack"))
@@ -473,7 +473,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e58f2a50-305a-5894-83a9-e7049fd08b88"))
+      (tstamps "e765274a-e222-5f4f-ac48-8070836f2ec0"))
     (comp
       (ref "J_RFID")
       (value "RC522")
@@ -487,9 +487,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "hVGjHVdRf7")
+          (name "SKiDL Tag") "CTFUjSC35D")
         (field
-          (name "SKiDL Line") "build_combined.py:255"))
+          (name "SKiDL Line") "build_combined.py:256"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x08"))
@@ -497,7 +497,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "e28cb96a-b5c6-573a-88eb-933d5471f749"))
+      (tstamps "614c3ddd-6664-5a51-92b2-ab1730a5c26d"))
     (comp
       (ref "J_SVO")
       (value "Servo_SG90")
@@ -511,9 +511,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "8TCdstKsFL")
+          (name "SKiDL Tag") "GIABKBCPWI")
         (field
-          (name "SKiDL Line") "build_combined.py:296"))
+          (name "SKiDL Line") "build_combined.py:297"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x03"))
@@ -521,7 +521,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "7deacf9d-c20a-5f5d-96b1-b0f5013384d8"))
+      (tstamps "1b9579a7-c80b-5f05-9a50-9342835975e2"))
     (comp
       (ref "J_USR")
       (value "HC-SR04")
@@ -535,9 +535,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "y755UDXKpF")
+          (name "SKiDL Tag") "FE7sUakPzA")
         (field
-          (name "SKiDL Line") "build_combined.py:280"))
+          (name "SKiDL Line") "build_combined.py:281"))
       (libsource
         (lib "Connector_Generic")
         (part "Conn_01x04"))
@@ -545,7 +545,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "8c037170-35fc-5cdb-a69b-cb31109c93ed"))
+      (tstamps "4f6b9f07-ef9f-5648-834d-6c94b0a870de"))
     (comp
       (ref "Q_BUZ")
       (value "2N3904")
@@ -559,9 +559,9 @@
         (field
           (name "Datasheet") "https://www.onsemi.com/pub/Collateral/2N3903-D.PDF")
         (field
-          (name "SKiDL Tag") "PNXbxLfme9")
+          (name "SKiDL Tag") "JZw0hlLtvQ")
         (field
-          (name "SKiDL Line") "build_combined.py:307"))
+          (name "SKiDL Line") "build_combined.py:308"))
       (libsource
         (lib "Transistor_BJT")
         (part "2N3904"))
@@ -569,7 +569,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "60cc43a5-a73a-5e0a-961f-73e817a1b736"))
+      (tstamps "62562b57-d788-59f1-99bc-512a8f1d22f8"))
     (comp
       (ref "R_BUZ")
       (value "1k")
@@ -583,9 +583,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "G_Xd6bCDwL")
+          (name "SKiDL Tag") "Z1RrGJbp_a")
         (field
-          (name "SKiDL Line") "build_combined.py:309"))
+          (name "SKiDL Line") "build_combined.py:310"))
       (libsource
         (lib "Device")
         (part "R"))
@@ -593,7 +593,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "92b0bc31-d81e-5244-a8a1-fe8add19aea8"))
+      (tstamps "b27b72e6-8e20-59a2-b7f2-7fbee056515e"))
     (comp
       (ref "R_SCL")
       (value "4.7k")
@@ -607,9 +607,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "4xFePYC2n3")
+          (name "SKiDL Tag") "ypYGx_Xn9a")
         (field
-          (name "SKiDL Line") "build_combined.py:275"))
+          (name "SKiDL Line") "build_combined.py:276"))
       (libsource
         (lib "Device")
         (part "R"))
@@ -617,7 +617,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "b02477ef-0a96-5369-a44b-3cd1a96bb22c"))
+      (tstamps "1a2e8518-d515-5962-b199-60318469720e"))
     (comp
       (ref "R_SDA")
       (value "4.7k")
@@ -631,9 +631,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "fGyo80Xhnt")
+          (name "SKiDL Tag") "oUeoge0wFs")
         (field
-          (name "SKiDL Line") "build_combined.py:273"))
+          (name "SKiDL Line") "build_combined.py:274"))
       (libsource
         (lib "Device")
         (part "R"))
@@ -641,7 +641,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "3a300761-69b3-53b7-bf3f-71fe40643dc3"))
+      (tstamps "b537eafb-ab06-54dc-9503-439bb3fec6b6"))
     (comp
       (ref "R_USR1")
       (value "1k")
@@ -655,9 +655,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "EiJFbstoXR")
+          (name "SKiDL Tag") "T24e1pawZr")
         (field
-          (name "SKiDL Line") "build_combined.py:287"))
+          (name "SKiDL Line") "build_combined.py:288"))
       (libsource
         (lib "Device")
         (part "R"))
@@ -665,7 +665,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "ae4d722b-3b14-5b7b-b8c2-00905fc78f30"))
+      (tstamps "23e46a0c-83a9-57b9-94c3-1955f8fb8c94"))
     (comp
       (ref "R_USR2")
       (value "2k")
@@ -679,9 +679,9 @@
         (field
           (name "Datasheet") "~")
         (field
-          (name "SKiDL Tag") "_Ixz_Br6yt")
+          (name "SKiDL Tag") "UxE2GOPFjT")
         (field
-          (name "SKiDL Line") "build_combined.py:289"))
+          (name "SKiDL Line") "build_combined.py:290"))
       (libsource
         (lib "Device")
         (part "R"))
@@ -689,7 +689,7 @@
         (names "/")
         (tstamps "/"))
       (component_classes)
-      (tstamps "2d896fa9-8298-5283-b069-01da20406b87")))
+      (tstamps "5e07ea74-0d24-5529-a79d-01fcdf5a8810")))
   (nets
     (net
       (code 1)
