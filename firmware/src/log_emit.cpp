@@ -16,10 +16,13 @@ struct rl_slot_t {
   bool used;
 };
 static rl_slot_t s_rl[RL_SLOTS];
+static portMUX_TYPE s_rl_mux = portMUX_INITIALIZER_UNLOCKED;
 
 // Returns true if this log should be allowed; sets *dropped_out if there's a pending drop count to flush.
+// Called from multiple FreeRTOS tasks (uart_link, rfid, sensor, gate_fsm) — guarded by s_rl_mux.
 static bool rl_check(const char* lvl, const char* tag, uint32_t* dropped_out) {
   uint32_t now = millis();
+  taskENTER_CRITICAL(&s_rl_mux);
   int free_idx = -1;
   for (int i = 0; i < RL_SLOTS; ++i) {
     if (!s_rl[i].used) { if (free_idx < 0) free_idx = i; continue; }
@@ -29,9 +32,11 @@ static bool rl_check(const char* lvl, const char* tag, uint32_t* dropped_out) {
         *dropped_out = s_rl[i].dropped;
         s_rl[i].dropped = 0;
         s_rl[i].last_ms = now;
+        taskEXIT_CRITICAL(&s_rl_mux);
         return true;
       } else {
         s_rl[i].dropped++;
+        taskEXIT_CRITICAL(&s_rl_mux);
         return false;
       }
     }
@@ -45,10 +50,12 @@ static bool rl_check(const char* lvl, const char* tag, uint32_t* dropped_out) {
     s_rl[free_idx].last_ms = now;
     s_rl[free_idx].dropped = 0;
     *dropped_out = 0;
+    taskEXIT_CRITICAL(&s_rl_mux);
     return true;
   }
   // Table full: allow but no rate limiting for this pair.
   *dropped_out = 0;
+  taskEXIT_CRITICAL(&s_rl_mux);
   return true;
 }
 
