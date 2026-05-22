@@ -75,3 +75,58 @@ def test_event_user_id_set_null_on_user_delete(db):
     conn.commit()
     rows = list(conn.execute("SELECT user_id FROM events"))
     assert rows == [(None,)]
+
+
+def test_insert_and_list_users(db):
+    db.insert_user("alice")
+    db.insert_user("bob")
+    users = db.list_users()
+    names = [r[1] for r in users]
+    assert names == ["alice", "bob"]
+
+
+def test_get_user_id_by_name(db):
+    uid = db.insert_user("alice")
+    assert db.get_user_id_by_name("alice") == uid
+    assert db.get_user_id_by_name("nobody") is None
+
+
+def test_insert_face_encoding_and_load_all(db):
+    uid = db.insert_user("alice")
+    db.insert_face_encoding(uid, b"x" * 512, 0)
+    db.insert_face_encoding(uid, b"y" * 512, 1)
+    rows = db.load_all_face_encodings()
+    assert len(rows) == 2
+    assert all(uid_loaded == uid for uid_loaded, _ in rows)
+
+
+def test_revoke_and_rotate_qr(db):
+    uid = db.insert_user("alice")
+    db.insert_qr_token("aaa", uid)
+    assert db.load_active_qr_tokens() == {"aaa": uid}
+    n = db.revoke_active_qr(uid)
+    assert n == 1
+    assert db.load_active_qr_tokens() == {}
+    db.insert_qr_token("bbb", uid)
+    assert db.load_active_qr_tokens() == {"bbb": uid}
+
+
+def test_insert_event_and_recent(db):
+    db.insert_user("alice")
+    uid = db.get_user_id_by_name("alice")
+    eid = db.insert_event("face", uid, True, detail='{"distance":0.4}')
+    assert eid > 0
+    rows = db.recent_events()
+    assert len(rows) == 1
+    assert rows[0][2] == "face"             # method
+    assert rows[0][4] == "alice"            # joined name
+
+
+def test_update_event_clip(db):
+    eid = db.insert_event("manual_open", None, True)
+    db.update_event_clip(eid, "clips/42.mp4")
+    rows = db.recent_events()
+    assert rows[0][7] == "clips/42.mp4"
+    db.update_event_clip(eid, None)
+    rows = db.recent_events()
+    assert rows[0][7] is None
