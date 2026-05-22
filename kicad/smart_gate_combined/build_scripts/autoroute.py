@@ -72,16 +72,11 @@ def main() -> None:
         sys.exit(2)
     print(f'  wrote {SES_FILE} ({os.path.getsize(SES_FILE)} bytes)')
 
-    print('Importing routed SES back into board ...', flush=True)
-    # KiCad 6 ImportSpecctraSES takes only the filename; it applies to the
-    # board whose name matches (smart_gate_combined.kicad_pcb).
-    save_board(board)   # ensure board is on disk first
-    if not pcbnew.ImportSpecctraSES(SES_FILE):
-        print('ImportSpecctraSES returned False', file=sys.stderr)
-        sys.exit(3)
-    # Reload board to pick up changes
-    board = open_board()
-    print(f'Imported routes into {PCB_FILE}')
+    # NOTE: do NOT call pcbnew.ImportSpecctraSES() here — it shifts the entire
+    # board by an internal auxiliary origin offset, corrupting placement vs the
+    # other scripts' coordinates. We let the custom build_scripts/import_ses.py
+    # parse the SES file and add tracks afterwards.
+    print(f'SES ready for custom import (run build_scripts/import_ses.py next).')
 
     # Quick stats
     tracks = list(board.GetTracks())

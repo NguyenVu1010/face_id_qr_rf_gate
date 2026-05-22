@@ -58,7 +58,7 @@ The mechanical demo is a tabletop barrier-arm style gate (~300 × 200 × 100 mm 
                        │         │  ┌────────────────┐ │        │
                        │         │  │ ESP32 DevKit   │◀┘        │
                        │         │  │ (2× 15p socket)│          │
-                       │         │  │ UART1 GPIO 5/17│          │
+                       │         │  │ UART1 GPIO32/25│          │
                        │         │  └──┬──────┬──────┘          │
                        │         │     │      │                 │
                        │         │  Periphs   │                 │
