@@ -29,10 +29,6 @@ build_combined = SchLib(tool=SKIDL).add_parts(*[
         Part(**{ 'name':'D_TVS', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'D_TVS'}), 'ref_prefix':'D', 'fplist':[''], 'footprint':'Diode_THT:D_DO-15_P10.16mm_Horizontal', 'keywords':'diode TVS thyrector', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='A1',func=pin_types.PASSIVE,unit=1),
             Pin(num='2',name='A2',func=pin_types.PASSIVE,unit=1)], 'unit_defs':[] }),
-        Part(**{ 'name':'LM1117-3.3', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'LM1117-3.3'}), 'ref_prefix':'U', 'fplist':['', ''], 'footprint':'Package_TO_SOT_THT:TO-220-3_Vertical', 'keywords':'linear regulator ldo fixed positive', 'description':'', 'datasheet':'http://www.ti.com/lit/ds/symlink/lm1117.pdf', 'pins':[
-            Pin(num='1',name='GND',func=pin_types.PWRIN,unit=1),
-            Pin(num='2',name='VO',func=pin_types.PWROUT,unit=1),
-            Pin(num='3',name='VI',func=pin_types.PWRIN,unit=1)], 'unit_defs':[] }),
         Part(**{ 'name':'Conn_02x20_Odd_Even', 'dest':TEMPLATE, 'tool':SKIDL, 'aliases':Alias({'Conn_02x20_Odd_Even'}), 'ref_prefix':'J', 'fplist':[''], 'footprint':'Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical', 'keywords':'connector', 'description':'', 'datasheet':'~', 'pins':[
             Pin(num='1',name='Pin_1',func=pin_types.PASSIVE,unit=1),
             Pin(num='10',name='Pin_10',func=pin_types.PASSIVE,unit=1),

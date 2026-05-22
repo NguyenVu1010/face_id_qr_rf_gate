@@ -49,12 +49,9 @@ PLACEMENT = {
     'C_PI_BYP':    (BOARD_ORIGIN_X + 95,  BOARD_ORIGIN_Y + 50,  0),
     'D_TVS':       (BOARD_ORIGIN_X + 110, BOARD_ORIGIN_Y + 45,  0),
 
-    # 3.3 V LDO + decoupling
-    'U_LDO':       (BOARD_ORIGIN_X + 15,  BOARD_ORIGIN_Y + 75,  0),
-    'C_LDOIN':     (BOARD_ORIGIN_X + 25,  BOARD_ORIGIN_Y + 75,  0),
-    'C_LDOOUT':    (BOARD_ORIGIN_X + 32,  BOARD_ORIGIN_Y + 75,  0),
-    'C_ESP_3V3_1': (BOARD_ORIGIN_X + 45,  BOARD_ORIGIN_Y + 75,  0),
-    'C_ESP_3V3_2': (BOARD_ORIGIN_X + 52,  BOARD_ORIGIN_Y + 75,  0),
+    # 3.3 V decoupling near ESP32 (3V3 itself supplied by DevKit's onboard LDO)
+    'C_ESP_3V3_1': (BOARD_ORIGIN_X + 65,  BOARD_ORIGIN_Y + 75,  0),
+    'C_ESP_3V3_2': (BOARD_ORIGIN_X + 72,  BOARD_ORIGIN_Y + 75,  0),
 
     # ESP32 DevKit socket (centre): single 2x15 footprint with rails 25.4mm apart
     'J_ESP':       (BOARD_ORIGIN_X + 92,  BOARD_ORIGIN_Y + 100, 90),

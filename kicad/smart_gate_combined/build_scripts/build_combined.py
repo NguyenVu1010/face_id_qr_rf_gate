@@ -129,20 +129,13 @@ D_TVS[2] += PI_5V_NET
 
 
 # =============================================================================
-# 3.3 V LDO for ESP32 only (Pi has its own)
+# 3.3 V rail — sourced from ESP32 DevKit's onboard AMS1117-3.3
 # =============================================================================
-
-U_LDO    = Part('Regulator_Linear', 'LM1117-3.3', ref='U_LDO',
-                footprint='Package_TO_SOT_THT:TO-220-3_Vertical')
-C_LDOIN  = Part('Device', 'C', ref='C_LDOIN',  value='10uF',
-                footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
-C_LDOOUT = Part('Device', 'C', ref='C_LDOOUT', value='10uF',
-                footprint='Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm')
-U_LDO[1] += GND
-U_LDO[2] += V3V3
-U_LDO[3] += V5
-C_LDOIN[1]  += V5;   C_LDOIN[2]  += GND
-C_LDOOUT[1] += V3V3; C_LDOOUT[2] += GND
+#
+# The DevKit's 3V3 pin (J_ESP pin 1) is an OUTPUT from the onboard regulator
+# that drops 5V (from VIN pin) down to 3.3V. Capacity ~500mA safe; our
+# external 3V3 load is only ~31mA (RC522 ~30mA + LCD pull-ups ~1.4mA), well
+# within budget. No separate LM1117 on the motherboard needed.
 
 
 # =============================================================================

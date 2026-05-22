@@ -79,7 +79,7 @@ The mechanical demo is a tabletop barrier-arm style gate (~300 × 200 × 100 mm 
 
 - **Input**: 12 V DC barrel jack, 3 A rated. Reverse-protection diode (1N5817), 100 µF bulk cap.
 - **5 V rail**: 12 V → 5 V/3 A buck converter module (MP1584, LM2596, MP2307, or equivalent — 3 A continuous is enough for Pi 4 + peripherals). Filter: 1000 µF + ferrite bead + 100 nF on the Pi GPIO 5V feed, plus a TVS diode (SMAJ5.0A) for transient protection.
-- **3.3 V rail (ESP32 only)**: 5 V → AMS1117-3.3 LDO → ESP32 + RC522. Pi has its own onboard 3.3 V regulator, so the Pi 3V3 pin is left unconnected on the motherboard.
+- **3.3 V rail (ESP32 side only)**: sourced from the ESP32 DevKit's onboard AMS1117-3.3 regulator via the DevKit 3V3 pin (J_ESP pin 1) — no separate LDO on the motherboard. External 3V3 load is ~31 mA (RC522 ~30 mA + LCD I2C pull-ups ~1.4 mA), well within the DevKit LDO's ~500 mA budget. Pi has its own onboard 3.3 V regulator; the Pi 3V3 pin is left unconnected on the motherboard.
 - **Pi power feed**: 5 V rail → Pi GPIO header pin 2 (5V) and pin 4 (5V). This bypasses the Pi's USB-C PD power management and the back-powering protection diode. The buck regulator's output stability is therefore safety-critical.
 - **Common ground**: 5 V GND → multiple Pi GND pins (6, 9, 14, 20, 25, 30, 34, 39) for low-impedance return.
 
