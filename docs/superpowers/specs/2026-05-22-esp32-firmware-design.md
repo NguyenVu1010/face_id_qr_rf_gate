@@ -1,6 +1,6 @@
 # Smart Gate — ESP32 Firmware Design Spec
 
-**Date:** 2026-05-22
+**Date:** 2026-05-22 (revised 2026-05-23: UART transport pivoted to GPIO UART1)
 **Session:** dev_esp (ESP32 firmware)
 **Status:** Design draft awaiting review
 **Consumes:** [`2026-05-21-smart-gate-architecture-design.md`](2026-05-21-smart-gate-architecture-design.md) — sections §4 (UART protocol) and §5 (pin assignment) are authoritative.
@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-The ESP32 firmware is a FreeRTOS application running on an ESP32-WROOM-32 DevKit, talking to a Raspberry Pi 5 over a single USB cable (USB-CDC) using the JSON Lines protocol defined in the architecture spec §4. It manages five peripherals — RC522 RFID reader, SG90 servo (barrier arm), LCD 20×4 (I2C), HC-SR04 ultrasonic passage sensor, and an active buzzer — and operates the barrier gate independently of the Pi link, with an NVS-stored RFID allowlist.
+The ESP32 firmware is a FreeRTOS application running on an ESP32-WROOM-32 DevKit, talking to a Raspberry Pi over a **3-wire GPIO UART link** — ESP32 **UART1** on GPIO 32 (RX) / GPIO 25 (TX) ↔ Pi GPIO header pins 8/10 (BCM 14/15) — using the JSON Lines protocol defined in the architecture spec §4 (decision #26, 2026-05-23). UART0 (GPIO 1/3, USB-CDC) is reserved for `pio device monitor` debug and `esptool.py` firmware flashing — not for runtime app comm. It manages five peripherals — RC522 RFID reader, SG90 servo (barrier arm), LCD 20×4 (I2C), HC-SR04 ultrasonic passage sensor, and an active buzzer — and operates the barrier gate independently of the Pi link, with an NVS-stored RFID allowlist.
 
 Design goals, in order:
 
@@ -109,6 +109,12 @@ firmware/
 #define PIN_SERVO        13
 #define PIN_BUZZER       14
 
+// Pi UART link on ESP32 UART1 routed via GPIO matrix (decision #26, 2026-05-23).
+// Pi pin 8 (BCM14, TX0) → GPIO 32; Pi pin 10 (BCM15, RX0) ← GPIO 25.
+// UART0 (GPIO 1/3) stays for `pio device monitor` debug + esptool flashing.
+#define PIN_PI_UART_RX   32
+#define PIN_PI_UART_TX   25
+
 // Timings (ms) — defaults; overridable via cmd:config
 #define DEFAULT_OPEN_REACHED_MS    300   // SG90 sweep time
 #define DEFAULT_CLOSE_REACHED_MS   300
@@ -187,7 +193,7 @@ Four FreeRTOS tasks. All created in `setup()` with `xTaskCreatePinnedToCore`. Co
 
 | Task | Stack | Priority | Core | Responsibility |
 | --- | --- | --- | --- | --- |
-| `uart_link_task` | 4096 B | 3 | 0 | Read `Serial` byte-by-byte into a 512-B line buffer; on `\n`, parse with ArduinoJson, validate, push translated `event_t` to `event_q`. Also block on `outbound_q` (very short timeout) and `Serial.write()` each pending JSON line. Single task handles both directions to serialize Serial access. |
+| `uart_link_task` | 4096 B | 3 | 0 | Read `Serial1` (UART1, GPIO 32 RX) byte-by-byte into a 512-B line buffer; on `\n`, parse with ArduinoJson, validate, push translated `event_t` to `event_q`. Also block on `outbound_q` (very short timeout) and `Serial1.write()` each pending JSON line to GPIO 25 TX. Single task handles both directions to serialize UART1 access. |
 | `rfid_task` | 3072 B | 2 | 1 | Loop every `RFID_POLL_INTERVAL_MS`. Call `MFRC522::PICC_IsNewCardPresent()` + `PICC_ReadCardSerial()`. On hit, lookup allowlist, push `EV_RFID_SCAN`. |
 | `sensor_task` | 2048 B | 2 | 1 | Loop every `SENSOR_POLL_INTERVAL_MS`. Trigger HC-SR04, read echo via `pulseIn` (max 30 ms timeout for ~5 m range). Debounce: passage event fires when distance crosses `SENSOR_TRIGGER_CM` then returns above threshold for `SENSOR_DEBOUNCE_COUNT` consecutive readings. |
 | `gate_fsm_task` | 4096 B | 4 | 1 | `xQueueReceive(event_q, &e, portMAX_DELAY)`; run FSM step; call `servo_drv`/`lcd_drv`/`buzzer_drv` inline; push `evt`/`ack` to `outbound_q`. Highest priority so peripheral input is reacted to immediately. |
@@ -224,7 +230,7 @@ Each timer's callback posts the matching `EV_T_*` event to `event_q` so the FSM 
 
 **Public:**
 ```cpp
-void uart_link_init();                           // Serial.begin, RX buffer
+void uart_link_init();                           // Serial1.begin on GPIO 32/25, RX buffer
 void uart_link_task(void* arg);                  // FreeRTOS task entry
 bool uart_link_send(const outbound_msg_t& m);    // non-blocking; called by FSM
 ```
@@ -244,7 +250,7 @@ bool uart_link_send(const outbound_msg_t& m);    // non-blocking; called by FSM
 
 On parse error: drop line, push `outbound_q` with `evt:log warn "uart" "bad json: <first 40 B>"`.
 
-**TX path:** `uart_link_task` drains `outbound_q` (timeout 10 ms) after every RX-side iteration; for each message, `Serial.write(json); Serial.write('\n');`. `Serial`'s underlying USB-CDC has a 256-B TX FIFO; the kernel buffers further. Backpressure is documented as non-issue in spec §4.6.
+**TX path:** `uart_link_task` drains `outbound_q` (timeout 10 ms) after every RX-side iteration; for each message, `Serial1.write(json); Serial1.write('\n');`. `Serial1` (ESP32 UART1) has a 128-B hardware FIFO plus the configurable RX buffer; TX is paced by the 115200 baud line (~11.5 kB/s), well above the expected <2 kB/s of app traffic. Backpressure is documented as non-issue in spec §4.6.
 
 **Acks** for commands with `id` field are emitted by `gate_fsm` (which sees the full event including `cmd_id`) — `uart_link` only relays.
 
@@ -408,7 +414,7 @@ size_t allowlist_list(char* out_json, size_t n);          // writes JSON array
 
 | Path | Handling |
 | --- | --- |
-| `Serial` RX buffer overflow | Increase Arduino RX buffer with `Serial.setRxBufferSize(1024)` at init. Should not be reachable at the spec'd throughput. |
+| `Serial1` RX buffer overflow | Increase Arduino RX buffer with `Serial1.setRxBufferSize(1024)` at init. Should not be reachable at the spec'd throughput. |
 | JSON parse error | Drop line, `LOGW("uart", "bad json: %.40s", linebuf)`. |
 | `xQueueSend` returns `errQUEUE_FULL` on `event_q` | `LOGW("evt", "queue full, dropping kind=%d", e.kind)`. Queue is sized 16 which is ~16 simultaneous events — only reachable on pathological flood; loss is acceptable. |
 | `xQueueSend` returns `errQUEUE_FULL` on `outbound_q` | Drop with `Serial.println("{\"type\":\"evt\",\"v\":\"log\",\"data\":{\"lvl\":\"warn\",\"tag\":\"tx\",\"msg\":\"outbound full\"}}");` (bypass queue, best-effort). |
@@ -431,7 +437,7 @@ Hardware brownout detector uses the default ESP32 cutoff (~2.43 V); sufficient g
 ## 9. Boot sequence (`main.cpp::setup`)
 
 ```text
-1. Serial.begin(UART_BAUD); Serial.setRxBufferSize(1024)
+1. Serial.begin(UART_BAUD) [UART0 debug]; Serial1.begin(UART_BAUD, SERIAL_8N1, PIN_PI_UART_RX, PIN_PI_UART_TX) [UART1 Pi link]; Serial1.setRxBufferSize(1024)
 2. NVS init (nvs_flash_init); allowlist_init(); load runtime config from NVS_NS_CONFIG
 3. uart_link_init()
 4. rfid_init(); sensor_init(); servo_init(); lcd_init(); buzzer_init()
@@ -504,7 +510,7 @@ CI is **out of scope** for this prototype. A local `pio check` (cppcheck-backed)
 ## 13. Out of scope
 
 - OTA update mechanism. Re-flash via `pio run -t upload` is the supported update path (matches architecture spec §8).
-- Wi-Fi / MQTT. Architecture decided UART/USB-CDC is the only link.
+- Wi-Fi / MQTT. Architecture decided GPIO UART1 (3-wire link) is the only runtime link; USB-CDC remains for flashing + monitor only.
 - Encryption / signed firmware. Prototype.
 - Power-failure-safe NVS writes beyond what Preferences provides by default.
 - Mocking/Unity tests — explicitly chosen out (manual + serial logs).

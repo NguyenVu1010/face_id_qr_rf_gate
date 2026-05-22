@@ -19,11 +19,11 @@ struct event_t {
   EventSrc  src;
   EventKind kind;
   uint32_t  cmd_id;          // ack correlation; 0 if N/A
-  char      uid[16];         // RFID UID hex or cmd payload
+  char      uid[16];         // RFID UID hex or cmd payload. Sized for ISO 14443-A (max 7-byte UID = 14 hex chars + NUL).
   char      name[32];        // add_uid name or RFID matched name
   int32_t   i1, i2, i3;      // generic ints; INT32_MIN sentinel = "unset" for cmd_config
 };
 
 struct outbound_msg_t {
-  char json[UART_LINE_MAX];  // pre-serialized JSON line, NUL-terminated, no trailing newline
+  char json[UART_LINE_MAX];  // pre-serialized JSON object, NUL-terminated. uart_link appends '\n' at TX time.
 };

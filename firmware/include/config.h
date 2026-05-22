@@ -15,6 +15,13 @@
 #define PIN_SERVO        13
 #define PIN_BUZZER       14
 
+// Pi link runs on ESP32 UART1 routed via the GPIO matrix (decision #26, 2026-05-23).
+// Pi pin 8 (BCM14, TX0) → ESP32 GPIO 32 (UART1 RX);
+// Pi pin 10 (BCM15, RX0) ← ESP32 GPIO 25 (UART1 TX).
+// UART0 (GPIO 1/3, USB-CDC) stays reserved for `pio device monitor` debug + `esptool.py` flashing.
+#define PIN_PI_UART_RX   32
+#define PIN_PI_UART_TX   25
+
 // === Timings (ms) ===
 #define DEFAULT_OPEN_REACHED_MS    300
 #define DEFAULT_CLOSE_REACHED_MS   300
