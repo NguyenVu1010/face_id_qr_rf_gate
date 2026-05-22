@@ -8,7 +8,7 @@
 
 **2026-05-22 later revision — UART transport rollback:** Decision #21 (GPIO UART link between Pi and ESP32) was rolled back. Runtime application traffic and `esptool.py` firmware flashing both ran over the **same USB cable** from a Pi USB-A port to the ESP32 DevKit USB-C/micro-USB port; exposed on Pi as `/dev/ttyUSB0`. See decision #25. **(SUPERSEDED 2026-05-23 — see next note.)**
 
-**2026-05-23 revision — re-pivot to GPIO UART (variant A):** User chose GPIO UART after the USB-C/VBUS contention analysis showed it added unavoidable risk to Pi USB host whenever the SG90 servo inrush hit. Runtime Pi↔ESP32 traffic now uses a **3-wire link** through the Pi GPIO header to **free ESP32 GPIOs**, leaving RC522 unchanged on GPIO 5/17. The chosen pair is ESP32 **GPIO 32 (UART1 RX)** and **GPIO 25 (UART1 TX)** routed by the GPIO matrix; both are general-purpose with no strap concerns. Pi side uses `/dev/serial0` after disabling the serial console in `raspi-config`. Firmware flashing still uses a USB cable to the DevKit (esptool needs DTR/RTS auto-reset) — but the cable can be unplugged once flashed; runtime does not need it. See decision #26.
+**2026-05-23 revision — re-pivot to GPIO UART (variant A):** User chose GPIO UART after the USB-C/VBUS contention analysis showed it added unavoidable risk to Pi USB host whenever the SG90 servo inrush hit. Runtime Pi↔ESP32 traffic now uses a **3-wire link** through the Pi GPIO header to **free ESP32 GPIOs**, leaving RC522 unchanged on GPIO 5/17. The chosen pair is ESP32 **GPIO 32 (UART1 RX)** and **GPIO 25 (UART1 TX)** routed by the GPIO matrix; both are general-purpose with no strap concerns. Pi side uses `/dev/serial0` after disabling the serial console in `raspi-config`. Firmware flashing still uses a USB cable to the DevKit (esptool needs DTR/RTS auto-reset) — but the cable can be unplugged once flashed; runtime does not need it. See decision #26. §5 ESP32 pin table and §5.2 Pi GPIO mapping were updated 2026-05-23 to reflect this — they are now consistent with `firmware/include/config.h`.
 
 ---
 
@@ -247,32 +247,34 @@ Repeated `cmd:open` while in OPEN_WAIT resets the 10 s passage timer (admin can 
 
 ### 5.1 ESP32-WROOM-32 (DOIT V1 30-pin DevKit, socketed)
 
-Because the 30-pin variant does **not** expose IO18/19/21/22/23 on its headers, the default VSPI and I2C pin assignments cannot be used. Peripherals are remapped via the ESP32 GPIO matrix.
+The pin assignment matches `firmware/include/config.h` (authoritative) plus the decision-#26 UART1 pair on free GPIOs 32/25. Standard ESP32-DevKitC-V4 30-pin and 38-pin DevKits both expose all the GPIOs used here, including GPIO 18/19/21/22/23 which the V1 24-pin clone lacks — use a V4 or larger.
 
 | GPIO | Direction | Peripheral | Notes |
 | --- | --- | --- | --- |
-| 1 | OUT (UART0 TX) | USB-CDC TX | Reserved. Firmware flash + debug log only. |
-| 3 | IN (UART0 RX) | USB-CDC RX | Reserved. |
+| 1 | OUT (UART0 TX) | USB-CDC TX | Reserved. `pio device monitor` debug log + `esptool.py` firmware flash only. Not used for runtime app comm. |
+| 3 | IN (UART0 RX) | USB-CDC RX | Reserved. Same as above. |
 | 2 | OUT (strap) | Onboard status LED | Strap: must not be pulled HIGH at boot. Driver writes HIGH/LOW after boot. |
-| 14 | OUT | RC522 SCK | Remapped VSPI. |
-| 13 | OUT | RC522 MOSI | Remapped VSPI. |
-| 35 | IN only | RC522 MISO | Input-only pin; MISO is always input from RC522 → ESP32. RC522 drives push-pull, no pull-up needed. |
-| 15 | OUT (strap) | RC522 CS | Strap: HIGH at boot. RC522 CS idle HIGH ⇒ compatible. |
-| 4 | OUT | RC522 RST | Active LOW; pull HIGH during operation. |
+| 18 | OUT | RC522 SCK | VSPI default. |
+| 19 | IN | RC522 MISO | VSPI default; RC522 drives push-pull, no pull-up needed. |
+| 23 | OUT | RC522 MOSI | VSPI default. |
+| 5 | OUT (strap) | RC522 CS | Strap: HIGH at boot. RC522 CS idle HIGH ⇒ compatible. |
+| 17 | OUT | RC522 RST | Active LOW; pull HIGH during operation. |
 | 16 | IN | RC522 IRQ | Optional; FALLING edge interrupt. |
-| 32 | I/O | LCD I2C SDA | Remapped I2C. 4.7 kΩ pull-up to **3.3 V**. |
-| 33 | OUT | LCD I2C SCL | Remapped I2C. 4.7 kΩ pull-up to **3.3 V**. |
-| 25 | OUT | HC-SR04 TRIG | 10 µs pulse. 3.3 V output usually triggers HC-SR04 OK; add BS170 level shifter if marginal. |
-| 34 | IN only | HC-SR04 ECHO | **Voltage divider mandatory**: R1=1 kΩ in series, R2=2 kΩ to GND → 5 V echo becomes ~3.3 V at GPIO 34. |
-| 26 | OUT | Servo SG90 PWM | LEDC channel 0, 50 Hz, 1–2 ms pulse. 3.3 V exceeds SG90 input threshold. |
-| 27 | OUT (digital) | Active buzzer | Plain GPIO HIGH/LOW; buzzer has internal oscillator. Drive via NPN 2N3904 + 1 kΩ base resistor. |
-| **17** | **OUT (UART1 TX)** | **→ Pi pin 10 (RX0)** | **Runtime app comm to Pi**. UART1 remapped via GPIO matrix. |
-| **5** | **IN (UART1 RX, strap)** | **← Pi pin 8 (TX0)** | **Runtime app comm from Pi**. Strap HIGH at boot ⇒ compatible with idle-HIGH UART RX line. |
-| 6–11 | — | **DO NOT USE** | Connected to internal SPI flash. Not exposed on the 30-pin header. |
+| 21 | I/O | LCD I2C SDA | I2C default. Cut the LCD backpack's 5 V pull-ups and add 4.7 kΩ pull-up to **3.3 V** on the motherboard (see §5.3). |
+| 22 | OUT | LCD I2C SCL | I2C default. 4.7 kΩ pull-up to **3.3 V**. |
+| 27 | OUT | HC-SR04 TRIG | 10 µs pulse. 3.3 V output usually triggers HC-SR04 OK; add BS170 level shifter if marginal. |
+| 26 | IN | HC-SR04 ECHO | **Voltage divider mandatory**: R1=1 kΩ in series, R2=2 kΩ to GND → 5 V echo becomes ~3.3 V at GPIO 26. |
+| 13 | OUT | Servo SG90 PWM | LEDC channel 0, 50 Hz, 1–2 ms pulse. 3.3 V exceeds SG90 input threshold. |
+| 14 | OUT (digital) | Active buzzer | Plain GPIO HIGH/LOW; buzzer has internal oscillator. Drive via NPN 2N3904 + 1 kΩ base resistor (buzzer ~25 mA > ESP32 per-pin 12 mA safe limit). |
+| **25** | **OUT (UART1 TX)** | **→ Pi pin 10 (RX0)** | **Runtime app comm to Pi**. UART1 routed via GPIO matrix from `HardwareSerial(1)` in firmware. General-purpose pin, no strap concern. |
+| **32** | **IN (UART1 RX)** | **← Pi pin 8 (TX0)** | **Runtime app comm from Pi**. UART1 routed via GPIO matrix. General-purpose pin, no strap concern. |
+| 6–11 | — | **DO NOT USE** | Connected to internal SPI flash. Routing these out of the carrier PCB is forbidden. |
 | 12 | — | **DO NOT USE** | Strap pin: must be LOW at boot for 3.3 V flash voltage. Leaving floating is safest. |
-| 36, 39 | IN only | Unused / spare | ADC1 capable; bring out to expansion header. |
+| 15 | — | Free | Strap HIGH at boot; was RC522 CS in an earlier spec revision but firmware kept GPIO 5. Now free for expansion. |
+| 4 | — | Free | Was RC522 RST in an earlier spec revision but firmware kept GPIO 17. Now free for expansion. |
+| 33, 34, 35, 36, 39 | various | Unused / spare | 33 is general purpose; 34/35/36/39 are input-only ADC-capable. Bring out to expansion header. |
 
-Free GPIOs reserved for the expansion header: 36, 39 (plus +3V3 and GND). GPIO 12 excluded (strap), GPIO 17/5 now consumed by Pi UART.
+Free GPIOs reserved for the expansion header: 4, 15, 33, 34, 35, 36, 39 (plus +3V3 and GND). GPIO 12 excluded (strap LOW), GPIO 0 reserved for the BOOT button.
 
 ### 5.2 Raspberry Pi 4 GPIO header (2×20, plugged into motherboard)
 
@@ -282,8 +284,8 @@ Free GPIOs reserved for the expansion header: 36, 39 (plus +3V3 and GND). GPIO 1
 | **2** | — | **5V (Pi in)** | **Motherboard 5V buck output → Pi POWER IN** |
 | **4** | — | **5V (Pi in)** | **Motherboard 5V buck output → Pi POWER IN** (parallel pin 2) |
 | 6, 9, 14, 20, 25, 30, 34, 39 | — | GND | Common ground (multiple for low-impedance return) |
-| **8** | GPIO14 (TX0) | UART0 TX | **→ ESP32 GPIO 5 (UART1 RX)** |
-| **10** | GPIO15 (RX0) | UART0 RX | **← ESP32 GPIO 17 (UART1 TX)** |
+| **8** | GPIO14 (TX0) | UART0 TX | **→ ESP32 GPIO 32 (UART1 RX)** |
+| **10** | GPIO15 (RX0) | UART0 RX | **← ESP32 GPIO 25 (UART1 TX)** |
 | Others (3, 5, 7, 11, 12, 13, ..., 40) | various | Spare | Left unconnected on the motherboard but routed to a Pi-side breakout header for future expansion |
 
 Pi UART0 console must be **disabled in `raspi-config`** (`Interface Options → Serial Port → No to login shell, Yes to serial hardware`) before the UART link works. Otherwise the kernel grabs `/dev/serial0` for login output and ESP32 messages collide with the boot log.
@@ -299,28 +301,13 @@ Option 1 is cheaper and is the spec'd approach. Document the cut in the assembly
 
 ### 5.4 Strap pin discipline (ESP32)
 
-- GPIO 0 (BOOT button): unused by app; the BOOT button is for entering download mode at reset.
-- GPIO 2 (LED): driver writes HIGH/LOW for status; do not add external pull-up.
-- GPIO 5 (strap HIGH at boot): used as UART1 RX. UART idle line is HIGH ⇒ compatible.
+- GPIO 0 (BOOT button): unused by app; reserved for entering download mode at reset.
+- GPIO 2 (strap, LED): driver writes HIGH/LOW for status; do not add external pull-up. Onboard LED circuitry already meets the strap LOW-at-boot requirement.
+- GPIO 5 (strap HIGH at boot): used as RC522 CS. CS idle HIGH ⇒ compatible.
 - GPIO 12 (strap LOW at boot): **left floating; do not route to expansion header**.
-- GPIO 15 (strap HIGH at boot): used as RC522 CS. CS idle HIGH ⇒ compatible.
+- GPIO 15 (strap HIGH at boot): free; if brought to the expansion header, downstream user must not pull LOW at power-on.
 
-### 5.1 Strap pin discipline
-
-- GPIO 0 (BOOT button): unused by app; the BOOT button is for entering download mode at reset.
-- GPIO 2 (LED): driver writes HIGH/LOW for status; do not add external pull-up. Must not be pulled HIGH at boot — onboard circuitry handles this.
-- GPIO 5 (strap HIGH at boot): unused; if brought to expansion header, downstream user must not pull LOW at power-on.
-- GPIO 12 (strap LOW at boot): **left floating; do not route to expansion header**.
-- GPIO 15 (strap HIGH at boot): used as RC522 CS. CS idle HIGH ⇒ compatible with strap requirement.
-
-### 5.2 LCD I2C level handling
-
-The PCF8574 backpack on most cheap LCD 20×4 modules runs at 5 V VCC and has 4.7 kΩ pull-ups to its 5 V rail. Driving its SDA/SCL with ESP32 3.3 V output is electrically OK in the LOW state, but the 5 V pull-up will back-drive the ESP32 protection diodes when the bus floats HIGH. The recommended fix is one of:
-
-1. **Cut the on-backpack pull-up traces**, add 4.7 kΩ pull-ups on the carrier PCB tied to 3.3 V.
-2. **Add a bidirectional level shifter** (BSS138 board, ~5 k VND) between ESP32 and LCD.
-
-Option 1 is cheaper and is the spec'd approach. Document the cut in the assembly notes.
+(The earlier §5.1 / §5.2 duplicate sections referring to GPIO 5 as UART1 RX are stale and removed per decision #26 — UART1 lives on GPIO 32/25, neither of which is a strap pin.)
 
 ---
 
@@ -394,7 +381,7 @@ Decisions made during 2026-05-21 design session, in order:
 23. **All-through-hole (THT) component preference** (2026-05-22): user explicitly chose THT over SMD for all discrete components on the motherboard to enable hand-soldering without a hot-air or reflow station. Footprint conventions: resistors `R_Axial_DIN0207_*` (1/4 W axial), small caps `C_Disc_D5.0mm_*` (ceramic disc), polarized caps `CP_Radial_*` (already THT), LDO `LM1117-3.3` in TO-220-3 (not AMS1117 in SOT-223), TVS `D_DO-15_*`, transistor 2N3904 TO-92 (already THT), inductor axial THT. Pre-made off-the-shelf modules (buck converter) remain represented as headers — user solders the module's pin row into the motherboard.
 24. **Target Pi is Raspberry Pi 4** (2026-05-22, clarified): user uses Pi 4, not Pi 5. GPIO layout identical (40-pin 2×20), but power requirements relaxed: Pi 4 typical ~600 mA idle, ~1.5 A peak under camera+ML load — a 5 V/3 A buck module is enough (Pi 5 would need 5 A). Pi 4 also lacks the strict 5 V PMIC of Pi 5, so GPIO-fed 5 V is more forgiving in practice.
 25. **UART rollback to USB-CDC** (2026-05-22 later, post-implementation): superseded decisions #21 and #22; runtime and flash both shared one USB cable on `/dev/ttyUSB0`. **(SUPERSEDED 2026-05-23 — see decision #26.)**
-26. **Re-pivot to GPIO UART, variant A** (2026-05-23): supersedes decision #25. After analysing USB VBUS contention between an external 5 V supply for the ESP32 stack and the Pi USB host's VBUS output during servo inrush, the user chose a 3-wire GPIO UART link instead of cutting VBUS on a USB cable. Pin assignment leaves RC522 on GPIO 5/17 (matches the firmware in `firmware/include/config.h`) and uses two general-purpose ESP32 GPIOs for UART1 via the GPIO matrix: **GPIO 32 (RX)** and **GPIO 25 (TX)**. Pi side wires to header pin 8 (BCM14 TX0) and pin 10 (BCM15 RX0), with `/dev/serial0` as the device after disabling the serial console in `raspi-config`. A USB cable Pi → DevKit is still needed for `esptool.py` firmware flashing (no DTR/RTS on the GPIO UART), but unplugged at runtime. Pi-app `config.default.toml` `port = "/dev/serial0"` reflects this. Firmware change required (dev_esp session): replace `Serial` (UART0/USB-CDC) with `HardwareSerial(1)` initialised on GPIO 32/25; keep UART0 (GPIO 1/3) available for `pio device monitor` + flashing. §5 ESP32 pin table and §5.2 Pi GPIO mapping describe a different pin assignment (GPIO 5/17 for UART) — that text is stale and to be reconciled with this decision in a follow-up sweep.
+26. **Re-pivot to GPIO UART, variant A** (2026-05-23): supersedes decision #25. After analysing USB VBUS contention between an external 5 V supply for the ESP32 stack and the Pi USB host's VBUS output during servo inrush, the user chose a 3-wire GPIO UART link instead of cutting VBUS on a USB cable. Pin assignment leaves RC522 on GPIO 5/17 (matches the firmware in `firmware/include/config.h`) and uses two general-purpose ESP32 GPIOs for UART1 via the GPIO matrix: **GPIO 32 (RX)** and **GPIO 25 (TX)**. Pi side wires to header pin 8 (BCM14 TX0) and pin 10 (BCM15 RX0), with `/dev/serial0` as the device after disabling the serial console in `raspi-config`. A USB cable Pi → DevKit is still needed for `esptool.py` firmware flashing (no DTR/RTS on the GPIO UART), but unplugged at runtime. Pi-app `config.default.toml` `port = "/dev/serial0"` reflects this. Firmware change required (dev_esp session, **NOT YET APPLIED**): replace `Serial` (UART0/USB-CDC) with `HardwareSerial PiLink(1)` initialised on GPIO 32 (RX) / 25 (TX); keep UART0 (GPIO 1/3) available for `pio device monitor` + flashing. §5 ESP32 pin table and §5.2 Pi GPIO mapping were updated in this same 2026-05-23 sweep so the spec is now consistent with the firmware pin map.
 
 ---
 
@@ -418,7 +405,9 @@ Decisions made during 2026-05-21 design session, in order:
 4. **Servo current spikes** on the same 5 V rail as RC522 / LCD may cause RC522 read errors during open/close. The 470 µF cap on the 5 V rail (§2.2) is the first line of defence; if RC522 reads still glitch during arm motion, add a ferrite bead in series between the servo connector and the rest of the rail during PCB revision.
 5. **Mechanical play in the arm-to-horn joint**: glue vs screw. First prototype: glue. If arm wobbles, add a 3D-printed coupler.
 6. **Pi 4 powered through GPIO 5V is a known-risk path** — bypasses the Pi's USB-C PD power management. The 5 V buck must deliver clean 5 V ±5% under transient load (Pi 4 can spike from 0.8 A idle to 5 A peak in milliseconds). If the rail dips below 4.75 V the Pi PMIC will brown-out. Mitigations specified: 1000 µF bulk cap at Pi GPIO, ferrite bead between buck output and Pi feed, TVS SMAJ5.0A for transient clamp. If reliability problems appear during prototyping, fall back to the dual-PSU architecture (Pi USB-C + separate 12 V motherboard input) — the motherboard layout has provision for jumpering the Pi 4V input pin to either source.
-7. **Pi serial console must be disabled** in `raspi-config` before the GPIO UART link works. Easy to forget; first boot of a fresh Pi image typically has the console enabled, so the ESP32 will see garbage data interleaved with kernel boot output. Document this in the Pi setup guide.
+7. **Pi serial console must be disabled** in `raspi-config` before the GPIO UART link works. Easy to forget; first boot of a fresh Pi image typically has the console enabled, so the ESP32 will see garbage data interleaved with kernel boot output. Documented in the Pi-app `README.md` "Pi GPIO UART setup" section.
+
+8. **Firmware uart_link rewrite still pending** (dev_esp session) — see decision #26. Until firmware moves from `Serial` (USB-CDC) to `HardwareSerial(1)` on GPIO 32/25, the Pi-side daemon will see `/dev/serial0` silent and log `link silent >30s` warnings. Symptom expected; remedy is the firmware change.
 8. **Buck regulator current rating** — many "5A" buck modules on Vietnamese marketplaces are mislabeled and actually only deliver 3 A continuous. Source the module from a reputable seller or use a name-brand IC (TI TPS54561, MPS MP4560) on the motherboard. Verify with a load test before powering the Pi.
 
 ---
