@@ -1,4 +1,10 @@
 #include <Arduino.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
+// Placeholder queue handles — real definitions land in Task 9.
+QueueHandle_t g_event_q = nullptr;
+QueueHandle_t g_outbound_q = nullptr;
 
 void setup() {
   Serial.begin(115200);
@@ -9,5 +15,3 @@ void setup() {
 void loop() {
   delay(1000);
 }
-
-extern "C" void outbound_post(const struct outbound_msg_t*) { /* stub, removed in Task 5 */ }
