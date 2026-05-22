@@ -39,9 +39,19 @@ sudo rsync -a --delete \
 # Pip installs only what apt does not cover. flask/jinja2/qrcode/pyserial/
 # numpy/opencv come from apt via --system-site-packages. dlib builds from
 # source via pip (≈ 20–40 min on Pi 4); pyzbar is a pure-Python wrapper.
+# We point pip's cache at the invoking user's cache dir so a previously built
+# dlib wheel can be reused (avoids a second 30-min build if the user already
+# set up a dev venv at $HOME/smart_gate).
+INVOKING_HOME="${HOME:-/root}"
+if [ -n "${SUDO_USER:-}" ]; then
+    INVOKING_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+fi
+PIP_CACHE_DIR="$INVOKING_HOME/.cache/pip"
 sudo python3 -m venv --system-site-packages /opt/smart-gate/.venv
-sudo /opt/smart-gate/.venv/bin/pip install --upgrade pip setuptools wheel
-sudo /opt/smart-gate/.venv/bin/pip install dlib face_recognition pyzbar
+sudo PIP_CACHE_DIR="$PIP_CACHE_DIR" /opt/smart-gate/.venv/bin/pip install \
+    --upgrade "pip" "setuptools<81" "wheel"
+sudo PIP_CACHE_DIR="$PIP_CACHE_DIR" /opt/smart-gate/.venv/bin/pip install \
+    dlib face_recognition pyzbar
 sudo chown -R smart-gate:smart-gate /opt/smart-gate
 
 # 5. config (don't overwrite)
