@@ -38,7 +38,8 @@ PLACEMENT = {
     'J_PWR':       (BOARD_ORIGIN_X + 15,  BOARD_ORIGIN_Y + 40,  0),
     'D_REV':       (BOARD_ORIGIN_X + 30,  BOARD_ORIGIN_Y + 40,  0),
     'C_BULK':      (BOARD_ORIGIN_X + 15,  BOARD_ORIGIN_Y + 55,  0),
-    'J_BUCK':      (BOARD_ORIGIN_X + 32,  BOARD_ORIGIN_Y + 55,  0),
+    # LM2596 module footprint is 43x21mm — needs more space than a header
+    'J_BUCK':      (BOARD_ORIGIN_X + 50,  BOARD_ORIGIN_Y + 60,  0),
 
     # 5 V filter chain (top edge below Pi)
     'C_5V_BULK':   (BOARD_ORIGIN_X + 55,  BOARD_ORIGIN_Y + 45,  0),

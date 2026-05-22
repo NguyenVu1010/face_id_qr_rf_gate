@@ -1,42 +1,42 @@
-ERC WARNING: Only one pin (PASSIVE pin 37/Pin_37 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI37_.
-ERC WARNING: Only one pin (PASSIVE pin 3/Pin_3 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI3_SDA1_.
-ERC WARNING: Only one pin (PASSIVE pin 16/Pin_16 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI16_.
 ERC WARNING: Only one pin (PASSIVE pin 35/Pin_35 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI35_.
-ERC WARNING: Only one pin (PASSIVE pin 26/Pin_26 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI26_.
-ERC WARNING: Only one pin (PASSIVE pin 11/Pin_11 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI11_.
-ERC WARNING: Only one pin (PASSIVE pin 13/Pin_13 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI13_.
-ERC WARNING: Only one pin (PASSIVE pin 8/Pin_8 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_D2_.
-ERC WARNING: Only one pin (PASSIVE pin 12/Pin_12 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_CMD_.
-ERC WARNING: Only one pin (PASSIVE pin 21/Pin_21 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI21_.
+ERC WARNING: Only one pin (PASSIVE pin 7/Pin_7 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI7_GPIO4_.
 ERC WARNING: Only one pin (PASSIVE pin 32/Pin_32 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI32_.
-ERC WARNING: Only one pin (PASSIVE pin 22/Pin_22 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_IO2_LED_.
-ERC WARNING: Only one pin (PASSIVE pin 19/Pin_19 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI19_.
-ERC WARNING: Only one pin (PASSIVE pin 22/Pin_22 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI22_.
-ERC WARNING: Only one pin (PASSIVE pin 36/Pin_36 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI36_.
-ERC WARNING: Only one pin (PASSIVE pin 1/Pin_1 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI_3V3_.
-ERC WARNING: Only one pin (PASSIVE pin 29/Pin_29 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI29_.
-ERC WARNING: Only one pin (PASSIVE pin 25/Pin_25 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_IO12_.
+ERC WARNING: Only one pin (PASSIVE pin 14/Pin_14 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_CLK_.
+ERC WARNING: Only one pin (PASSIVE pin 11/Pin_11 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI11_.
+ERC WARNING: Only one pin (PASSIVE pin 12/Pin_12 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI12_.
+ERC WARNING: Only one pin (PASSIVE pin 21/Pin_21 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI21_.
+ERC WARNING: Only one pin (PASSIVE pin 40/Pin_40 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI40_.
+ERC WARNING: Only one pin (PASSIVE pin 15/Pin_15 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI15_.
+ERC WARNING: Only one pin (PASSIVE pin 37/Pin_37 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI37_.
+ERC WARNING: Only one pin (PASSIVE pin 38/Pin_38 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI38_.
 ERC WARNING: Only one pin (PASSIVE pin 28/Pin_28 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI28_ID_SC.
+ERC WARNING: Only one pin (PASSIVE pin 22/Pin_22 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI22_.
+ERC WARNING: Only one pin (PASSIVE pin 26/Pin_26 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI26_.
+ERC WARNING: Only one pin (PASSIVE pin 12/Pin_12 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_CMD_.
+ERC WARNING: Only one pin (PASSIVE pin 18/Pin_18 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_SD1_.
+ERC WARNING: Only one pin (PASSIVE pin 10/Pin_10 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_D3_.
+ERC WARNING: Only one pin (PASSIVE pin 33/Pin_33 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI33_.
+ERC WARNING: Only one pin (PASSIVE pin 13/Pin_13 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI13_.
+ERC WARNING: Only one pin (PASSIVE pin 36/Pin_36 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI36_.
+ERC WARNING: Only one pin (PASSIVE pin 3/Pin_3 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI3_SDA1_.
 ERC WARNING: Only one pin (PASSIVE pin 31/Pin_31 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI31_.
 ERC WARNING: Insufficient drive current on net GND for pin POWER-IN pin 1/GND of LM1117-3.3/U_LDO.
-ERC WARNING: Only one pin (PASSIVE pin 23/Pin_23 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI23_.
-ERC WARNING: Only one pin (PASSIVE pin 18/Pin_18 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_SD1_.
-ERC WARNING: Only one pin (PASSIVE pin 33/Pin_33 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI33_.
-ERC WARNING: Only one pin (PASSIVE pin 40/Pin_40 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI40_.
-ERC WARNING: Only one pin (PASSIVE pin 7/Pin_7 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI7_GPIO4_.
-ERC WARNING: Only one pin (PASSIVE pin 12/Pin_12 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI12_.
-ERC WARNING: Insufficient drive current on net +5V for pin POWER-IN pin 3/VI of LM1117-3.3/U_LDO.
-ERC WARNING: Only one pin (PASSIVE pin 3/Pin_3 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_EN_.
-ERC WARNING: Only one pin (PASSIVE pin 38/Pin_38 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI38_.
-ERC WARNING: Only one pin (PASSIVE pin 15/Pin_15 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI15_.
-ERC WARNING: Only one pin (PASSIVE pin 14/Pin_14 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_CLK_.
+ERC WARNING: Only one pin (PASSIVE pin 16/Pin_16 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI16_.
 ERC WARNING: Only one pin (PASSIVE pin 24/Pin_24 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI24_.
-ERC WARNING: Only one pin (PASSIVE pin 27/Pin_27 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI27_ID_SD.
 ERC WARNING: Only one pin (PASSIVE pin 16/Pin_16 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_SD0_.
-ERC WARNING: Only one pin (PASSIVE pin 18/Pin_18 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI18_.
-ERC WARNING: Only one pin (PASSIVE pin 17/Pin_17 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI17_3V3_.
-ERC WARNING: Only one pin (PASSIVE pin 10/Pin_10 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_D3_.
+ERC WARNING: Only one pin (PASSIVE pin 27/Pin_27 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI27_ID_SD.
+ERC WARNING: Only one pin (PASSIVE pin 29/Pin_29 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI29_.
+ERC WARNING: Only one pin (PASSIVE pin 23/Pin_23 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI23_.
+ERC WARNING: Only one pin (PASSIVE pin 19/Pin_19 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI19_.
+ERC WARNING: Only one pin (PASSIVE pin 1/Pin_1 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI_3V3_.
+ERC WARNING: Only one pin (PASSIVE pin 25/Pin_25 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_IO12_.
+ERC WARNING: Only one pin (PASSIVE pin 22/Pin_22 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_IO2_LED_.
+ERC WARNING: Insufficient drive current on net +5V for pin POWER-IN pin 3/VI of LM1117-3.3/U_LDO.
+ERC WARNING: Only one pin (PASSIVE pin 8/Pin_8 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_FLASH_D2_.
 ERC WARNING: Only one pin (PASSIVE pin 5/Pin_5 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI5_SCL1_.
+ERC WARNING: Only one pin (PASSIVE pin 17/Pin_17 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI17_3V3_.
+ERC WARNING: Only one pin (PASSIVE pin 18/Pin_18 of Conn_02x20_Odd_Even/J_PI) attached to net _NC_PI18_.
+ERC WARNING: Only one pin (PASSIVE pin 3/Pin_3 of Conn_02x15_Odd_Even/J_ESP) attached to net _NC_EN_.
 ERC INFO: 39 warnings found while running ERC.
 ERC INFO: 0 errors found while running ERC.
 

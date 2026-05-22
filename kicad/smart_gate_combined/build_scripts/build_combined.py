@@ -87,12 +87,17 @@ C_BULK[2] += GND
 # 5 V / 5 A buck module (off-the-shelf, represented as 4-pin header)
 # =============================================================================
 
-J_BUCK = Part('Connector_Generic', 'Conn_01x04', ref='J_BUCK', value='Buck_12V_to_5V_5A',
-              footprint='Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical')
-J_BUCK[1] += V12   # VIN+
-J_BUCK[2] += GND   # GND
-J_BUCK[3] += GND   # GND
-J_BUCK[4] += V5    # VOUT+
+J_BUCK = Part('Connector_Generic', 'Conn_01x04', ref='J_BUCK', value='LM2596_Mini_Buck',
+              footprint='smart_gate_combined:LM2596_Mini_Buck')
+# Footprint pad numbering (custom LM2596_Mini_Buck):
+#   pad 1 = IN+   (left top)
+#   pad 2 = IN-   (left bottom)
+#   pad 3 = OUT-  (right bottom)
+#   pad 4 = OUT+  (right top)
+J_BUCK[1] += V12   # IN+ (12V from D_REV)
+J_BUCK[2] += GND   # IN-
+J_BUCK[3] += GND   # OUT-
+J_BUCK[4] += V5    # OUT+ (5V to filter / Pi GPIO)
 
 # Bulk and filter on 5V rail (per spec §2.2)
 C_5V_BULK = Part('Device', 'C_Polarized', ref='C_5V_BULK', value='1000uF/10V',
