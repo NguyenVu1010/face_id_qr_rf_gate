@@ -114,10 +114,12 @@ void uart_link_task(void* /*arg*/) {
     }
 
     // TX: drain outbound queue.
-    outbound_msg_t out;
-    while (xQueueReceive(g_outbound_q, &out, 0) == pdTRUE) {
-      Serial.write((const uint8_t*)out.json, strlen(out.json));
-      Serial.write('\n');
+    if (g_outbound_q) {
+      outbound_msg_t out;
+      while (xQueueReceive(g_outbound_q, &out, 0) == pdTRUE) {
+        Serial.write((const uint8_t*)out.json, strlen(out.json));
+        Serial.write('\n');
+      }
     }
 
     vTaskDelay(pdMS_TO_TICKS(5));
