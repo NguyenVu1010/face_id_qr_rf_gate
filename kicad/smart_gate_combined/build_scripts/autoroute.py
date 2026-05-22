@@ -43,11 +43,17 @@ def main() -> None:
     # Strong bias: change F.Cu layer type from 'signal' to 'power' so
     # FreeRouting refuses to use it for routing. Forces all signal nets to
     # B.Cu (the "wires on bottom, components on top" layout).
-    print('Forcing F.Cu to be power-only (signal routing on B.Cu only) ...', flush=True)
+    # Also widen all tracks to 1.0 mm (1000 um) so FreeRouting plans routes
+    # that actually fit a 1.0 mm track + clearance — at 2.54 mm pin pitch
+    # this physically prevents tracks from weaving between component pins.
+    print('Forcing F.Cu = power-only + track width 1.0 mm ...', flush=True)
     with open(DSN_FILE) as f:
         dsn = f.read()
     dsn = dsn.replace('(layer F.Cu\n      (type signal)',
                       '(layer F.Cu\n      (type power)', 1)
+    # Override default trace width 250 µm -> 1000 µm. The string '(width 250)'
+    # appears in (rule ...) blocks (board-level and per-net-class).
+    dsn = dsn.replace('(width 250)', '(width 1000)')
     with open(DSN_FILE, 'w') as f:
         f.write(dsn)
 

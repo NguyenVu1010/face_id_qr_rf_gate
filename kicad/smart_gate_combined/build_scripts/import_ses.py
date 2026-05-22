@@ -29,8 +29,11 @@ SES_FILE = os.path.join(PROJECT_DIR, 'smart_gate_combined.ses')
 SES_TO_NM = 100
 
 # Override SES-encoded track width (FreeRouting writes 0.25mm by default).
-# 0.7 mm = 700_000 nm — more current capacity + easier to hand-route/fix.
-FORCE_TRACK_WIDTH_NM = 700_000
+# 1.0 mm = 1_000_000 nm — high current capacity + at 2.54mm pin pitch / 1.8mm
+# pad → only 0.74mm gap between adjacent pad edges, which physically cannot
+# fit a 1.0mm track + clearance → routes are forced to go around component
+# pin clusters instead of weaving between pins.
+FORCE_TRACK_WIDTH_NM = 1_000_000
 
 
 def sym_str(x):
