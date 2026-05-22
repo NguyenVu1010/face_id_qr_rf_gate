@@ -55,9 +55,8 @@ PLACEMENT = {
     'C_ESP_3V3_1': (BOARD_ORIGIN_X + 45,  BOARD_ORIGIN_Y + 75,  0),
     'C_ESP_3V3_2': (BOARD_ORIGIN_X + 52,  BOARD_ORIGIN_Y + 75,  0),
 
-    # ESP32 DevKit socket (centre)
-    'J_ESP_L':     (BOARD_ORIGIN_X + 80,  BOARD_ORIGIN_Y + 100, 90),
-    'J_ESP_R':     (BOARD_ORIGIN_X + 103, BOARD_ORIGIN_Y + 100, 90),
+    # ESP32 DevKit socket (centre): single 2x15 footprint with rails 25.4mm apart
+    'J_ESP':       (BOARD_ORIGIN_X + 92,  BOARD_ORIGIN_Y + 100, 90),
 
     # Peripheral headers (right column)
     'J_RFID':      (BOARD_ORIGIN_X + 150, BOARD_ORIGIN_Y + 50,  0),

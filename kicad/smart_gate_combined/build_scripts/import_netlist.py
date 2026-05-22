@@ -19,7 +19,11 @@ import sexpdata
 import pcbnew  # type: ignore[import]
 
 from pcb_common import PCB_FILE, NETLIST_FILE, open_board, save_board
-FOOTPRINT_DIR = '/usr/share/kicad/footprints'
+SYSTEM_FOOTPRINT_DIR = '/usr/share/kicad/footprints'
+PROJECT_FOOTPRINT_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'footprints.pretty',
+)
 
 
 def parse_netlist(path: str):
@@ -74,14 +78,18 @@ def parse_netlist(path: str):
 
 
 def load_footprint(lib_name: str, fp_name: str):
-    """Load a footprint from /usr/share/kicad/footprints/<lib>.pretty/<fp>.kicad_mod."""
-    pretty_dir = os.path.join(FOOTPRINT_DIR, f'{lib_name}.pretty')
-    if not os.path.isdir(pretty_dir):
-        raise FileNotFoundError(f'Footprint library missing: {pretty_dir}')
-    fp = pcbnew.FootprintLoad(pretty_dir, fp_name)
-    if fp is None:
-        raise ValueError(f'Footprint {lib_name}:{fp_name} not found in {pretty_dir}')
-    return fp
+    """Load a footprint, trying project-local library first, then system."""
+    candidates = [PROJECT_FOOTPRINT_DIR,
+                  os.path.join(SYSTEM_FOOTPRINT_DIR, f'{lib_name}.pretty')]
+    for pretty_dir in candidates:
+        if not os.path.isdir(pretty_dir):
+            continue
+        fp = pcbnew.FootprintLoad(pretty_dir, fp_name)
+        if fp is not None:
+            return fp
+    raise FileNotFoundError(
+        f'Footprint {lib_name}:{fp_name} not found in {candidates}'
+    )
 
 
 def ensure_net(board, name: str):

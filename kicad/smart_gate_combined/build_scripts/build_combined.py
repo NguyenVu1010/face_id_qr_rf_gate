@@ -199,44 +199,47 @@ J_PI[40] += Net.fetch('_NC_PI40_')      # GPIO 21
 # ESP32 DevKit socket (DOIT V1 30-pin, 2x 1x15 vertical female sockets)
 # =============================================================================
 
-J_ESP_L = Part('Connector_Generic', 'Conn_01x15', ref='J_ESP_L', value='DevKit_L',
-               footprint='Connector_PinSocket_2.54mm:PinSocket_1x15_P2.54mm_Vertical')
-J_ESP_R = Part('Connector_Generic', 'Conn_01x15', ref='J_ESP_R', value='DevKit_R',
-               footprint='Connector_PinSocket_2.54mm:PinSocket_1x15_P2.54mm_Vertical')
+# Single 2x15 connector with the project's custom footprint at 25.4 mm
+# rail-to-rail spacing (matches DOIT V1 30-pin DevKit). Conn_02x15_Odd_Even
+# numbering: odd pins = left rail (1, 3, 5, ..., 29), even pins = right
+# rail (2, 4, 6, ..., 30), both top → bottom.
+J_ESP = Part('Connector_Generic', 'Conn_02x15_Odd_Even', ref='J_ESP',
+             value='ESP32_DevKit_V1',
+             footprint='smart_gate_combined:ESP32_DevKit_V1_30pin')
 
-# Left rail (top -> bottom per DOIT V1)
-J_ESP_L[1]  += V3V3
-J_ESP_L[2]  += Net.fetch('_NC_EN_')
-J_ESP_L[3]  += IO36
-J_ESP_L[4]  += IO39
-J_ESP_L[5]  += HCSR_ECHO_3V3
-J_ESP_L[6]  += RC522_MISO
-J_ESP_L[7]  += I2C_SDA
-J_ESP_L[8]  += I2C_SCL
-J_ESP_L[9]  += HCSR_TRIG
-J_ESP_L[10] += SERVO_PWM
-J_ESP_L[11] += BUZ_DRIVE
-J_ESP_L[12] += RC522_SCK
-J_ESP_L[13] += Net.fetch('_NC_IO12_')   # strap LOW
-J_ESP_L[14] += GND
-J_ESP_L[15] += RC522_MOSI
+# --- Left rail (odd pins) per DOIT V1 silkscreen, top → bottom ---
+J_ESP[1]  += V3V3                       # 3V3
+J_ESP[3]  += Net.fetch('_NC_EN_')       # EN
+J_ESP[5]  += IO36                       # VP / IO36
+J_ESP[7]  += IO39                       # VN / IO39
+J_ESP[9]  += HCSR_ECHO_3V3              # IO34 (in-only)
+J_ESP[11] += RC522_MISO                 # IO35 (in-only)
+J_ESP[13] += I2C_SDA                    # IO32
+J_ESP[15] += I2C_SCL                    # IO33
+J_ESP[17] += HCSR_TRIG                  # IO25
+J_ESP[19] += SERVO_PWM                  # IO26
+J_ESP[21] += BUZ_DRIVE                  # IO27
+J_ESP[23] += RC522_SCK                  # IO14
+J_ESP[25] += Net.fetch('_NC_IO12_')     # IO12 strap LOW — NC
+J_ESP[27] += GND
+J_ESP[29] += RC522_MOSI                 # IO13
 
-# Right rail
-J_ESP_R[1]  += V5                       # VIN
-J_ESP_R[2]  += GND
-J_ESP_R[3]  += RC522_MOSI               # IO13 bridged
-J_ESP_R[4]  += Net.fetch('_NC_FLASH_D2_')
-J_ESP_R[5]  += Net.fetch('_NC_FLASH_D3_')
-J_ESP_R[6]  += Net.fetch('_NC_FLASH_CMD_')
-J_ESP_R[7]  += Net.fetch('_NC_FLASH_CLK_')
-J_ESP_R[8]  += Net.fetch('_NC_FLASH_SD0_')
-J_ESP_R[9]  += Net.fetch('_NC_FLASH_SD1_')
-J_ESP_R[10] += RC522_CS                 # IO15
-J_ESP_R[11] += Net.fetch('_NC_IO2_LED_')
-J_ESP_R[12] += RC522_RST                # IO4
-J_ESP_R[13] += RC522_IRQ                # IO16
-J_ESP_R[14] += PI_RX_FROM_ESP           # IO17 = UART1 TX -> Pi RX
-J_ESP_R[15] += PI_TX_TO_ESP_RX          # IO5  = UART1 RX <- Pi TX
+# --- Right rail (even pins) per DOIT V1 silkscreen, top → bottom ---
+J_ESP[2]  += V5                         # VIN (5V)
+J_ESP[4]  += GND
+J_ESP[6]  += RC522_MOSI                 # IO13 (bridged with left pin 29)
+J_ESP[8]  += Net.fetch('_NC_FLASH_D2_')
+J_ESP[10] += Net.fetch('_NC_FLASH_D3_')
+J_ESP[12] += Net.fetch('_NC_FLASH_CMD_')
+J_ESP[14] += Net.fetch('_NC_FLASH_CLK_')
+J_ESP[16] += Net.fetch('_NC_FLASH_SD0_')
+J_ESP[18] += Net.fetch('_NC_FLASH_SD1_')
+J_ESP[20] += RC522_CS                   # IO15
+J_ESP[22] += Net.fetch('_NC_IO2_LED_')  # IO2 onboard LED — NC
+J_ESP[24] += RC522_RST                  # IO4
+J_ESP[26] += RC522_IRQ                  # IO16
+J_ESP[28] += PI_RX_FROM_ESP             # IO17 = UART1 TX → Pi RX
+J_ESP[30] += PI_TX_TO_ESP_RX            # IO5  = UART1 RX ← Pi TX
 
 # ESP32 decoupling on 3V3
 C_ESP_3V3_1 = Part('Device', 'C', ref='C_ESP_3V3_1', value='100nF',
