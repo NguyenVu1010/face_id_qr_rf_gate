@@ -24,4 +24,5 @@ __pycache__/
 htmlcov/
 *.log
 data/
+!smart_gate/data/
 /var/
