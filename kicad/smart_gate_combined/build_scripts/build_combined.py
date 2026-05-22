@@ -203,6 +203,12 @@ J_ESP = Part('Connector_Generic', 'Conn_02x15_Odd_Even', ref='J_ESP',
              value='ESP32_DevKit_V1',
              footprint='smart_gate_combined:ESP32_DevKit_V1_30pin')
 
+# Pin map aligned with firmware decision #26 (2026-05-23):
+#   RC522 CS=IO5, RST=IO17 (firmware config.h-aligned)
+#   UART1 to Pi: TX=IO25 → Pi pin 10 (RX), RX=IO32 ← Pi pin 8 (TX)
+#   I2C SDA moved to IO15 (strap HIGH, idle HIGH on I2C pull-up = OK)
+#   HC-SR04 TRIG moved to IO4 (was RC522 RST, now free)
+#
 # --- Left rail (odd pins) per DOIT V1 silkscreen, top → bottom ---
 J_ESP[1]  += V3V3                       # 3V3
 J_ESP[3]  += Net.fetch('_NC_EN_')       # EN
@@ -210,9 +216,9 @@ J_ESP[5]  += IO36                       # VP / IO36
 J_ESP[7]  += IO39                       # VN / IO39
 J_ESP[9]  += HCSR_ECHO_3V3              # IO34 (in-only)
 J_ESP[11] += RC522_MISO                 # IO35 (in-only)
-J_ESP[13] += I2C_SDA                    # IO32
+J_ESP[13] += PI_TX_TO_ESP_RX            # IO32 = UART1 RX ← Pi TX (pin 8)
 J_ESP[15] += I2C_SCL                    # IO33
-J_ESP[17] += HCSR_TRIG                  # IO25
+J_ESP[17] += PI_RX_FROM_ESP             # IO25 = UART1 TX → Pi RX (pin 10)
 J_ESP[19] += SERVO_PWM                  # IO26
 J_ESP[21] += BUZ_DRIVE                  # IO27
 J_ESP[23] += RC522_SCK                  # IO14
@@ -230,12 +236,12 @@ J_ESP[12] += Net.fetch('_NC_FLASH_CMD_')
 J_ESP[14] += Net.fetch('_NC_FLASH_CLK_')
 J_ESP[16] += Net.fetch('_NC_FLASH_SD0_')
 J_ESP[18] += Net.fetch('_NC_FLASH_SD1_')
-J_ESP[20] += RC522_CS                   # IO15
+J_ESP[20] += I2C_SDA                    # IO15 = I2C SDA (strap HIGH, idle HIGH OK)
 J_ESP[22] += Net.fetch('_NC_IO2_LED_')  # IO2 onboard LED — NC
-J_ESP[24] += RC522_RST                  # IO4
+J_ESP[24] += HCSR_TRIG                  # IO4  = HC-SR04 TRIG
 J_ESP[26] += RC522_IRQ                  # IO16
-J_ESP[28] += PI_RX_FROM_ESP             # IO17 = UART1 TX → Pi RX
-J_ESP[30] += PI_TX_TO_ESP_RX            # IO5  = UART1 RX ← Pi TX
+J_ESP[28] += RC522_RST                  # IO17 = RC522 RST (firmware-aligned)
+J_ESP[30] += RC522_CS                   # IO5  = RC522 CS  (firmware-aligned)
 
 # ESP32 decoupling on 3V3
 C_ESP_3V3_1 = Part('Device', 'C', ref='C_ESP_3V3_1', value='100nF',
