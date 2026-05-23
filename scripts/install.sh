@@ -30,9 +30,12 @@ sudo install -d -o smart-gate -g smart-gate \
     /var/lib/smart-gate/qr \
     /var/log/smart-gate
 
-# 3. code
+# 3. code (preserve previously-downloaded vendor assets in static/)
 sudo rsync -a --delete \
     --exclude=.git --exclude=tests --exclude=__pycache__ --exclude=.venv \
+    --exclude=.claude --exclude=.pytest_cache --exclude=data \
+    --exclude='smart_gate/web/static/htmx.min.js' \
+    --exclude='smart_gate/web/static/pico.min.css' \
     ./ /opt/smart-gate/
 
 # 4. venv (visible to apt python packages)
@@ -60,11 +63,23 @@ if [ ! -f /etc/smart-gate/config.toml ]; then
         packaging/config.default.toml /etc/smart-gate/config.toml
 fi
 
-# 6. download front-end vendor assets (replace placeholders)
-sudo curl -fsSL https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js \
-    -o /opt/smart-gate/smart_gate/web/static/htmx.min.js
-sudo curl -fsSL https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css \
-    -o /opt/smart-gate/smart_gate/web/static/pico.min.css
+# 6. download front-end vendor assets (only if missing or tiny placeholder)
+HTMX_FILE=/opt/smart-gate/smart_gate/web/static/htmx.min.js
+PICO_FILE=/opt/smart-gate/smart_gate/web/static/pico.min.css
+HTMX_SIZE=$(stat -c%s "$HTMX_FILE" 2>/dev/null || echo 0)
+PICO_SIZE=$(stat -c%s "$PICO_FILE" 2>/dev/null || echo 0)
+if [ "$HTMX_SIZE" -lt 10000 ]; then
+    sudo curl -fsSL https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js -o "$HTMX_FILE"
+    echo "  downloaded htmx.min.js"
+else
+    echo "  htmx.min.js already present ($HTMX_SIZE bytes), skipping download"
+fi
+if [ "$PICO_SIZE" -lt 10000 ]; then
+    sudo curl -fsSL https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css -o "$PICO_FILE"
+    echo "  downloaded pico.min.css"
+else
+    echo "  pico.min.css already present ($PICO_SIZE bytes), skipping download"
+fi
 sudo chown smart-gate:smart-gate /opt/smart-gate/smart_gate/web/static/*
 
 # 7. systemd
