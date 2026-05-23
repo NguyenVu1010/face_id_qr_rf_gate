@@ -31,6 +31,23 @@ _PLACEHOLDER_JPEG = (
 _USER_NAME_RE = re.compile(r"^user_\d+$")
 
 
+def _emit_audit(esp_log_bus, lvl: str, tag: str, msg: str,
+                direction: str = "—") -> None:
+    """Publish a synthetic audit log line to the live SSE stream.
+
+    Mirrors smart_gate.main._audit so web request handlers can emit the
+    same cmd/ack/warn lines without going through the daemon's bus.
+    `direction`: '→' for Pi→ESP, '←' for ESP→Pi, '—' for internal.
+    """
+    if esp_log_bus is None:
+        return
+    esp_log_bus.publish({
+        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "lvl": lvl, "tag": tag, "msg": msg, "direction": direction,
+        "synthetic": True,
+    })
+
+
 def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
                matcher=None, overlay=None, reload_event=None,
                gate_tracker=None, cv2_module=None,
@@ -138,13 +155,32 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         return _gate_action("close", "manual_close")
 
     def _gate_action(verb: str, method: str):
+        """Manual open/close from web button. Emits to esp_log_bus so the
+        dashboard Live Log panel reflects what the admin did, then sends
+        the cmd to ESP32 and writes the events row.
+
+        Note: this path doesn't go through the bus consumer's
+        _handle_manual_event — we audit + send directly so the user
+        gets immediate HTTP feedback (success or 503 on LinkDown).
+        """
+        _emit_audit(esp_log_bus, "info", "cmd",
+                    f"{verb} (manual from web)", direction="→")
         try:
-            uart.send_cmd(verb, {"user": "admin", "reason": "manual"}
-                          if verb == "open" else None, timeout=2.0)
+            ack = uart.send_cmd(
+                verb,
+                {"user": "admin", "reason": "manual"} if verb == "open" else None,
+                timeout=2.0,
+            )
         except (LinkDown, LinkTimeout) as e:
-            return jsonify({"error": str(e)}), 503
+            _emit_audit(esp_log_bus, "err", "cmd",
+                        f"{verb} FAILED: {e} — peripheral unreachable",
+                        direction="←")
+            return jsonify({"error": str(e) or e.__class__.__name__}), 503
+        _emit_audit(esp_log_bus, "info", "ack",
+                    f"{verb} OK ({ack})" if ack else f"{verb} ack",
+                    direction="←")
         db.insert_event(method, None, True)
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "ack": ack})
 
     @app.route("/api/users/<name>", methods=["DELETE", "POST"])
     def user_delete(name: str):
