@@ -1,6 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block body %}
+<style>
+  .dashlog {
+    max-height: 320px; overflow-y: auto;
+    font-size: var(--fs-xs); line-height: 1.4;
+    padding: var(--s-2);
+    background: rgba(0,0,0,0.25); border-radius: var(--r-sm);
+  }
+  .dashlog-row {
+    display: flex; gap: 0.4em; padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .dashlog-row:last-child { border-bottom: none; }
+  .dashlog-ts   { color: var(--muted); flex: 0 0 auto; }
+  .dashlog-dir  { flex: 0 0 1.2em; text-align: center; font-weight: bold; }
+  .dashlog-tag  { flex: 0 0 4em; color: var(--muted); }
+  .dashlog-msg  { flex: 1 1 auto; word-break: break-word; }
+  .dashlog-row.lvl-info  .dashlog-msg { color: var(--text); }
+  .dashlog-row.lvl-warn  .dashlog-msg { color: #fd7e14; }
+  .dashlog-row.lvl-err   .dashlog-msg { color: var(--danger); }
+  .dashlog-row.lvl-info  .dashlog-dir { color: var(--accent); }
+  .dashlog-row.lvl-warn  .dashlog-dir { color: #fd7e14; }
+  .dashlog-row.lvl-err   .dashlog-dir { color: var(--danger); }
+</style>
 <div class="page-header">
   <h1>Dashboard</h1>
   <span id="gate-badge-wrap"
@@ -82,11 +105,78 @@
                hx-swap="innerHTML"></tbody>
       </table>
     </article>
+
+    <article class="card" style="margin-top: var(--s-4);">
+      <header>
+        <span>Live log <small class="muted">cmd · ack · warn</small></span>
+        <span id="dashlog-sse-status" class="pill pill-muted">…</span>
+      </header>
+      <div id="dashlog" class="dashlog mono" role="log" aria-live="polite"></div>
+    </article>
   </section>
 
 </div>
 
 <script>
+// --- Live log panel: subscribe SSE /api/esp_log/stream ---
+(function() {
+  var box = document.getElementById('dashlog');
+  var statusPill = document.getElementById('dashlog-sse-status');
+  if (!box) return;
+  var MAX_ROWS = 80;
+  function setStatus(text, cls) {
+    if (!statusPill) return;
+    statusPill.textContent = text;
+    statusPill.className = 'pill ' + (cls || 'pill-muted');
+  }
+  function lvlClass(lvl) {
+    if (lvl === 'warn' || lvl === 'warning') return 'lvl-warn';
+    if (lvl === 'err' || lvl === 'error' || lvl === 'fatal') return 'lvl-err';
+    return 'lvl-info';
+  }
+  function dirArrow(d) {
+    if (d === '→') return '→';   // Pi → ESP
+    if (d === '←') return '←';   // ESP → Pi
+    return '·';                  // internal
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function appendRow(item) {
+    var ts = item.ts || '';
+    var hhmmss = ts.length >= 19 ? ts.substring(11, 19) : ts;
+    var row = document.createElement('div');
+    row.className = 'dashlog-row ' + lvlClass(item.lvl);
+    row.innerHTML =
+      '<span class="dashlog-ts">' + escapeHtml(hhmmss) + '</span>' +
+      '<span class="dashlog-dir">' + escapeHtml(dirArrow(item.direction || '·')) + '</span>' +
+      '<span class="dashlog-tag">' + escapeHtml(item.tag || '-') + '</span>' +
+      '<span class="dashlog-msg">' + escapeHtml(item.msg || '') + '</span>';
+    box.appendChild(row);
+    while (box.children.length > MAX_ROWS) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  }
+  function open() {
+    setStatus('connecting…', 'pill-muted');
+    var es = new EventSource('/api/esp_log/stream');
+    es.addEventListener('open',  function() { setStatus('live', 'pill-ok'); });
+    es.addEventListener('error', function() {
+      setStatus('disconnected', 'pill-err');
+      // EventSource auto-reconnects; no manual loop needed.
+    });
+    es.addEventListener('log', function(ev) {
+      try { appendRow(JSON.parse(ev.data)); } catch (e) { /* drop bad */ }
+    });
+    // Server may also emit unnamed `data:` events.
+    es.onmessage = function(ev) {
+      try { appendRow(JSON.parse(ev.data)); } catch (e) { /* drop bad */ }
+    };
+  }
+  open();
+})();
+
 // --- Gate badge: parse JSON from /api/gate/state.json into the badge ---
 document.body.addEventListener('htmx:afterRequest', function(evt) {
   if (evt.detail.pathInfo.requestPath === '/api/gate/state.json') {

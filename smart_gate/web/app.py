@@ -274,8 +274,11 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                 "tag": row[3], "msg": row[4]}
 
     def _sse_format(item):
-        return (f"id: {item['id']}\n"
-                f"event: log\n"
+        # Synthetic audit messages from main._audit don't carry a DB id —
+        # only emit the SSE 'id:' line when a persisted id is present.
+        item_id = item.get("id")
+        prefix = f"id: {item_id}\n" if item_id else ""
+        return (f"{prefix}event: log\n"
                 f"data: {json.dumps(item, separators=(',', ':'))}\n\n")
 
     def _diag(verb: str):

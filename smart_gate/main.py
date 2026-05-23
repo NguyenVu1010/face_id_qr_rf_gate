@@ -179,18 +179,31 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
             continue
         if isinstance(evt, CheckInEvent):
             _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
-                            last_grant, reload_event)
+                            last_grant, reload_event, esp_log_bus)
         elif isinstance(evt, AuthEvent):
             # Manual_open / manual_close only — bypasses 2FA.
-            _handle_manual_event(evt, db, uart, trig_queue)
+            _handle_manual_event(evt, db, uart, trig_queue, esp_log_bus)
         elif isinstance(evt, EspEvent):
             _handle_esp_event(evt, db, matcher, state, trig_queue,
                               uart, cfg, last_grant, reload_event,
                               gate_tracker, esp_log_bus)
 
 
+def _audit(esp_log_bus, lvl: str, tag: str, msg: str,
+           direction: str = "—") -> None:
+    """Publish a synthetic log line to the live audit stream.
+    `direction` is "→" for Pi→ESP, "←" for ESP→Pi, "—" for internal."""
+    if esp_log_bus is None:
+        return
+    esp_log_bus.publish({
+        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "lvl": lvl, "tag": tag, "msg": msg, "direction": direction,
+        "synthetic": True,
+    })
+
+
 def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
-                    last_grant, reload_event):
+                    last_grant, reload_event, esp_log_bus=None):
     """A face + credential pair was observed within TTL. Apply 2FA logic:
     - face matched same user as credential → grant + cmd:open + log event
     - face was unmatched → auto-enroll under credential's user, then grant
@@ -210,6 +223,9 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
         )
         log.warning("checkin mismatch: face=%s credential=%s via %s — gate stays closed",
                     face_name, grant_name, src)
+        _audit(esp_log_bus, "warn", "mismatch",
+               f"face={face_name} ≠ {src}={grant_name} → gate stays closed",
+               direction="—")
         return
 
     # Auto-enroll: face unmatched, credential valid. Bind embedding to user.
@@ -218,8 +234,12 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
             "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (grant_uid,)
         ).fetchone()[0]
         db.insert_face_encoding(grant_uid, evt.face_embedding, n_samples)
+        grant_name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
         log.info("auto-enrolled face under user_id=%d via %s (now %d samples)",
                  grant_uid, src, n_samples + 1)
+        _audit(esp_log_bus, "info", "enroll",
+               f"auto-bind face → {grant_name} via {src} (sample {n_samples + 1})",
+               direction="—")
         if reload_event is not None:
             reload_event.set()
 
@@ -234,26 +254,43 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
     detail = f"distance={evt.face_distance:.3f}"
     ev_id = db.insert_event(src, grant_uid, True, detail=detail)
     db.touch_last_seen(grant_uid)
+    _audit(esp_log_bus, "info", "cmd",
+           f"open user={name} reason={src} (distance={evt.face_distance:.2f})",
+           direction="→")
     try:
-        uart.send_cmd("open", {"user": name, "reason": src}, timeout=2.0)
+        ack = uart.send_cmd("open", {"user": name, "reason": src}, timeout=2.0)
+        _audit(esp_log_bus, "info", "ack",
+               f"open OK ({ack})" if ack else "open ack",
+               direction="←")
     except (LinkDown, LinkTimeout) as e:
         log.warning("uart open failed: %s", e)
+        _audit(esp_log_bus, "err", "cmd",
+               f"open FAILED: {e} — peripheral unreachable",
+               direction="←")
     try:
         trig_queue.put_nowait(RecordingTrigger(ev_id, evt.ts_mono))
     except queue.Full:
         log.warning("trigger_queue full, dropping clip for event %d", ev_id)
 
 
-def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue):
+def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue, esp_log_bus=None):
     """Manual_open / manual_close from web button — bypasses 2FA."""
     if evt.method not in ("manual_open", "manual_close"):
         return  # ignore legacy face/qr events that shouldn't be emitted now
     verb = "open" if evt.method == "manual_open" else "close"
     payload = {"user": "admin", "reason": "manual"} if verb == "open" else None
+    _audit(esp_log_bus, "info", "cmd",
+           f"{verb} (manual from web)", direction="→")
     try:
-        uart.send_cmd(verb, payload, timeout=2.0)
+        ack = uart.send_cmd(verb, payload, timeout=2.0)
+        _audit(esp_log_bus, "info", "ack",
+               f"{verb} OK ({ack})" if ack else f"{verb} ack",
+               direction="←")
     except (LinkDown, LinkTimeout) as e:
         log.warning("uart %s failed: %s", verb, e)
+        _audit(esp_log_bus, "err", "cmd",
+               f"{verb} FAILED: {e} — peripheral unreachable",
+               direction="←")
     db.insert_event(evt.method, None, True)
 
 
@@ -289,6 +326,15 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
             )
             log.warning("gate timeout_warn — no passage detected; "
                         "ESP32 buzzer should be sounding")
+            _audit(esp_log_bus, "warn", "gate",
+                   "timeout — không có người đi qua, buzzer kêu",
+                   direction="←")
+        elif new_state == "open" and prev not in ("open", "opening"):
+            _audit(esp_log_bus, "info", "gate",
+                   f"state: {prev or '?'} → open", direction="←")
+        elif new_state == "closed":
+            _audit(esp_log_bus, "info", "gate",
+                   f"state: {prev or '?'} → closed", direction="←")
         return
     if evt.v == "person_passed" and gate_tracker is not None:
         # Just informational; FSM on ESP32 will transition to closing next.
