@@ -31,7 +31,7 @@ _USER_NAME_RE = re.compile(r"^user_\d+$")
 
 def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
                matcher=None, overlay=None, reload_event=None,
-               cv2_module=None) -> Flask:
+               gate_tracker=None, cv2_module=None) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
     qr_dir = data_dir / "qr"
@@ -91,7 +91,13 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             abort(400)
         if not (qr_dir / f"{name}.png").exists():
             abort(404)
-        return send_from_directory(qr_dir, f"{name}.png", mimetype="image/png")
+        # ?download=1 forces browser to save instead of inline display.
+        as_attachment = request.args.get("download") in ("1", "true", "yes")
+        return send_from_directory(
+            qr_dir, f"{name}.png", mimetype="image/png",
+            as_attachment=as_attachment,
+            download_name=f"smart_gate_{name}.png" if as_attachment else None,
+        )
 
     @app.route("/api/gate/open", methods=["POST"])
     def gate_open():
@@ -179,13 +185,23 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         if last_ts is not None:
             last_frame_ago = max(0.0, time.monotonic() - last_ts)
         n_users = len(db.list_users()) if hasattr(db, "list_users") else None
+        gate = gate_tracker.snapshot() if gate_tracker is not None else None
         return jsonify({
             "uptime_s": int(time.monotonic() - start_time),
             "link_alive": bool(uart.link_alive()),
             "last_frame_ago_s": last_frame_ago,
             "threads_ok": expected.issubset(active),
             "enrolled_users": n_users,
+            "gate": gate,
         })
+
+    @app.route("/api/gate/state.json")
+    def gate_state_json():
+        """Lightweight endpoint the dashboard polls every 1s for the badge."""
+        if gate_tracker is None:
+            return jsonify({"state": "unknown", "since_s": 0,
+                            "last_user": None})
+        return jsonify(gate_tracker.snapshot())
 
     return app
 
