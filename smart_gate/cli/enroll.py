@@ -1,7 +1,20 @@
-"""Enrollment: capture N face samples + insert encodings + signal daemon."""
+"""Enrollment: capture N face samples + insert encodings + signal daemon.
+
+Two capture modes:
+- Interactive (default): cv2.imshow window with face bbox preview; press SPACE
+  to capture each sample. Requires X / Wayland session.
+- Headless (--headless): no GUI. Sleeps `--delay-s` seconds between captures,
+  saving the first frame that has a detectable face. Suitable for SSH-only
+  setups; just position your face in front of the webcam during the run.
+
+Detector backend: tries MediaPipe first, falls back to face_recognition's
+HOG (same logic as the daemon's run-time detector). On Python 3.13 where
+MediaPipe has no wheel, the HOG path is used automatically.
+"""
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 import numpy as np
 
@@ -12,23 +25,37 @@ log = logging.getLogger(__name__)
 
 
 def enroll(db, name: str, qr_dir: Path, n_samples: int = 5,
-           camera_index: int = 0, *, deps=None) -> Path:
-    """Returns the path of the generated QR PNG."""
+           camera_index=0, *, headless: bool = False,
+           delay_s: float = 1.0, deps=None) -> Path:
+    """Returns the path of the generated QR PNG.
+
+    Args:
+        db: Database instance
+        name: user name (must be unique)
+        qr_dir: directory for QR PNG output
+        n_samples: number of face samples to capture
+        camera_index: int index or string path (e.g. /dev/smart-gate-camera)
+        headless: if True, skip cv2.imshow / waitKey; auto-capture instead
+        delay_s: seconds to wait between samples in headless mode
+        deps: optional dict for test injection
+    """
     if deps is None:
-        import cv2 as _cv2
-        import mediapipe as _mp
-        import face_recognition as _fr
-        deps = {
-            "cv2": _cv2,
-            "mp_face": _mp.solutions.face_detection.FaceDetection(
-                model_selection=0, min_detection_confidence=0.7),
-            "face_recognition": _fr,
-        }
+        deps = _default_deps()
     if db.get_user_id_by_name(name) is not None:
         raise SystemExit(f"user already exists: {name}")
     uid = db.insert_user(name)
 
-    encs = _capture_samples(name, n_samples, camera_index, deps)
+    try:
+        if headless:
+            encs = _capture_samples_headless(name, n_samples, camera_index,
+                                             delay_s, deps)
+        else:
+            encs = _capture_samples_interactive(name, n_samples, camera_index,
+                                                deps)
+    except Exception:
+        db.delete_user(name)
+        raise
+
     if len(encs) < n_samples:
         db.delete_user(name)
         raise SystemExit(f"only captured {len(encs)}/{n_samples} samples; aborted")
@@ -41,12 +68,27 @@ def enroll(db, name: str, qr_dir: Path, n_samples: int = 5,
     return path
 
 
-def _capture_samples(name: str, n_samples: int, camera_index, deps) -> list:
+def _default_deps():
+    import cv2 as _cv2
+    import face_recognition as _fr
+    mp_face = None
+    try:
+        import mediapipe as _mp
+        mp_face = _mp.solutions.face_detection.FaceDetection(
+            model_selection=0, min_detection_confidence=0.7)
+    except Exception as e:
+        log.info("mediapipe unavailable (%s); using HOG", e)
+    return {
+        "cv2": _cv2,
+        "mp_face": mp_face,
+        "face_recognition": _fr,
+    }
+
+
+def _capture_samples_interactive(name, n_samples, camera_index, deps):
     cv2 = deps["cv2"]
-    mp_face = deps["mp_face"]
+    mp_face = deps.get("mp_face")
     fr = deps["face_recognition"]
-    # camera_index may be an int (index) or a str (path like /dev/smart-gate-camera);
-    # cv2.VideoCapture accepts both.
     cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -61,14 +103,11 @@ def _capture_samples(name: str, n_samples: int, camera_index, deps) -> list:
                 continue
             annotated = frame.copy()
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            result = mp_face.process(rgb)
-            if result.detections:
-                for det in result.detections:
-                    rb = det.location_data.relative_bounding_box
-                    h, w = frame.shape[:2]
-                    x = int(rb.xmin * w); y = int(rb.ymin * h)
-                    bw = int(rb.width * w); bh = int(rb.height * h)
-                    cv2.rectangle(annotated, (x, y), (x+bw, y+bh), (0, 255, 0), 2)
+            box = _find_face_box(rgb, mp_face, fr)
+            if box is not None:
+                x, y, bw, bh = box
+                cv2.rectangle(annotated, (x, y), (x + bw, y + bh),
+                              (0, 255, 0), 2)
             cv2.putText(annotated, f"{len(encs)}/{n_samples}", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
             cv2.imshow(win, annotated)
@@ -88,12 +127,79 @@ def _capture_samples(name: str, n_samples: int, camera_index, deps) -> list:
     return encs
 
 
+def _capture_samples_headless(name, n_samples, camera_index, delay_s, deps):
+    cv2 = deps["cv2"]
+    mp_face = deps.get("mp_face")
+    fr = deps["face_recognition"]
+    cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
+    if not cap.isOpened():
+        raise SystemExit(f"camera {camera_index} not available — "
+                         "is the daemon holding it open? Try: "
+                         "sudo systemctl stop smart-gate")
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    print(f"Headless enroll for '{name}' — capturing {n_samples} samples,")
+    print(f"{delay_s}s between each. Stand in front of the camera, look")
+    print("around slightly to get pose variation.")
+    encs = []
+    deadline_per_sample_s = max(delay_s * 5, 10.0)
+    try:
+        for i in range(n_samples):
+            if i > 0:
+                time.sleep(delay_s)
+            print(f"  sample {i+1}/{n_samples}: looking for face...", end="",
+                  flush=True)
+            start = time.monotonic()
+            enc = None
+            while time.monotonic() - start < deadline_per_sample_s:
+                ok, frame = cap.read()
+                if not ok:
+                    continue
+                enc = _compute_encoding(frame, mp_face, fr, cv2)
+                if enc is not None:
+                    break
+            if enc is None:
+                print(f" no face after {deadline_per_sample_s:.0f}s")
+                continue
+            encs.append(enc)
+            print(" ✓")
+    finally:
+        cap.release()
+    return encs
+
+
+def _find_face_box(rgb, mp_face, fr):
+    """Return (x, y, w, h) in rgb pixel coords for the largest face, or None."""
+    if mp_face is not None:
+        result = mp_face.process(rgb)
+        if result.detections:
+            h, w = rgb.shape[:2]
+            rb = result.detections[0].location_data.relative_bounding_box
+            return (int(rb.xmin * w), int(rb.ymin * h),
+                    int(rb.width * w), int(rb.height * h))
+    locations = fr.face_locations(rgb, model="hog",
+                                  number_of_times_to_upsample=1)
+    if locations:
+        top, right, bottom, left = locations[0]
+        return (left, top, right - left, bottom - top)
+    return None
+
+
 def _compute_encoding(bgr, mp_face, fr, cv2):
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    result = mp_face.process(rgb)
-    if not result.detections:
-        return None
-    encs = fr.face_encodings(rgb, num_jitters=1)
+    if mp_face is not None:
+        result = mp_face.process(rgb)
+        if not result.detections:
+            return None
+        encs = fr.face_encodings(rgb, num_jitters=1)
+    else:
+        locations = fr.face_locations(rgb, model="hog",
+                                      number_of_times_to_upsample=1)
+        if not locations:
+            return None
+        encs = fr.face_encodings(rgb, known_face_locations=locations[:1],
+                                 num_jitters=1)
     if not encs:
         return None
     return encs[0]

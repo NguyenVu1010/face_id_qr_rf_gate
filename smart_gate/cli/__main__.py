@@ -22,7 +22,12 @@ def main(argv=None) -> int:
     e = sub.add_parser("enroll")
     e.add_argument("--name", required=True)
     e.add_argument("--samples", type=int, default=5)
-    e.add_argument("--camera", type=int, default=0)
+    e.add_argument("--camera", type=int, default=0,
+                   help="camera index; ignored if config.video.camera_device is set")
+    e.add_argument("--headless", action="store_true",
+                   help="no preview window; auto-capture every --delay-s seconds")
+    e.add_argument("--delay-s", type=float, default=1.5,
+                   help="seconds between samples in headless mode (default 1.5)")
 
     u = sub.add_parser("users")
     u_sub = u.add_subparsers(dest="users_cmd", required=True)
@@ -54,7 +59,8 @@ def main(argv=None) -> int:
         # Prefer the config's camera_device (stable /dev path from udev)
         # over --camera. --camera is still accepted as an override.
         camera_src = cfg.video.camera_device or args.camera
-        enroll_mod.enroll(db, args.name, qr_dir, args.samples, camera_src)
+        enroll_mod.enroll(db, args.name, qr_dir, args.samples, camera_src,
+                          headless=args.headless, delay_s=args.delay_s)
     elif args.cmd == "users" and args.users_cmd == "list":
         users_mod.list_users(db)
     elif args.cmd == "users" and args.users_cmd == "delete":
