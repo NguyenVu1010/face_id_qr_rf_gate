@@ -3,15 +3,36 @@
 <head>
 <meta charset="utf-8">
 <title>{% block title %}smart_gate{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='pico.min.css') }}">
-<script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+<script src="{{ url_for('static', filename='htmx.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
+<header class="topbar">
+  <a class="brand" href="/"><span class="mark">◆</span> smart_gate</a>
+  <nav class="nav">
+    <a class="nav-link {% if request.path == '/' %}on{% endif %}" href="/">Dashboard</a>
+    <a class="nav-link {% if request.path.startswith('/events') %}on{% endif %}" href="/events">Events</a>
+    <a class="nav-link {% if request.path.startswith('/users') %}on{% endif %}" href="/users">Users</a>
+    <a class="nav-link {% if request.path.startswith('/system') %}on{% endif %}" href="/system">System</a>
+  </nav>
+  <div id="statusbar"
+       class="statusbar"
+       hx-get="/healthz?format=html&panel=statusbar"
+       hx-trigger="every 2.5s"
+       hx-swap="outerHTML">
+    {# server-rendered seed; HTMX replaces every 2.5s #}
+    <span class="pill pill-ok"><span class="dot dot-ok"></span> LINK</span>
+    <span class="mono">— fps</span>
+    <span class="mono">—s</span>
+  </div>
+</header>
+<div id="link-banner"
+     hx-get="/healthz?format=html&panel=banner"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML"></div>
 <main class="container">
-<nav><ul><li><strong>smart_gate</strong></li></ul>
-<ul><li><a href="/">Dashboard</a></li><li><a href="/users">Users</a></li></ul>
-</nav>
-{% block body %}{% endblock %}
+  {% block body %}{% endblock %}
 </main>
 </body>
 </html>

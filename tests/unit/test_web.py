@@ -303,3 +303,16 @@ def test_system_page_renders(setup):
         r = c.get("/system")
         assert r.status_code == 200
         assert b"System" in r.data
+
+
+def test_base_has_topbar_and_banner(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert b'id="statusbar"' in r.data
+        assert b'id="link-banner"' in r.data
+        assert b'href="/events"' in r.data
+        assert b'href="/system"' in r.data
+        assert b'app.css' in r.data
+        assert b'pico' not in r.data
