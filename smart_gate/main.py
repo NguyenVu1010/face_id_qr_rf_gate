@@ -19,6 +19,7 @@ from smart_gate.recognition import detector as detector_mod
 from smart_gate.recognition.detector import AuthEvent, CheckInEvent
 from smart_gate.recognition.overlay import OverlayState
 from smart_gate.recognition.two_factor import TwoFactorState
+from smart_gate.link.gate_state import GateTracker
 from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
 from smart_gate.video import capture as capture_mod
@@ -53,6 +54,7 @@ def main(argv=None) -> int:
     hub = FrameHub()
     overlay = OverlayState(stale_after_s=2.0)
     two_factor = TwoFactorState(ttl_s=4.0)
+    gate_tracker = GateTracker()
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -80,12 +82,14 @@ def main(argv=None) -> int:
         threading.Thread(target=_consume_bus, name="bus-consumer",
                          args=(bus, db, matcher, uart, trig_queue, cfg, shutdown,
                                reload_event),
-                         kwargs={"state": two_factor},
+                         kwargs={"state": two_factor,
+                                 "gate_tracker": gate_tracker},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
                          args=(cfg, db, hub, uart, data_dir, shutdown),
                          kwargs={"matcher": matcher, "overlay": overlay,
-                                 "reload_event": reload_event},
+                                 "reload_event": reload_event,
+                                 "gate_tracker": gate_tracker},
                          daemon=True),
         threading.Thread(target=_cleanup_loop, name="cleanup",
                          args=(cfg, db, data_dir, shutdown), daemon=True),
@@ -149,7 +153,8 @@ def _write_pidfile() -> None:
 def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  uart: UartClient, trig_queue: queue.Queue, cfg, shutdown,
                  reload_event: threading.Event,
-                 *, state: TwoFactorState | None = None) -> None:
+                 *, state: TwoFactorState | None = None,
+                 gate_tracker: GateTracker | None = None) -> None:
     last_grant: dict[int, float] = {}
     while not shutdown.is_set():
         if reload_event.is_set():
@@ -168,7 +173,8 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
             _handle_manual_event(evt, db, uart, trig_queue)
         elif isinstance(evt, EspEvent):
             _handle_esp_event(evt, db, matcher, state, trig_queue,
-                              uart, cfg, last_grant, reload_event)
+                              uart, cfg, last_grant, reload_event,
+                              gate_tracker)
 
 
 def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
@@ -240,13 +246,37 @@ def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue):
 
 
 def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
-                      uart, cfg, last_grant, reload_event):
-    """ESP32 events. evt:log → esp_log table. evt:rfid → 2FA pairing
-    against current face state."""
+                      uart, cfg, last_grant, reload_event,
+                      gate_tracker=None):
+    """ESP32 events. evt:log → esp_log table. evt:rfid → 2FA pairing.
+    evt:gate → update GateTracker + log timeout_warn to events table.
+    evt:person_passed → just update tracker; gate FSM lives on ESP32."""
     if evt.v == "log":
         d = evt.data or {}
         db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
                           d.get("msg", ""))
+        return
+    if evt.v == "gate" and gate_tracker is not None:
+        d = evt.data or {}
+        new_state = d.get("state", "")
+        prev = gate_tracker.update(new_state)
+        # Log only timeout_warn — opening/open/closing/closed are
+        # already covered by the cmd/grant event row, no need to spam.
+        if new_state == "timeout_warn" and prev != "timeout_warn":
+            db.insert_event(
+                "timeout", None, False,
+                detail=f"no passage detected after gate opened ({prev}→timeout_warn)",
+            )
+            log.warning("gate timeout_warn — no passage detected; "
+                        "ESP32 buzzer should be sounding")
+        return
+    if evt.v == "person_passed" and gate_tracker is not None:
+        # Just informational; FSM on ESP32 will transition to closing next.
+        log.info("person passed at %s", evt.data or {})
+        return
+    if evt.v == "boot" and gate_tracker is not None:
+        # Reset our state mirror to idle on ESP32 reboot.
+        gate_tracker.update("idle")
         return
     if evt.v == "rfid":
         d = evt.data or {}
@@ -278,17 +308,15 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
                             last_grant, reload_event)
         # If pair is None, the grant is held in `state` for up to ttl_s
         # seconds awaiting a face — no event written yet, no gate open.
-        try:
-            trig_queue.put_nowait(RecordingTrigger(ev_id, time.monotonic()))
-        except queue.Full:
-            pass
 
 
 def _run_web(cfg, db, hub, uart, data_dir, shutdown,
-             matcher=None, overlay=None, reload_event=None):
+             matcher=None, overlay=None, reload_event=None,
+             gate_tracker=None):
     app = create_app(db=db, hub=hub, uart=uart, data_dir=data_dir,
                      matcher=matcher, overlay=overlay,
-                     reload_event=reload_event)
+                     reload_event=reload_event,
+                     gate_tracker=gate_tracker)
     from werkzeug.serving import make_server
     srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
     def watcher():
