@@ -53,7 +53,7 @@ PI_USB_BOT_Z = PI_PCB_TOP_Z                                         # 21.0
 # === Fastener dimensions ===
 STANDOFF_R = 3.0
 STANDOFF_PILOT_R = 1.35
-PILLAR_SIZE = 10.0
+PILLAR_SIZE = 7.0          # 7×7mm — small enough to avoid PCB corner overlap
 HEAT_SET_HOLE_R = 2.1
 HEAT_SET_DEPTH = 5.5
 
@@ -209,33 +209,7 @@ def build_box_body(doc):
                                        slot_z - slot_h / 2))
         box = box.cut(slot)
 
-    # === Notch corner pillars where PCB corners overlap ===
-    # Pillars are 10x10mm at box corners; PCB corner at (PCB_OX, PCB_OY) overlaps.
-    # Cut a notch at PCB-level (Z = PCB top ± 1mm) so PCB corner fits.
-    pcb_z_min = FLOOR_T + STANDOFF_H - 1.0   # 0.5mm below PCB bottom
-    pcb_z_max = FLOOR_T + STANDOFF_H + PCB_T + 1.0   # 1mm above PCB top
-    pcb_notch_dz = pcb_z_max - pcb_z_min     # 3.6mm tall notch
-
-    # Notch dimensions: cover the corner-overlap area (5.87mm x 2.31mm) + 1mm clearance
-    NOTCH_OVERLAP_X = PILLAR_SIZE - PCB_OX + 1.0   # ~6.87
-    NOTCH_OVERLAP_Y = PILLAR_SIZE - PCB_OY + 1.0   # ~3.31
-
-    # 4 corner notches (each carves the PCB-overlap region from the pillar)
-    # SW: notch at (PCB_OX-1, PCB_OY-1) extending into pillar
-    notch_sw = Part.makeBox(NOTCH_OVERLAP_X, NOTCH_OVERLAP_Y, pcb_notch_dz,
-                             App.Vector(PCB_OX - 1, PCB_OY - 1, pcb_z_min))
-    # SE: mirror in X
-    notch_se = Part.makeBox(NOTCH_OVERLAP_X, NOTCH_OVERLAP_Y, pcb_notch_dz,
-                             App.Vector(OUTER_W - PILLAR_SIZE, PCB_OY - 1, pcb_z_min))
-    # NW: mirror in Y
-    notch_nw = Part.makeBox(NOTCH_OVERLAP_X, NOTCH_OVERLAP_Y, pcb_notch_dz,
-                             App.Vector(PCB_OX - 1, OUTER_D - PILLAR_SIZE, pcb_z_min))
-    # NE: mirror in both
-    notch_ne = Part.makeBox(NOTCH_OVERLAP_X, NOTCH_OVERLAP_Y, pcb_notch_dz,
-                             App.Vector(OUTER_W - PILLAR_SIZE, OUTER_D - PILLAR_SIZE, pcb_z_min))
-    for notch in [notch_sw, notch_se, notch_nw, notch_ne]:
-        box = box.cut(notch)
-    print(f'  Notched 4 corner pillars at PCB level (Z=[{pcb_z_min:.1f}, {pcb_z_max:.1f}])')
+    # (Pillar 7×7 now small enough — no notch needed at PCB level)
 
     # === Chamfer outer vertical corner edges (chamfer more reliable than fillet
     # for complex geometry with pillars and cuts) ===
