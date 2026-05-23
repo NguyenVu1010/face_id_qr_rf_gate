@@ -52,11 +52,27 @@ class CheckInPair:
 
 
 class TwoFactorState:
-    def __init__(self, ttl_s: float = 4.0):
+    """Two-factor pairing with consumption cooldown.
+
+    The user almost always keeps face + credential in frame for several
+    seconds after the gate opens. Without a cooldown, the detector fires
+    a fresh CheckInEvent on EVERY camera frame (10-15 fps) for the same
+    logical scan, spamming auto-enroll inserts and bus events.
+
+    `consumption_cooldown_s` (default 5s) suppresses pair consumption
+    after a successful consume. Slots can still be updated (face moves,
+    grant changes) but `_try_consume_locked` returns None until the
+    cooldown elapses. Effectively: one CheckInEvent per visit.
+    """
+
+    def __init__(self, ttl_s: float = 4.0,
+                 consumption_cooldown_s: float = 5.0):
         self._lock = threading.Lock()
         self._face: PendingFace | None = None
         self._grant: PendingGrant | None = None
         self._ttl_s = ttl_s
+        self._consumption_cooldown_s = consumption_cooldown_s
+        self._last_consumed_mono: float = -1e9
 
     # -------- writers --------
 
@@ -85,6 +101,11 @@ class TwoFactorState:
             self._face = None
             self._grant = None
 
+    def reset_cooldown(self) -> None:
+        """Force the next pair to consume immediately (for tests / admin)."""
+        with self._lock:
+            self._last_consumed_mono = -1e9
+
     # -------- read-only --------
 
     def has_fresh_grant(self) -> bool:
@@ -110,6 +131,10 @@ class TwoFactorState:
         now = time.monotonic()
         if now - f.ts_mono > self._ttl_s or now - g.ts_mono > self._ttl_s:
             return None
+        # Consumption cooldown — same logical check-in can't fire repeatedly
+        # while user keeps both face and credential in frame.
+        if now - self._last_consumed_mono < self._consumption_cooldown_s:
+            return None
         pair = CheckInPair(
             face_embedding=f.embedding,
             face_matched_user_id=f.matched_user_id,
@@ -119,4 +144,5 @@ class TwoFactorState:
         )
         self._face = None
         self._grant = None
+        self._last_consumed_mono = now
         return pair

@@ -233,7 +233,17 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
                direction="—")
         return
 
+    # Cooldown FIRST — must precede auto-enroll, otherwise multiple frames
+    # within the cooldown window each insert a fresh face_encoding row
+    # before the matcher has had a chance to reload from the first insert.
+    now = time.monotonic()
+    prev = last_grant.get(grant_uid, -1e9)
+    if now - prev < cfg.recognition.auth_cooldown_s:
+        return
+    last_grant[grant_uid] = now
+
     # Auto-enroll: face unmatched, credential valid. Bind embedding to user.
+    # Only happens once per check-in thanks to the cooldown gate above.
     if face_uid is None and evt.face_embedding:
         n_samples = db.connect().execute(
             "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (grant_uid,)
@@ -247,13 +257,6 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
                direction="—")
         if reload_event is not None:
             reload_event.set()
-
-    # Cooldown so spam scans don't open the gate repeatedly.
-    now = time.monotonic()
-    prev = last_grant.get(grant_uid, -1e9)
-    if now - prev < cfg.recognition.auth_cooldown_s:
-        return
-    last_grant[grant_uid] = now
 
     name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
     detail = f"distance={evt.face_distance:.3f}"
