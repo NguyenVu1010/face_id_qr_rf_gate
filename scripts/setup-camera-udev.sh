@@ -42,13 +42,20 @@ while [ $# -gt 0 ]; do
 done
 
 echo "=== 1. Identify webcam ==="
-# Find capture-capable /dev/video* devices (each USB camera registers several
-# /dev/videoN; we want the one that supports VIDEO_CAPTURE).
+# Find capture-capable USB /dev/video* devices.
+# Filter via udev's ID_V4L_CAPABILITIES (more reliable than parsing
+# v4l2-ctl --all's multiline output). Pi onboard codec/ISP nodes appear
+# with empty capabilities (":") and are excluded.
+# Further restrict to nodes whose ID_PATH contains "usb" so we never
+# accidentally pin the Pi's mailbox codec.
 mapfile -t CAPTURE_DEVS < <(
     for d in /dev/video*; do
         [ -c "$d" ] || continue
-        if v4l2-ctl --device "$d" --all 2>/dev/null \
-            | grep -qE "Device Caps.*Video Capture"; then
+        caps=$(udevadm info -q property -n "$d" 2>/dev/null \
+            | awk -F= '/^ID_V4L_CAPABILITIES=/ {print $2}')
+        path=$(udevadm info -q property -n "$d" 2>/dev/null \
+            | awk -F= '/^ID_PATH=/ {print $2}')
+        if [[ "$caps" == *":capture:"* && "$path" == *usb* ]]; then
             echo "$d"
         fi
     done
