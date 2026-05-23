@@ -136,15 +136,41 @@ class Database:
         conn.execute("UPDATE events SET clip_path=? WHERE id=?", (clip_path, event_id))
         conn.commit()
 
-    def recent_events(self, limit: int = 50, after_id: int = 0) -> list[tuple]:
+    def recent_events(self, limit: int = 50, after_id: int = 0,
+                      before_id: int | None = None,
+                      method: list[str] | None = None,
+                      granted: int | None = None,
+                      q: str | None = None,
+                      since: str | None = None) -> list[tuple]:
+        """Recent events with optional filters; all AND-combined.
+
+        method is a list OR'd. q is case-insensitive LIKE on users.name.
+        since is an ISO timestamp; rows with ts >= since. before_id is for
+        keyset pagination of older rows.
+        """
+        where = ["e.id > ?"]
+        params: list = [after_id]
+        if before_id is not None:
+            where.append("e.id < ?"); params.append(before_id)
+        if method:
+            where.append("e.method IN (" + ",".join(["?"] * len(method)) + ")")
+            params.extend(method)
+        if granted is not None:
+            where.append("e.granted = ?"); params.append(int(granted))
+        if q:
+            where.append("u.name LIKE ?"); params.append(f"%{q}%")
+        if since:
+            where.append("e.ts >= ?"); params.append(since)
+        params.append(limit)
         conn = self.connect()
-        return list(conn.execute("""
-            SELECT e.id, e.ts, e.method, e.user_id, u.name, e.granted, e.detail, e.clip_path
-            FROM events e LEFT JOIN users u ON u.id = e.user_id
-            WHERE e.id > ?
-            ORDER BY e.id DESC
-            LIMIT ?
-        """, (after_id, limit)))
+        return list(conn.execute(
+            "SELECT e.id, e.ts, e.method, e.user_id, u.name, e.granted, "
+            "e.detail, e.clip_path "
+            "FROM events e LEFT JOIN users u ON u.id = e.user_id "
+            f"WHERE {' AND '.join(where)} "
+            "ORDER BY e.id DESC LIMIT ?",
+            params,
+        ))
 
     def get_event_clip(self, event_id: int) -> str | None:
         conn = self.connect()
@@ -161,7 +187,26 @@ class Database:
 
     # ---- ESP log ----
 
-    def insert_esp_log(self, lvl: str, tag: str | None, msg: str) -> None:
+    def insert_esp_log(self, lvl: str, tag: str | None, msg: str) -> int:
         conn = self.connect()
-        conn.execute("INSERT INTO esp_log(lvl, tag, msg) VALUES (?, ?, ?)", (lvl, tag, msg))
+        cur = conn.execute(
+            "INSERT INTO esp_log(lvl, tag, msg) VALUES (?, ?, ?)",
+            (lvl, tag, msg),
+        )
         conn.commit()
+        return cur.lastrowid
+
+    def recent_esp_log(self, limit: int = 100, after_id: int = 0) -> list[tuple]:
+        conn = self.connect()
+        return list(conn.execute(
+            "SELECT id, ts, lvl, tag, msg FROM esp_log "
+            "WHERE id > ? ORDER BY id DESC LIMIT ?",
+            (after_id, limit),
+        ))
+
+    def count_events_today(self) -> int:
+        conn = self.connect()
+        return conn.execute(
+            "SELECT COUNT(*) FROM events "
+            "WHERE ts >= datetime('now','start of day')"
+        ).fetchone()[0]
