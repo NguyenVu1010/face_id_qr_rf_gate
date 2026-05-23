@@ -31,6 +31,10 @@ sudo install -d -o smart-gate -g smart-gate \
     /var/log/smart-gate
 
 # 3. code (preserve previously-downloaded vendor assets in static/)
+# Note: rsync --exclude paths are relative to the source root (.), so
+# 'smart_gate/web/static/htmx.min.js' is correct when source is './'.
+# When the source is 'smart_gate/' (with trailing slash), the path
+# inside the source is 'web/static/htmx.min.js' instead.
 sudo rsync -a --delete \
     --exclude=.git --exclude=tests --exclude=__pycache__ --exclude=.venv \
     --exclude=.claude --exclude=.pytest_cache --exclude=data \
