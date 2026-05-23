@@ -128,7 +128,7 @@ def build_box_body(doc):
     # === Cutouts (swapped per user request: DC on EAST, peripherals on WEST) ===
     # 1. DC jack on EAST wall (X=OUTER_W) — round Ø11mm
     # Cable runs internally from J_PWR (near PCB west edge) east to wall
-    dc_z = FLOOR_T + PCB_T + 6.0   # ~14.1mm
+    dc_z = FLOOR_T + STANDOFF_H + PCB_T + 6.0   # 2.5+4.5+1.6+6 = 14.6mm
     dc_y = PCB_OY + J_PWR_Y        # same Y as PCB header
     dc = Part.makeCylinder(11.0 / 2 + 0.25, WALL + 2)
     dc.Placement = App.Placement(
