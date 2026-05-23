@@ -52,7 +52,8 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                matcher=None, overlay=None, reload_event=None,
                gate_tracker=None, cv2_module=None,
                cap_fps=None, det_fps=None,
-               esp_log_bus=None, peripherals=None) -> Flask:
+               esp_log_bus=None, peripherals=None,
+               confirm_timeout_s: float = 3.0) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
     qr_dir = data_dir / "qr"
@@ -155,9 +156,20 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         return _gate_action("close", "manual_close")
 
     def _gate_action(verb: str, method: str):
-        """Manual open/close from web button. Emits to esp_log_bus so the
-        dashboard Live Log panel reflects what the admin did, updates the
-        PeripheralTracker on success/failure, then writes the events row.
+        """Manual open/close from web button.
+
+        Two-stage confirmation:
+        1. cmd ack from ESP32 → link is alive, ESP32 parsed JSON.
+           This is NOT proof the servo moved. Only `link` peripheral
+           goes ok here.
+        2. Wait up to `confirm_timeout_s` for an evt:gate transition
+           that confirms the servo actually moved
+           (state=open for verb=open, state=closed for verb=close).
+           Only on this confirmation do we return ok=True to the client.
+
+        DB event row is only inserted on confirmation. If the gate
+        doesn't transition in time, return 504 with a partial-failure
+        body so the dashboard can show 'cmd accepted but not confirmed'.
         """
         _emit_audit(esp_log_bus, "info", "cmd",
                     f"{verb} (manual from web)", direction="→")
@@ -170,18 +182,41 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         except (LinkDown, LinkTimeout) as e:
             err = str(e) or e.__class__.__name__
             _emit_audit(esp_log_bus, "err", "cmd",
-                        f"{verb} FAILED: {err} — peripheral unreachable",
+                        f"{verb} FAILED: {err} — link unreachable",
                         direction="←")
             if peripherals is not None:
                 peripherals.mark_cmd_failed(verb, err)
             return jsonify({"error": err}), 503
+
+        # ack received → link is alive, but servo state still unknown.
         _emit_audit(esp_log_bus, "info", "ack",
-                    f"{verb} OK ({ack})" if ack else f"{verb} ack",
+                    f"{verb} accepted by ESP32 — đang chờ xác nhận servo…",
                     direction="←")
         if peripherals is not None:
             peripherals.mark_cmd_ack(verb, ok=True, detail=str(ack or ""))
+
+        # Wait for the physical state transition.
+        target_state = "open" if verb == "open" else "closed"
+        confirmed = False
+        if gate_tracker is not None:
+            confirmed = gate_tracker.wait_for_state(target_state,
+                                                   timeout=confirm_timeout_s)
+
+        if not confirmed:
+            _emit_audit(esp_log_bus, "warn", "gate",
+                        f"⚠ cmd {verb} ack OK nhưng cổng chưa đạt state={target_state} "
+                        f"sau {confirm_timeout_s}s — kiểm tra servo / nguồn",
+                        direction="←")
+            return jsonify({
+                "ok": False,
+                "ack": ack,
+                "error": f"servo did not reach state={target_state} "
+                         f"within {confirm_timeout_s}s",
+            }), 504
+
+        # Confirmed by ESP32 — only NOW record the DB event row.
         db.insert_event(method, None, True)
-        return jsonify({"ok": True, "ack": ack})
+        return jsonify({"ok": True, "ack": ack, "confirmed": True})
 
     @app.route("/peripherals")
     def peripherals_page():

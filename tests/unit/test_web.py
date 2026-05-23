@@ -21,7 +21,14 @@ def setup(tmp_data_dir):
     uart = MagicMock()
     uart.send_cmd.return_value = {"ok": True}
     uart.link_alive.return_value = True
-    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    # Mock gate_tracker that always confirms (so /api/gate/open returns 200
+    # without waiting). Tests for the unconfirmed path set this explicitly.
+    gate_tracker = MagicMock()
+    gate_tracker.wait_for_state.return_value = True
+    gate_tracker.snapshot.return_value = {"state": "idle", "since_s": 0,
+                                          "last_user": None}
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir,
+                     gate_tracker=gate_tracker, confirm_timeout_s=0.05)
     app.testing = True
     return app, db, hub, uart, tmp_data_dir
 
@@ -72,6 +79,33 @@ def test_gate_open_link_down(setup):
     with app.test_client() as c:
         r = c.post("/api/gate/open")
         assert r.status_code == 503
+
+
+def test_gate_open_ack_but_no_state_change_504(tmp_data_dir):
+    """ESP32 acks the cmd but the servo never transitions to 'open' →
+    returns 504, NO DB event row written, audit log warns the user."""
+    db = Database(tmp_data_dir / "w.db")
+    db.migrate()
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock()
+    uart.send_cmd.return_value = {"ok": True}
+    uart.link_alive.return_value = True
+    gate_tracker = MagicMock()
+    gate_tracker.wait_for_state.return_value = False   # never confirmed
+    gate_tracker.snapshot.return_value = {"state": "opening", "since_s": 3,
+                                          "last_user": None}
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir,
+                     gate_tracker=gate_tracker, confirm_timeout_s=0.05)
+    app.testing = True
+    with app.test_client() as c:
+        r = c.post("/api/gate/open")
+        assert r.status_code == 504, r.data
+        body = r.get_json()
+        assert body["ok"] is False
+        assert "did not reach state=open" in body["error"]
+    # critically: no event row was inserted for the unconfirmed open
+    rows = db.recent_events()
+    assert not any(r[2] == "manual_open" for r in rows)
 
 
 def test_clip_missing_returns_404(setup):

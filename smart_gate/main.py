@@ -332,6 +332,9 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
         d = evt.data or {}
         new_state = d.get("state", "")
         prev = gate_tracker.update(new_state)
+        # Feed PeripheralTracker: opening/open/closing/closed = servo moved.
+        if peripherals is not None:
+            peripherals.mark_gate_state(new_state)
         # Log only timeout_warn — opening/open/closing/closed are
         # already covered by the cmd/grant event row, no need to spam.
         if new_state == "timeout_warn" and prev != "timeout_warn":
@@ -346,10 +349,17 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
                    direction="←")
         elif new_state == "open" and prev not in ("open", "opening"):
             _audit(esp_log_bus, "info", "gate",
-                   f"state: {prev or '?'} → open", direction="←")
+                   "✓ cổng đã mở (servo confirmed)",
+                   direction="←")
+        elif new_state == "opening":
+            _audit(esp_log_bus, "info", "gate",
+                   "đang mở…", direction="←")
+        elif new_state == "closing":
+            _audit(esp_log_bus, "info", "gate",
+                   "đang đóng…", direction="←")
         elif new_state == "closed":
             _audit(esp_log_bus, "info", "gate",
-                   f"state: {prev or '?'} → closed", direction="←")
+                   "✓ cổng đã đóng", direction="←")
         return
     if evt.v == "person_passed" and gate_tracker is not None:
         # Just informational; FSM on ESP32 will transition to closing next.

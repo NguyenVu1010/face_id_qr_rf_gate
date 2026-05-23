@@ -88,12 +88,14 @@ class PeripheralTracker:
             )
 
     def mark_cmd_ack(self, verb: str, ok: bool, detail: str = "") -> None:
-        """Pi received an ack from a cmd. Servo + LCD must be alive for
-        gate cmds to ack cleanly, so we treat a successful open/close ack
-        as evidence both are OK."""
+        """Pi received an ack from a cmd. This proves only that the UART
+        link is alive and ESP32 parsed the JSON — it does NOT prove the
+        servo physically moved or the LCD displayed anything. Only the
+        `link` peripheral is marked ok here. Servo/LCD/etc require
+        evidence from evt:gate state transitions or evt:log entries.
+        """
         ts = _now_iso()
         with self._lock:
-            link = self._states["link"]
             self._states["link"] = PeripheralState(
                 name="link",
                 status="ok" if ok else "warning",
@@ -102,13 +104,23 @@ class PeripheralTracker:
                 last_ts_mono=time.monotonic(),
             )
             self._link_last_alive_mono = time.monotonic()
-            if verb in ("open", "close") and ok:
-                for name in ("servo", "lcd"):
-                    self._states[name] = PeripheralState(
-                        name=name, status="ok",
-                        last_message=f"acknowledged via cmd:{verb}",
-                        last_ts=ts, last_ts_mono=time.monotonic(),
-                    )
+
+    def mark_gate_state(self, state: str) -> None:
+        """evt:gate transition received → infer servo health.
+        - opening / open → servo definitely received PWM and moved
+        - closing / closed → servo moved back
+        - timeout_warn → servo opened, but person didn't pass (HC-SR04
+          issue, not servo issue; don't touch servo state here)
+        """
+        s = (state or "").lower()
+        ts = _now_iso()
+        with self._lock:
+            if s in ("opening", "open", "closing", "closed"):
+                self._states["servo"] = PeripheralState(
+                    name="servo", status="ok",
+                    last_message=f"gate state={s} → servo moved",
+                    last_ts=ts, last_ts_mono=time.monotonic(),
+                )
 
     def mark_cmd_failed(self, verb: str, error: str) -> None:
         with self._lock:
