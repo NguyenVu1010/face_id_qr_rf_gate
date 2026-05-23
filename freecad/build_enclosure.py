@@ -144,8 +144,8 @@ def build_box_body(doc):
                                    usbc_z - usbc_h / 2))
     box = box.cut(usbc)
 
-    # 3. Peripheral wire exit slots on WEST wall (X=0) — 4 slots, 15x20mm each
-    slot_w, slot_h = 15.0, 20.0    # Y (along wall) x Z (vertical)
+    # 3. Peripheral wire exit slots on WEST wall (X=0) — 4 slots, 15x10mm each
+    slot_w, slot_h = 15.0, 10.0    # Y (along wall) x Z (vertical, reduced per user)
     slot_z = PI_PCB_TOP_Z + 18     # 39mm above floor
     for slot_y in [25, 55, 80, 105]:
         slot = Part.makeBox(WALL + 2, slot_w, slot_h,
