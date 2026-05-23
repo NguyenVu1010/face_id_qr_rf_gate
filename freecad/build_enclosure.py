@@ -302,13 +302,21 @@ def build_lid(doc):
     lid = Part.makeBox(OUTER_W, OUTER_D, LID_T,
                        App.Vector(0, 0, LID_BASE_Z))
 
-    # LCD viewing cutout 76×26 centered at (105, 67.5)
-    lcd_w, lcd_h = 76.0, 26.0
+    # LCD viewing cutout 98×40mm centered at (105, 67.5), corners filleted
+    lcd_w, lcd_h = 98.0, 40.0
     lcd_cx, lcd_cy = 105.0, 67.5
     lcd_cut = Part.makeBox(lcd_w, lcd_h, LID_T + 0.2,
                            App.Vector(lcd_cx - lcd_w / 2,
                                       lcd_cy - lcd_h / 2,
                                       LID_BASE_Z - 0.1))
+    # Round the 4 corner edges (Z-parallel) of the LCD cutout
+    lcd_corners = [
+        (lcd_cx - lcd_w / 2, lcd_cy - lcd_h / 2),
+        (lcd_cx + lcd_w / 2, lcd_cy - lcd_h / 2),
+        (lcd_cx - lcd_w / 2, lcd_cy + lcd_h / 2),
+        (lcd_cx + lcd_w / 2, lcd_cy + lcd_h / 2),
+    ]
+    lcd_cut = fillet_vertical_edges_at(lcd_cut, lcd_corners, 4.0)
     lid = lid.cut(lcd_cut)
 
     # 4 LCD mount holes (Ø2.7 self-tap pilot)
