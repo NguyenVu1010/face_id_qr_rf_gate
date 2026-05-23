@@ -73,6 +73,60 @@ PROJECT_DIR = '/home/nguyenvd/workspace/smart_gate'
 FCSTD_PATH = os.path.join(PROJECT_DIR, 'freecad', 'smart_gate_enclosure.FCStd')
 PCB_STEP_PATH = os.path.join(PROJECT_DIR, '3d', 'smart_gate_combined.step')
 
+# === Fillet radii ===
+CORNER_FILLET_R = 2.0      # outer vertical corner edges (small to avoid fillet failure)
+LID_FILLET_R = 2.0         # lid top/bottom corner edges
+PLATE_FILLET_R = 1.5       # connector plate corners
+
+
+def fillet_vertical_edges_at(shape, corners_xy, radius, tol=0.01):
+    """Fillet all Z-parallel edges whose XY position matches any of the given corners."""
+    edges_to_fillet = []
+    for edge in shape.Edges:
+        if not isinstance(edge.Curve, Part.Line):
+            continue
+        v1 = edge.Vertexes[0].Point
+        v2 = edge.Vertexes[1].Point
+        d = v2 - v1
+        if abs(d.x) >= tol or abs(d.y) >= tol:
+            continue   # not Z-parallel
+        for (cx, cy) in corners_xy:
+            if abs(v1.x - cx) < tol and abs(v1.y - cy) < tol:
+                edges_to_fillet.append(edge)
+                break
+    if edges_to_fillet:
+        try:
+            return shape.makeFillet(radius, edges_to_fillet)
+        except Exception as e:
+            print(f'  WARN: fillet failed ({e}); returning unfilleted shape')
+    return shape
+
+
+def fillet_horizontal_edges_at(shape, corner_z_pairs, radius, tol=0.01):
+    """Fillet outer-rectangle edges in XY plane at given Z values.
+    corner_z_pairs: list of Z values where the rectangle perimeter sits."""
+    edges_to_fillet = []
+    for edge in shape.Edges:
+        if not isinstance(edge.Curve, Part.Line):
+            continue
+        v1 = edge.Vertexes[0].Point
+        v2 = edge.Vertexes[1].Point
+        d = v2 - v1
+        if abs(d.z) >= tol:
+            continue   # not horizontal
+        if abs(v1.z - v2.z) >= tol:
+            continue
+        for cz in corner_z_pairs:
+            if abs(v1.z - cz) < tol:
+                edges_to_fillet.append(edge)
+                break
+    if edges_to_fillet:
+        try:
+            return shape.makeFillet(radius, edges_to_fillet)
+        except Exception as e:
+            print(f'  WARN: fillet failed ({e}); returning unfilleted shape')
+    return shape
+
 
 def build_box_body(doc):
     """Floor + 3 walls (S/E/W) + 5mm north frame + 4 pillars + 4 standoffs + cutouts."""
@@ -154,6 +208,28 @@ def build_box_body(doc):
                                        slot_y - slot_w / 2,
                                        slot_z - slot_h / 2))
         box = box.cut(slot)
+
+    # === Chamfer outer vertical corner edges (chamfer more reliable than fillet
+    # for complex geometry with pillars and cuts) ===
+    outer_corners_xy = [(0, 0), (OUTER_W, 0), (0, OUTER_D), (OUTER_W, OUTER_D)]
+    chamfer_edges = []
+    for edge in box.Edges:
+        if not isinstance(edge.Curve, Part.Line):
+            continue
+        v1 = edge.Vertexes[0].Point
+        v2 = edge.Vertexes[1].Point
+        if abs(v1.x - v2.x) > 0.01 or abs(v1.y - v2.y) > 0.01:
+            continue   # not Z-parallel
+        for (cx, cy) in outer_corners_xy:
+            if abs(v1.x - cx) < 0.01 and abs(v1.y - cy) < 0.01:
+                chamfer_edges.append(edge)
+                break
+    if chamfer_edges:
+        try:
+            box = box.makeChamfer(CORNER_FILLET_R, chamfer_edges)
+            print(f'  Chamfered {len(chamfer_edges)} box corner edges (size {CORNER_FILLET_R}mm)')
+        except Exception as e:
+            print(f'  WARN: box chamfer failed ({e}); leaving sharp corners')
 
     feat = doc.addObject('Part::Feature', 'EnclosureBox')
     feat.Shape = box
@@ -256,6 +332,10 @@ def build_lid(doc):
         clear = Part.makeCylinder(1.6, LID_T + 0.2,
                                    App.Vector(cx, cy, LID_BASE_Z - 0.1))
         lid = lid.cut(clear)
+
+    # === Fillet lid corner edges (vertical at corners) ===
+    lid_corners_xy = [(0, 0), (OUTER_W, 0), (0, OUTER_D), (OUTER_W, OUTER_D)]
+    lid = fillet_vertical_edges_at(lid, lid_corners_xy, LID_FILLET_R)
 
     feat = doc.addObject('Part::Feature', 'EnclosureLid')
     feat.Shape = lid
