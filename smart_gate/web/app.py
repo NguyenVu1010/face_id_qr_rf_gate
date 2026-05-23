@@ -287,15 +287,16 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
         @stream_with_context
         def gen():
-            # Replay rows since last_id (cap at 200 to bound payload)
-            if last_id > 0:
-                backlog = db.recent_esp_log(limit=200, after_id=last_id)
-                for row in reversed(backlog):              # oldest first
-                    yield _sse_format(_row_to_dict(row))
-
+            # Subscribe BEFORE replay so any items published during the DB
+            # query are still delivered. The live loop will pick them up
+            # after the replay finishes.
             q = esp_log_bus.subscribe()
-            last_ping = time.monotonic()
             try:
+                if last_id > 0:
+                    backlog = db.recent_esp_log(limit=200, after_id=last_id)
+                    for row in reversed(backlog):          # oldest first
+                        yield _sse_format(_row_to_dict(row))
+                last_ping = time.monotonic()
                 while True:
                     item = esp_log_bus.wait_for_item(q, timeout=1.0)
                     if item is not None:
@@ -356,25 +357,11 @@ def _build_healthz_body(db, hub, uart, cap_fps, det_fps,
         "det_fps": round(det_fps.fps(), 1) if det_fps else None,
         "events_today": db.count_events_today(),
         "disk_free_gb": round(disk_free_gb, 2) if disk_free_gb is not None else None,
-        "last_grant": _last_grant_row(db),
+        "last_grant": db.last_grant_event(),
     }
     if gate_tracker is not None:
         body["gate"] = gate_tracker.snapshot()
     return body
-
-
-def _last_grant_row(db) -> "dict | None":
-    """Return the most recent granted event as {ts, name}, or None."""
-    conn = db.connect()
-    row = conn.execute(
-        "SELECT e.ts, u.name FROM events e "
-        "LEFT JOIN users u ON u.id = e.user_id "
-        "WHERE e.granted = 1 "
-        "ORDER BY e.id DESC LIMIT 1"
-    ).fetchone()
-    if row is None:
-        return None
-    return {"ts": row[0], "name": row[1] or "—"}
 
 
 def _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module=None):

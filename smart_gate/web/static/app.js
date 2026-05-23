@@ -44,6 +44,20 @@
     }, { once: true });
   };
 
+  // -------------------------------------------------- Clip-link delegated handler
+  // event_rows.html uses data-* attributes rather than an inline onclick string,
+  // so user-controlled fields (ts, user_name) can never inject JS.
+  document.body.addEventListener('click', (e) => {
+    const a = e.target.closest('a.clip-link');
+    if (!a) return;
+    e.preventDefault();
+    window.openClip(
+      parseInt(a.dataset.eventId, 10),
+      a.dataset.ts || '',
+      a.dataset.user || ''
+    );
+  });
+
   // -------------------------------------------------- maxEventId helper (events page)
   window.maxEventId = function () {
     let m = 0;
@@ -51,6 +65,16 @@
       m = Math.max(m, parseInt(tr.dataset.eventId, 10) || 0);
     });
     return m;
+  };
+
+  // -------------------------------------------------- minEventId helper (load older)
+  window.minEventId = function () {
+    let m = Infinity;
+    document.querySelectorAll('#events-tbody tr[data-event-id]').forEach((tr) => {
+      const id = parseInt(tr.dataset.eventId, 10);
+      if (id && id < m) m = id;
+    });
+    return m === Infinity ? 0 : m;
   };
 
   // -------------------------------------------------- Diagnostic buttons (system page)

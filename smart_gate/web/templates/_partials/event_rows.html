@@ -9,7 +9,10 @@
   </td>
   <td>
     {% if r.clip_path %}
-      <a href="#" onclick="openClip({{ r.id }}, '{{ r.ts }}', '{{ r.user_name or '' }}'); return false;">▶</a>
+      <a href="#" class="clip-link"
+         data-event-id="{{ r.id }}"
+         data-ts="{{ r.ts }}"
+         data-user="{{ r.user_name or '' }}">▶</a>
     {% else %}—{% endif %}
   </td>
   <td class="mono detail">{{ r.detail or "" }}</td>

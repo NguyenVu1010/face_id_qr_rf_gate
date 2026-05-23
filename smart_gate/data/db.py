@@ -172,6 +172,19 @@ class Database:
             params,
         ))
 
+    def last_grant_event(self) -> dict | None:
+        """Most recent granted event as {ts, name}, or None."""
+        conn = self.connect()
+        row = conn.execute(
+            "SELECT e.ts, u.name FROM events e "
+            "LEFT JOIN users u ON u.id = e.user_id "
+            "WHERE e.granted = 1 "
+            "ORDER BY e.id DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return None
+        return {"ts": row[0], "name": row[1] or "—"}
+
     def get_event_clip(self, event_id: int) -> str | None:
         conn = self.connect()
         row = conn.execute("SELECT clip_path FROM events WHERE id=?", (event_id,)).fetchone()

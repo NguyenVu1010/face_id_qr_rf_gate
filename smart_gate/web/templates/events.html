@@ -55,6 +55,15 @@
        hx-trigger="every 2s"
        hx-target="#events-tbody"
        hx-swap="afterbegin"></div>
+
+  <footer class="card-footer" style="justify-content:center; padding: var(--s-3);">
+    <button class="btn btn-ghost"
+            hx-get="/events.json?format=html"
+            hx-include="#event-filter"
+            hx-vals='js:{before_id: minEventId(), limit: 50}'
+            hx-target="#events-tbody"
+            hx-swap="beforeend">Load 50 older</button>
+  </footer>
 </article>
 
 <dialog id="clip-modal" class="dialog">
