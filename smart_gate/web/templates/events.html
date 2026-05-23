@@ -1,6 +1,71 @@
 {% extends "base.html" %}
 {% block title %}Events{% endblock %}
 {% block body %}
-<h1>Events</h1>
-<p>Coming up next…</p>
+<div class="page-header">
+  <h1>Events</h1>
+</div>
+
+<form id="event-filter" class="filter-bar"
+      hx-get="/events.json?format=html"
+      hx-trigger="change, keyup changed delay:300ms from:input[name=q]"
+      hx-target="#events-tbody"
+      hx-swap="innerHTML">
+  <fieldset class="filter-pills">
+    {% for m in ["face", "qr", "rfid", "manual_open"] %}
+    <label class="pill-toggle">
+      <input type="checkbox" name="method" value="{{ m }}">
+      <span class="pill pill-{{ m }}">{{ m }}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="filter-radio">
+    <label><input type="radio" name="granted" value="" checked> all</label>
+    <label><input type="radio" name="granted" value="1"> granted</label>
+    <label><input type="radio" name="granted" value="0"> denied</label>
+  </fieldset>
+
+  <input type="search" class="input" name="q" placeholder="user name…" autocomplete="off">
+
+  <select class="select" name="period">
+    <option value="">All time</option>
+    <option value="today">Today</option>
+    <option value="7d">Last 7 days</option>
+    <option value="30d">Last 30 days</option>
+  </select>
+</form>
+
+<article class="card">
+  <table class="table">
+    <thead>
+      <tr><th>time</th><th>method</th><th>user</th><th>ok</th><th>clip</th><th>detail</th></tr>
+    </thead>
+    <tbody id="events-tbody"
+           hx-get="/events.json?format=html"
+           hx-include="#event-filter"
+           hx-trigger="load"
+           hx-swap="innerHTML"></tbody>
+  </table>
+
+  {# Live-prepend: polls every 2s and prepends only NEW rows matching current filter. #}
+  <div id="events-live"
+       hx-get="/events.json?format=html"
+       hx-include="#event-filter"
+       hx-vals='js:{after_id: maxEventId()}'
+       hx-trigger="every 2s"
+       hx-target="#events-tbody"
+       hx-swap="afterbegin"></div>
+</article>
+
+<dialog id="clip-modal" class="dialog">
+  <header class="dialog-header">
+    <h3 id="clip-title">Event …</h3>
+    <button class="btn btn-ghost" onclick="document.getElementById('clip-modal').close()">✕</button>
+  </header>
+  <video id="clip-video" controls autoplay style="width:100%; max-height:70vh; display:block;"></video>
+  <footer class="dialog-footer">
+    <span id="clip-meta" class="muted"></span>
+    <a id="clip-download" class="btn btn-secondary" download>Download mp4</a>
+  </footer>
+</dialog>
 {% endblock %}

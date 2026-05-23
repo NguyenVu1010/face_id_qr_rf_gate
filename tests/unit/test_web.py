@@ -349,3 +349,23 @@ def test_dashboard_preserves_gate_badge(setup):
         r = c.get("/")
         assert b'gate-badge' in r.data
         assert b'/api/gate/state.json' in r.data
+
+
+def test_events_page_has_filter_form(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert b'id="event-filter"' in r.data
+        assert b'name="method"' in r.data
+        assert b'name="granted"' in r.data
+        assert b'name="q"' in r.data
+        assert b'name="period"' in r.data
+
+
+def test_events_page_has_clip_modal(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert b'id="clip-modal"' in r.data
+        assert b'id="clip-video"' in r.data
+        assert b'id="events-live"' in r.data
