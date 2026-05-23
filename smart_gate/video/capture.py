@@ -33,7 +33,7 @@ _STALE_FRAME_WINDOW_S = 5.0
 
 
 def run_capture(cfg, hub, ring, shutdown: threading.Event,
-                cv2_module=None) -> None:
+                cv2_module=None, fps_counter=None) -> None:
     """Top-level entry. cv2_module is injectable for tests.
 
     Reopens the camera on TWO failure modes:
@@ -89,6 +89,8 @@ def run_capture(cfg, hub, ring, shutdown: threading.Event,
             last_jpeg_hash = None
             continue
         hub.publish(jpg_bytes, frame)
+        if fps_counter is not None:
+            fps_counter.tick()
         if ring is not None:
             ring.push(jpg_bytes, now)
     hub.publish(None, None)

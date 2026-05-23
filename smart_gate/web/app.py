@@ -31,7 +31,8 @@ _USER_NAME_RE = re.compile(r"^user_\d+$")
 
 def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
                matcher=None, overlay=None, reload_event=None,
-               gate_tracker=None, cv2_module=None) -> Flask:
+               gate_tracker=None, cv2_module=None,
+               cap_fps=None, det_fps=None) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
     qr_dir = data_dir / "qr"
