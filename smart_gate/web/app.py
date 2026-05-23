@@ -10,9 +10,11 @@ import threading
 import time
 from pathlib import Path
 
+import json
+
 import numpy as np
 from flask import (Flask, Response, abort, jsonify, render_template, request,
-                   send_from_directory)
+                   send_from_directory, stream_with_context)
 
 from smart_gate.link.uart_client import LinkDown, LinkTimeout
 
@@ -31,7 +33,9 @@ _USER_NAME_RE = re.compile(r"^user_\d+$")
 
 def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
                matcher=None, overlay=None, reload_event=None,
-               gate_tracker=None, cv2_module=None) -> Flask:
+               gate_tracker=None, cv2_module=None,
+               cap_fps=None, det_fps=None,
+               esp_log_bus=None) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
     qr_dir = data_dir / "qr"
@@ -66,16 +70,42 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/events.json")
     def events_json():
+        # Parse query params
         after_id = int(request.args.get("after_id", 0))
-        rows = db.recent_events(limit=50, after_id=after_id)
-        fmt = request.args.get("format", "json")
-        if fmt == "html":
-            return render_template_string_events(rows)
-        return jsonify([
+        before_id_raw = request.args.get("before_id")
+        before_id = int(before_id_raw) if before_id_raw else None
+        limit = min(int(request.args.get("limit", 50)), 500)
+        methods = request.args.getlist("method") or None
+        granted_raw = request.args.get("granted")
+        granted = int(granted_raw) if granted_raw in ("0", "1") else None
+        q = request.args.get("q") or None
+
+        # Period → ISO timestamp lower bound (server-side resolution)
+        since = None
+        import datetime as _dt
+        period = request.args.get("period")
+        if period == "today":
+            since = _dt.datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        elif period in ("7d", "30d"):
+            days = 7 if period == "7d" else 30
+            since = (_dt.datetime.now() - _dt.timedelta(days=days)
+                     ).strftime("%Y-%m-%d %H:%M:%S")
+
+        rows = db.recent_events(limit=limit, after_id=after_id,
+                                before_id=before_id, method=methods,
+                                granted=granted, q=q, since=since)
+        records = [
             {"id": r[0], "ts": r[1], "method": r[2], "user_id": r[3],
              "user_name": r[4], "granted": bool(r[5]),
-             "detail": r[6], "clip_path": r[7]} for r in rows
-        ])
+             "detail": r[6], "clip_path": r[7]}
+            for r in rows
+        ]
+        fmt = request.args.get("format", "json")
+        if fmt == "html":
+            return render_template("_partials/event_rows.html", rows=records)
+        return jsonify(records)
 
     @app.route("/clips/<int:event_id>.mp4")
     def clip(event_id: int):
@@ -175,25 +205,32 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             "face_capture": face_capture,
         })
 
+    @app.route("/events")
+    def events_page():
+        return render_template("events.html")
+
+    @app.route("/system")
+    def system_page():
+        body = _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                                   data_dir, start_time, gate_tracker)
+        return render_template("system.html", h=body)
+
     @app.route("/healthz")
     def healthz():
-        expected = {"cap", "detect", "rec", "bus-consumer", "flask",
-                    "cleanup", "uart-rx", "uart-tx", "uart-hb"}
-        active = {t.name for t in threading.enumerate()}
-        last_frame_ago = None
-        last_ts = getattr(hub, "_last_publish_mono", None)
-        if last_ts is not None:
-            last_frame_ago = max(0.0, time.monotonic() - last_ts)
-        n_users = len(db.list_users()) if hasattr(db, "list_users") else None
-        gate = gate_tracker.snapshot() if gate_tracker is not None else None
-        return jsonify({
-            "uptime_s": int(time.monotonic() - start_time),
-            "link_alive": bool(uart.link_alive()),
-            "last_frame_ago_s": last_frame_ago,
-            "threads_ok": expected.issubset(active),
-            "enrolled_users": n_users,
-            "gate": gate,
-        })
+        body = _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                                   data_dir, start_time, gate_tracker)
+        if request.args.get("format") == "html":
+            panel = request.args.get("panel", "statusbar")
+            if panel == "statusbar":
+                return render_template("_partials/statusbar.html", h=body)
+            if panel == "banner":
+                return render_template("_partials/banner.html", h=body)
+            if panel == "quickstats":
+                return render_template("_partials/quickstats.html", h=body)
+            if panel == "systemcards":
+                return render_template("_partials/systemcards.html", h=body)
+            return ("unknown panel", 400)
+        return jsonify(body)
 
     @app.route("/api/gate/state.json")
     def gate_state_json():
@@ -202,6 +239,80 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             return jsonify({"state": "unknown", "since_s": 0,
                             "last_user": None})
         return jsonify(gate_tracker.snapshot())
+
+    def _row_to_dict(row):
+        # row schema from db.recent_esp_log: (id, ts, lvl, tag, msg)
+        return {"id": row[0], "ts": row[1], "lvl": row[2],
+                "tag": row[3], "msg": row[4]}
+
+    def _sse_format(item):
+        return (f"id: {item['id']}\n"
+                f"event: log\n"
+                f"data: {json.dumps(item, separators=(',', ':'))}\n\n")
+
+    def _diag(verb: str):
+        t0 = time.monotonic()
+        try:
+            data = uart.send_cmd(verb, timeout=2.0)
+        except (LinkDown, LinkTimeout) as e:
+            return jsonify({"error": str(e) or e.__class__.__name__}), 503
+        ack_ms = int((time.monotonic() - t0) * 1000)
+        return jsonify({"ack_ms": ack_ms, "data": data})
+
+    @app.route("/api/diag/ping", methods=["POST"])
+    def diag_ping():
+        return _diag("ping")
+
+    @app.route("/api/diag/status", methods=["POST"])
+    def diag_status():
+        return _diag("status")
+
+    @app.route("/api/esp_log")
+    def api_esp_log():
+        limit = min(int(request.args.get("limit", 100)), 500)
+        after_id = int(request.args.get("after_id", 0))
+        rows = [_row_to_dict(r) for r in db.recent_esp_log(limit=limit,
+                                                           after_id=after_id)]
+        fmt = request.args.get("format", "html")
+        if fmt == "json":
+            return jsonify(rows)
+        return render_template("_partials/esp_log_line.html", rows=rows)
+
+    @app.route("/api/esp_log/stream")
+    def api_esp_log_stream():
+        if esp_log_bus is None:
+            return jsonify({"error": "esp_log_bus not configured"}), 503
+
+        last_id = int(request.headers.get("Last-Event-ID", "0") or "0")
+
+        @stream_with_context
+        def gen():
+            # Subscribe BEFORE replay so any items published during the DB
+            # query are still delivered. The live loop will pick them up
+            # after the replay finishes.
+            q = esp_log_bus.subscribe()
+            try:
+                if last_id > 0:
+                    backlog = db.recent_esp_log(limit=200, after_id=last_id)
+                    for row in reversed(backlog):          # oldest first
+                        yield _sse_format(_row_to_dict(row))
+                last_ping = time.monotonic()
+                while True:
+                    item = esp_log_bus.wait_for_item(q, timeout=1.0)
+                    if item is not None:
+                        yield _sse_format(item)
+                    now = time.monotonic()
+                    if now - last_ping > 15:
+                        yield ": ping\n\n"
+                        last_ping = now
+            except GeneratorExit:
+                pass
+            finally:
+                esp_log_bus.unsubscribe(q)
+
+        return Response(gen(), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache",
+                                 "X-Accel-Buffering": "no"})
 
     return app
 
@@ -219,6 +330,38 @@ def _allocate_user_name(db) -> str:
                 pass
     nxt = (max(nums) + 1) if nums else 1
     return f"user_{nxt:03d}"
+
+
+def _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                        data_dir, start_time, gate_tracker=None) -> dict:
+    import shutil
+    expected = {"cap", "detect", "rec", "bus-consumer", "flask",
+                "cleanup", "uart-rx", "uart-tx", "uart-hb"}
+    active = {t.name for t in threading.enumerate()}
+    last_frame_ago = None
+    last_ts = getattr(hub, "_last_publish_mono", None)
+    if isinstance(last_ts, (int, float)):
+        last_frame_ago = max(0.0, time.monotonic() - last_ts)
+    n_users = len(db.list_users()) if hasattr(db, "list_users") else None
+    try:
+        disk_free_gb = shutil.disk_usage(str(data_dir)).free / 1024**3
+    except OSError:
+        disk_free_gb = None
+    body = {
+        "uptime_s": int(time.monotonic() - start_time),
+        "link_alive": bool(uart.link_alive()),
+        "last_frame_ago_s": last_frame_ago,
+        "threads_ok": expected.issubset(active),
+        "enrolled_users": n_users,
+        "cap_fps": round(cap_fps.fps(), 1) if cap_fps else None,
+        "det_fps": round(det_fps.fps(), 1) if det_fps else None,
+        "events_today": db.count_events_today(),
+        "disk_free_gb": round(disk_free_gb, 2) if disk_free_gb is not None else None,
+        "last_grant": db.last_grant_event(),
+    }
+    if gate_tracker is not None:
+        body["gate"] = gate_tracker.snapshot()
+    return body
 
 
 def _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module=None):
@@ -291,16 +434,3 @@ def _annotated_jpeg(hub, overlay, cv2_module=None):
     return buf.tobytes() if ok else None
 
 
-def render_template_string_events(rows):
-    """Render the events.json HTMX fragment without using a separate template."""
-    parts = []
-    for r in rows:
-        ev_id, ts, method, _uid, name, granted, _detail, clip = r
-        ok = "✓" if granted else "✗"
-        clip_link = f'<a href="/clips/{ev_id}.mp4">▶</a>' if clip else "-"
-        name = name or "-"
-        parts.append(
-            f"<tr><td>{ts}</td><td>{method}</td><td>{name}</td>"
-            f"<td>{ok}</td><td>{clip_link}</td></tr>"
-        )
-    return "".join(parts)

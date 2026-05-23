@@ -1,47 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Users{% endblock %}
 {% block body %}
-<h2>Users</h2>
-<table>
-  <thead>
-    <tr>
-      <th>id</th><th>name</th><th>created</th><th>last seen</th>
-      <th>#enc</th><th>QR</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for u in users %}
-    {% set id_ = u[0] %}
-    {% set name = u[1] %}
-    {% set created = u[2] %}
-    {% set last_seen = u[3] %}
-    {% set n_enc = u[4] %}
-    {% set has_qr = u[5] %}
-    <tr>
-      <td>{{ id_ }}</td>
-      <td>{{ name }}</td>
-      <td><small>{{ created }}</small></td>
-      <td><small>{{ last_seen or "-" }}</small></td>
-      <td>{{ n_enc }}</td>
-      <td>
-        {% if has_qr %}
-          <a href="/qr/{{ name }}.png" target="_blank" title="Xem QR">
-            <img src="/qr/{{ name }}.png" alt="QR {{ name }}"
-                 style="width:60px;height:60px;vertical-align:middle;border:1px solid #ccc;">
-          </a>
-          <a href="/qr/{{ name }}.png?download=1"
-             role="button" class="contrast"
-             style="padding:0.2rem 0.5rem;margin-left:0.5rem;font-size:0.85em;"
-             title="Tải PNG về máy">⬇</a>
-        {% else %}
-          <em>—</em>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% if not users %}
-  <p><em>Chưa có user nào. Quay lại <a href="/">dashboard</a> để tạo.</em></p>
-{% endif %}
+<div class="page-header">
+  <h1>Users</h1>
+  <span class="meta">{{ users|length }} enrolled</span>
+</div>
+
+<article class="card">
+  {% if users %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>id</th>
+        <th>name</th>
+        <th>created</th>
+        <th>last seen</th>
+        <th>#encodings</th>
+        <th>QR</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      {% set id_ = u[0] %}
+      {% set name = u[1] %}
+      {% set created = u[2] %}
+      {% set last_seen = u[3] %}
+      {% set n_enc = u[4] %}
+      {% set has_qr = u[5] %}
+      <tr>
+        <td class="mono">{{ id_ }}</td>
+        <td>{{ name }}</td>
+        <td class="mono ts">{{ created }}</td>
+        <td class="mono ts">{{ last_seen or "—" }}</td>
+        <td class="mono">{{ n_enc }}</td>
+        <td>
+          {% if has_qr %}
+            <a href="/qr/{{ name }}.png" target="_blank" title="Xem QR full size">
+              <img src="/qr/{{ name }}.png" alt="QR {{ name }}"
+                   style="width:60px;height:60px;vertical-align:middle;border:1px solid var(--border);border-radius:var(--r-sm);">
+            </a>
+            <a class="btn btn-secondary" style="padding:2px 8px;font-size:var(--fs-xs);margin-left:var(--s-2);"
+               href="/qr/{{ name }}.png?download=1"
+               title="Tải PNG về máy">⬇</a>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    <p>No users enrolled. Chưa có user nào.</p>
+    <pre>python -m smart_gate.cli enroll --name alice</pre>
+    <p class="muted">Or use <strong>+ Tạo user mới</strong> on the <a href="/">dashboard</a> for a QR-only flow.</p>
+  </div>
+  {% endif %}
+</article>
 {% endblock %}

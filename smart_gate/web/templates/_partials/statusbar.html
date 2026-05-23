@@ -1,0 +1,15 @@
+<div id="statusbar"
+     class="statusbar"
+     hx-get="/healthz?format=html&panel=statusbar"
+     hx-trigger="every 2.5s"
+     hx-swap="outerHTML">
+  <span class="pill {{ 'pill-ok' if h.link_alive else 'pill-warn' }}">
+    <span class="dot {{ 'dot-ok' if h.link_alive else 'dot-warn' }}"></span> LINK
+  </span>
+  <span class="mono {{ 'fps-bad' if (h.cap_fps or 0) < 1 else 'fps-warn' if (h.cap_fps or 0) < 8 else '' }}">
+    {{ "%.1f"|format(h.cap_fps or 0) }} fps
+  </span>
+  <span class="mono {{ 'frame-bad' if (h.last_frame_ago_s or 0) > 5 else '' }}">
+    {{ "%.2fs"|format(h.last_frame_ago_s or 0) }}
+  </span>
+</div>

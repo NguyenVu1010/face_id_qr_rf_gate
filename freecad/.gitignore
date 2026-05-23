@@ -1,0 +1,6 @@
+# Binary FreeCAD documents — rebuild from build_enclosure.py
+*.FCStd
+*.FCBak
+
+# Exported meshes — rebuild from build_enclosure.py
+exports/*.stl

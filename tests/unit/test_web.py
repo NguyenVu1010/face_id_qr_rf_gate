@@ -107,3 +107,310 @@ def test_clip_serves_correct_event(setup):
         assert r.data == b"OLDCLIP"
         r2 = c.get(f"/clips/{eid_new}.mp4")
         assert r2.status_code == 404
+
+
+def test_healthz_extended_fields(setup):
+    app, db, _hub, _uart, _ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz")
+        body = r.get_json()
+        for key in ("cap_fps", "det_fps", "events_today",
+                    "disk_free_gb", "last_grant"):
+            assert key in body, f"missing {key}"
+        # last_grant is None or a dict with name+ts
+        if body["last_grant"] is not None:
+            assert "name" in body["last_grant"]
+            assert "ts" in body["last_grant"]
+
+
+def test_healthz_preserves_enrolled_users(setup):
+    """enrolled_users must still be present after the extension."""
+    app, *_ = setup
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        assert "enrolled_users" in body
+
+
+def test_healthz_events_today_counts_inserts(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "h.db"); db.migrate()
+    db.insert_event("face", None, True)
+    db.insert_event("face", None, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/healthz")
+        assert r.get_json()["events_today"] == 2
+
+
+def test_healthz_last_grant_present(setup):
+    app, db, *_ = setup
+    # setup already inserted one granted face for alice
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        assert body["last_grant"] is not None
+        assert body["last_grant"]["name"] == "alice"
+
+
+def test_diag_ping_ok(setup):
+    app, _db, _hub, uart, _ = setup
+    uart.send_cmd.return_value = {"echo": "pong"}
+    with app.test_client() as c:
+        r = c.post("/api/diag/ping")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert "ack_ms" in body and isinstance(body["ack_ms"], int)
+        assert body["data"] == {"echo": "pong"}
+    uart.send_cmd.assert_called_once_with("ping", timeout=2.0)
+
+
+def test_diag_status_link_down(setup):
+    app, _, _, uart, _ = setup
+    from smart_gate.link.uart_client import LinkDown
+    uart.send_cmd.side_effect = LinkDown()
+    with app.test_client() as c:
+        r = c.post("/api/diag/status")
+        assert r.status_code == 503
+        body = r.get_json()
+        assert "error" in body
+
+
+def test_events_json_filter_method(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "fm.db"); db.migrate()
+    db.insert_event("face", None, True)
+    db.insert_event("qr", None, True)
+    db.insert_event("rfid", None, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/events.json?method=face&method=qr")
+        rows = r.get_json()
+        methods = sorted(row["method"] for row in rows)
+        assert methods == ["face", "qr"]
+
+
+def test_events_json_filter_granted(setup):
+    app, db, *_ = setup
+    db.insert_event("face", None, False)
+    with app.test_client() as c:
+        denied = c.get("/events.json?granted=0").get_json()
+        granted = c.get("/events.json?granted=1").get_json()
+    assert all(row["granted"] is False for row in denied)
+    assert all(row["granted"] is True for row in granted)
+
+
+def test_events_json_filter_q(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "fq.db"); db.migrate()
+    db.insert_user("alice"); db.insert_user("bob")
+    a, b = db.get_user_id_by_name("alice"), db.get_user_id_by_name("bob")
+    db.insert_event("face", a, True); db.insert_event("face", b, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        rows = c.get("/events.json?q=ali").get_json()
+    assert len(rows) == 1 and rows[0]["user_name"] == "alice"
+
+
+def test_events_json_html_has_data_event_id(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events.json?format=html")
+        assert r.status_code == 200
+        assert b'<tr data-event-id="' in r.data
+
+
+def test_events_json_period_today(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        rows = c.get("/events.json?period=today").get_json()
+    # setup inserted one event "today" (default ts=datetime('now'))
+    assert len(rows) == 1
+
+
+def test_healthz_html_statusbar(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=statusbar")
+        assert r.status_code == 200
+        assert b'id="statusbar"' in r.data
+        assert b"LINK" in r.data
+
+
+def test_healthz_html_banner_hidden_when_link_alive(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=banner")
+        assert r.status_code == 200
+        assert b'id="link-banner"' in r.data
+        assert b"Link down" not in r.data
+
+
+def test_healthz_html_banner_shown_when_link_down(setup):
+    app, _, _, uart, _ = setup
+    uart.link_alive.return_value = False
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=banner")
+        assert b"Link down" in r.data
+
+
+def test_healthz_html_quickstats(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=quickstats")
+        assert b"cap fps" in r.data
+        assert b"det fps" in r.data
+        assert b"frame age" in r.data
+        assert b"events today" in r.data
+
+
+def test_healthz_html_systemcards(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=systemcards")
+        assert b"LINK" in r.data
+        assert b"CAP" in r.data
+        assert b"DET" in r.data
+        assert b"DISK" in r.data
+
+
+def test_healthz_json_still_works_after_html_dispatcher(setup):
+    """JSON must remain the default response and preserve all fields."""
+    app, *_ = setup
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        for key in ("uptime_s", "link_alive", "last_frame_ago_s",
+                    "threads_ok", "enrolled_users", "cap_fps", "det_fps",
+                    "events_today", "disk_free_gb", "last_grant"):
+            assert key in body, f"missing {key}"
+
+
+def test_events_page_renders(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert r.status_code == 200
+        assert b"Events" in r.data
+
+
+def test_system_page_renders(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/system")
+        assert r.status_code == 200
+        assert b"System" in r.data
+
+
+def test_base_has_topbar_and_banner(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert b'id="statusbar"' in r.data
+        assert b'id="link-banner"' in r.data
+        assert b'href="/events"' in r.data
+        assert b'href="/system"' in r.data
+        assert b'app.css' in r.data
+        assert b'pico' not in r.data
+
+
+def test_dashboard_has_stream_quickstats_events(setup):
+    """New design-system markup is in place."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b"Live preview" in r.data
+        assert b'src="/stream.mjpeg"' in r.data
+        assert b"Open gate" in r.data
+        assert b"Close" in r.data
+        assert b'id="quickstats"' in r.data
+        assert b'id="events-tbody"' in r.data
+        assert b'href="/events"' in r.data
+
+
+def test_dashboard_preserves_enroll_button(setup):
+    """The 'Tạo user mới' / /api/enroll workflow must survive the rewrite."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b'hx-post="/api/enroll"' in r.data
+        assert b'face_capture' in r.data           # hx-vals
+        assert b'enroll-result' in r.data          # response card target
+
+
+def test_dashboard_preserves_gate_badge(setup):
+    """The gate state badge polling /api/gate/state.json must remain."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b'gate-badge' in r.data
+        assert b'/api/gate/state.json' in r.data
+
+
+def test_events_page_has_filter_form(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert b'id="event-filter"' in r.data
+        assert b'name="method"' in r.data
+        assert b'name="granted"' in r.data
+        assert b'name="q"' in r.data
+        assert b'name="period"' in r.data
+
+
+def test_events_page_has_clip_modal(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert b'id="clip-modal"' in r.data
+        assert b'id="clip-video"' in r.data
+        assert b'id="events-live"' in r.data
+
+
+def test_users_page_empty_state(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "e.db"); db.migrate()
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/users")
+        decoded = r.data.decode("utf-8", "ignore")
+        assert "No users enrolled" in decoded or "Chưa có user" in decoded
+
+
+def test_users_page_counts_users(setup):
+    app, db, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/users")
+        assert b"1 enrolled" in r.data
+        assert b"alice" in r.data
+
+
+def test_users_page_preserves_qr_thumbnail(setup):
+    """The QR column with 60x60 thumbnail and ?download=1 button must survive."""
+    app, db, *_ = setup
+    # Setup fixture inserts alice (no QR by default). Add a QR token so the
+    # 'has_qr' flag becomes truthy.
+    db.insert_qr_token("a" * 32, db.get_user_id_by_name("alice"))
+    with app.test_client() as c:
+        r = c.get("/users")
+        # Thumbnail link to /qr/alice.png
+        assert b'/qr/alice.png' in r.data
+        # Download button ?download=1
+        assert b'?download=1' in r.data
+
+
+def test_system_page_has_cards_and_log(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/system")
+        assert b'id="systemcards"' in r.data
+        assert b'id="esp-log"' in r.data
+        assert b'id="sse-status"' in r.data
+        assert b'data-diag="ping"' in r.data
+        assert b'data-diag="status"' in r.data

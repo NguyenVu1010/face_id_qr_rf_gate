@@ -1,0 +1,26 @@
+<div id="systemcards" class="systemcards"
+     hx-get="/healthz?format=html&panel=systemcards"
+     hx-trigger="every 2.5s"
+     hx-swap="outerHTML">
+  <article class="card stat-card">
+    <header>LINK</header>
+    <div class="big {{ 'ok' if h.link_alive else 'warn' }}">
+      <span class="dot {{ 'dot-ok' if h.link_alive else 'dot-warn' }}"></span>
+      {{ "up" if h.link_alive else "down" }}
+    </div>
+  </article>
+  <article class="card stat-card">
+    <header>CAP</header>
+    <div class="big mono">{{ "%.1f"|format(h.cap_fps or 0) }} fps</div>
+    <div class="muted">frame {{ "%.2fs"|format(h.last_frame_ago_s or 0) }}</div>
+  </article>
+  <article class="card stat-card">
+    <header>DET</header>
+    <div class="big mono">{{ "%.1f"|format(h.det_fps or 0) }} fps</div>
+  </article>
+  <article class="card stat-card {{ 'low' if (h.disk_free_gb or 999) < 0.2 else '' }}">
+    <header>DISK</header>
+    <div class="big mono">{{ "%.2f"|format(h.disk_free_gb or 0) }} GB</div>
+    <div class="muted">free</div>
+  </article>
+</div>

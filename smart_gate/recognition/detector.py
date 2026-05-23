@@ -47,7 +47,8 @@ class CheckInEvent:
 
 
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
-                 *, deps=None, overlay=None, state=None) -> None:
+                 *, deps=None, overlay=None, state=None,
+                 fps_counter=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
         {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
     When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
@@ -80,6 +81,8 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
             continue
         try:
             _process_frame(bgr, cfg, matcher, event_bus, deps, overlay, state)
+            if fps_counter is not None:
+                fps_counter.tick()
         except Exception as e:
             log.exception("detector frame failed: %s", e)
 

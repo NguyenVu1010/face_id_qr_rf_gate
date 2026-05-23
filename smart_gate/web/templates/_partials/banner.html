@@ -1,0 +1,10 @@
+<div id="link-banner"
+     hx-get="/healthz?format=html&panel=banner"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML">
+  {% if not h.link_alive %}
+  <div class="banner banner-warn">
+    ⚠ Link down — UART silent. Manual gate commands disabled.
+  </div>
+  {% endif %}
+</div>

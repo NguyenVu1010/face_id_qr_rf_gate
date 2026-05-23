@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}System{% endblock %}
+{% block body %}
+<div class="page-header">
+  <h1>System</h1>
+  <span class="meta">snapshot loaded at request time</span>
+</div>
+
+{# 4 status cards, self-polled #}
+{% include "_partials/systemcards.html" %}
+
+<article class="card" style="margin-top: var(--s-5);">
+  <header>
+    <span>Health JSON</span>
+    <span class="meta muted">snapshot at page load</span>
+  </header>
+  <div class="body">
+    <pre id="healthz-pre" class="healthz-pre">{{ h | tojson(indent=2) }}</pre>
+  </div>
+</article>
+
+<article class="card" style="margin-top: var(--s-5);">
+  <header>Diagnostics</header>
+  <div class="body" style="display:flex; gap: var(--s-3);">
+    <button class="btn btn-secondary" data-diag="ping">Send ping</button>
+    <button class="btn btn-secondary" data-diag="status">Send cmd:status</button>
+  </div>
+</article>
+
+<dialog id="diag-modal" class="dialog">
+  <header class="dialog-header">
+    <h3 id="diag-title">Diagnostic</h3>
+    <button class="btn btn-ghost" onclick="document.getElementById('diag-modal').close()">✕</button>
+  </header>
+  <div class="body" style="padding: var(--s-4); min-width:380px;">
+    <pre id="diag-result" class="healthz-pre"></pre>
+  </div>
+</dialog>
+
+<article class="card" style="margin-top: var(--s-5);">
+  <header>
+    <span>ESP32 log</span>
+    <div class="log-toolbar">
+      <span id="sse-status" class="pill pill-warn">
+        <span class="dot dot-warn"></span> connecting…
+      </span>
+      <button class="btn btn-ghost" id="log-pause">Pause</button>
+      <button class="btn btn-ghost" id="log-clear">Clear</button>
+    </div>
+  </header>
+  <ol class="esp-log" id="esp-log"
+      hx-get="/api/esp_log?limit=100&format=html"
+      hx-trigger="load"
+      hx-swap="innerHTML"></ol>
+</article>
+{% endblock %}

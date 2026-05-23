@@ -61,3 +61,26 @@ sudo systemctl start smart-gate
 
 After flashing, runtime traffic resumes over `/dev/serial0` (the GPIO UART).
 The USB cable is optional while the daemon runs.
+
+## Web admin smoke test (pre-merge)
+
+With the daemon running and the ESP32 connected:
+
+1. Open `http://<pi>:8080/`. Top bar shows green **LINK** pill + cap fps number + frame-age (< 1s). Stream `<img>` shows a placeholder until the camera publishes.
+2. Click **⏵ Open gate** — gate opens, toast "Gate opening…". Click **⏹ Close gate** — toast "Gate closing…".
+3. Click **+ Tạo user mới** → confirm dialog → enroll-result card appears with QR thumbnail + ⬇ Tải QR PNG button.
+4. Trigger an authorized face match — within 2 s a new row appears at the top of Recent events.
+5. Watch the gate badge cycle through `idle → opening → open → timeout_warn → closing → idle` over a 20s arc; `timeout_warn` should pulse.
+6. Navigate to `/events`. Toggle the `face` filter pill — only face rows show. Clear filter, choose **denied** — only stranger rows show. Type "ali" in the user search — only alice rows. Pick "Last 7 days" period. Click `▶` on a row that has a clip — native `<dialog>` modal plays the mp4 + offers Download.
+7. Navigate to `/users` — alice row visible with QR thumbnail + ⬇ download button. Counter shows "N enrolled".
+8. Navigate to `/system` — four status cards green (LINK / CAP / DET / DISK), pretty-printed health JSON, two diag buttons. Click **Send ping** → modal opens with `ack_ms` integer. Click **Send cmd:status** → modal updates with the ESP32-side status payload. ESP32 log scrolls live, newest-first.
+9. **Failure-mode walk:**
+   - Unplug USB to ESP32. Within ~5 s:
+     - Top bar LINK pill turns amber.
+     - `link-banner` appears: "⚠ Link down — UART silent. Manual gate commands disabled."
+     - `Open gate` → toast "Gate command failed".
+     - `#sse-status` becomes "reconnecting…".
+   - Replug USB. Within ~5 s: banner disappears, LINK turns green, SSE pill goes live; any ESP32 log lines emitted during the outage are replayed (uses `Last-Event-ID` resume).
+10. **Pause / Clear** controls on the ESP32 log list work; capacity is bounded at 500 lines (oldest dropped).
+
+If any step fails: `pytest tests/ -q --ignore=tests/unit/test_cli.py` should still be green; the bug is in templates/JS rather than backend.

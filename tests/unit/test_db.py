@@ -130,3 +130,88 @@ def test_update_event_clip(db):
     db.update_event_clip(eid, None)
     rows = db.recent_events()
     assert rows[0][7] is None
+
+
+def test_recent_events_filter_method(tmp_data_dir):
+    db = Database(tmp_data_dir / "f.db"); db.migrate()
+    db.insert_user("alice"); uid = db.get_user_id_by_name("alice")
+    db.insert_event("face", uid, True)
+    db.insert_event("qr", uid, True)
+    db.insert_event("rfid", uid, True)
+    rows = db.recent_events(method=["face", "qr"])
+    methods = [r[2] for r in rows]
+    assert sorted(methods) == ["face", "qr"]
+
+
+def test_recent_events_filter_granted(tmp_data_dir):
+    db = Database(tmp_data_dir / "g.db"); db.migrate()
+    db.insert_event("face", None, True)
+    db.insert_event("face", None, False)
+    granted = db.recent_events(granted=1)
+    denied = db.recent_events(granted=0)
+    assert len(granted) == 1 and granted[0][5] == 1
+    assert len(denied) == 1 and denied[0][5] == 0
+
+
+def test_recent_events_filter_q(tmp_data_dir):
+    db = Database(tmp_data_dir / "q.db"); db.migrate()
+    db.insert_user("alice"); db.insert_user("bob")
+    a, b = db.get_user_id_by_name("alice"), db.get_user_id_by_name("bob")
+    db.insert_event("face", a, True)
+    db.insert_event("face", b, True)
+    rows = db.recent_events(q="ali")
+    assert len(rows) == 1
+    assert rows[0][4] == "alice"
+
+
+def test_recent_events_before_id(tmp_data_dir):
+    db = Database(tmp_data_dir / "p.db"); db.migrate()
+    ids = [db.insert_event("face", None, True) for _ in range(5)]
+    rows = db.recent_events(before_id=ids[3], limit=10)
+    # before_id=ids[3] means strictly less than ids[3] -> ids[0], ids[1], ids[2]
+    returned = sorted(r[0] for r in rows)
+    assert returned == sorted(ids[:3])
+
+
+def test_recent_events_after_id_combines_with_filter(tmp_data_dir):
+    db = Database(tmp_data_dir / "c.db"); db.migrate()
+    db.insert_user("alice"); a = db.get_user_id_by_name("alice")
+    e1 = db.insert_event("face", a, True)
+    e2 = db.insert_event("qr", a, True)
+    e3 = db.insert_event("face", a, True)
+    rows = db.recent_events(after_id=e1, method=["face"])
+    assert {r[0] for r in rows} == {e3}
+
+
+def test_recent_esp_log_orders_desc(tmp_data_dir):
+    db = Database(tmp_data_dir / "l.db"); db.migrate()
+    db.insert_esp_log("info", "boot", "first")
+    db.insert_esp_log("warn", "audio", "second")
+    db.insert_esp_log("info", "rfid", "third")
+    rows = db.recent_esp_log(limit=10)
+    msgs = [r[4] for r in rows]
+    assert msgs == ["third", "second", "first"]
+
+
+def test_recent_esp_log_after_id(tmp_data_dir):
+    db = Database(tmp_data_dir / "la.db"); db.migrate()
+    db.insert_esp_log("info", "a", "1")
+    mid = db.insert_esp_log("info", "b", "2")
+    db.insert_esp_log("info", "c", "3")
+    rows = db.recent_esp_log(limit=10, after_id=mid)
+    msgs = [r[4] for r in rows]
+    assert msgs == ["3"]
+
+
+def test_insert_esp_log_returns_id(tmp_data_dir):
+    db = Database(tmp_data_dir / "i.db"); db.migrate()
+    rid = db.insert_esp_log("info", "tag", "msg")
+    assert isinstance(rid, int) and rid > 0
+
+
+def test_count_events_today(tmp_data_dir):
+    db = Database(tmp_data_dir / "ct.db"); db.migrate()
+    # All events INSERTed with default ts=datetime('now') are "today"
+    db.insert_event("face", None, True)
+    db.insert_event("face", None, True)
+    assert db.count_events_today() == 2

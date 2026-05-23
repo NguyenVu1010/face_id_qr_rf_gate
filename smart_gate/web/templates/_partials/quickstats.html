@@ -1,0 +1,31 @@
+<div id="quickstats" class="quickstats"
+     hx-get="/healthz?format=html&panel=quickstats"
+     hx-trigger="every 2.5s"
+     hx-swap="outerHTML">
+  <div class="stat">
+    <div class="stat-value mono">{{ "%.1f"|format(h.cap_fps or 0) }}</div>
+    <div class="stat-label">cap fps</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value mono">{{ "%.1f"|format(h.det_fps or 0) }}</div>
+    <div class="stat-label">det fps</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value mono {{ 'fps-bad' if (h.last_frame_ago_s or 0) > 5 else '' }}">
+      {{ "%.2fs"|format(h.last_frame_ago_s or 0) }}
+    </div>
+    <div class="stat-label">frame age</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value mono">{{ h.events_today }}</div>
+    <div class="stat-label">events today</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ h.last_grant.name if h.last_grant else "—" }}</div>
+    <div class="stat-label">last grant</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value mono">{{ (h.last_grant.ts[11:19] if h.last_grant and h.last_grant.ts else "—") }}</div>
+    <div class="stat-label">last grant ts</div>
+  </div>
+</div>
