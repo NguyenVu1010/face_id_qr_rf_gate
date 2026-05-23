@@ -178,23 +178,35 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/healthz")
     def healthz():
+        import shutil
         expected = {"cap", "detect", "rec", "bus-consumer", "flask",
                     "cleanup", "uart-rx", "uart-tx", "uart-hb"}
         active = {t.name for t in threading.enumerate()}
         last_frame_ago = None
         last_ts = getattr(hub, "_last_publish_mono", None)
-        if last_ts is not None:
+        if isinstance(last_ts, (int, float)):
             last_frame_ago = max(0.0, time.monotonic() - last_ts)
         n_users = len(db.list_users()) if hasattr(db, "list_users") else None
-        gate = gate_tracker.snapshot() if gate_tracker is not None else None
-        return jsonify({
+        try:
+            disk_free_gb = shutil.disk_usage(str(data_dir)).free / 1024**3
+        except OSError:
+            disk_free_gb = None
+        last_grant = _last_grant_row(db)
+        body = {
             "uptime_s": int(time.monotonic() - start_time),
             "link_alive": bool(uart.link_alive()),
             "last_frame_ago_s": last_frame_ago,
             "threads_ok": expected.issubset(active),
             "enrolled_users": n_users,
-            "gate": gate,
-        })
+            "cap_fps": round(cap_fps.fps(), 1) if cap_fps else None,
+            "det_fps": round(det_fps.fps(), 1) if det_fps else None,
+            "events_today": db.count_events_today(),
+            "disk_free_gb": round(disk_free_gb, 2) if disk_free_gb is not None else None,
+            "last_grant": last_grant,
+        }
+        if gate_tracker is not None:
+            body["gate"] = gate_tracker.snapshot()
+        return jsonify(body)
 
     @app.route("/api/gate/state.json")
     def gate_state_json():
@@ -220,6 +232,20 @@ def _allocate_user_name(db) -> str:
                 pass
     nxt = (max(nums) + 1) if nums else 1
     return f"user_{nxt:03d}"
+
+
+def _last_grant_row(db) -> "dict | None":
+    """Return the most recent granted event as {ts, name}, or None."""
+    conn = db.connect()
+    row = conn.execute(
+        "SELECT e.ts, u.name FROM events e "
+        "LEFT JOIN users u ON u.id = e.user_id "
+        "WHERE e.granted = 1 "
+        "ORDER BY e.id DESC LIMIT 1"
+    ).fetchone()
+    if row is None:
+        return None
+    return {"ts": row[0], "name": row[1] or "—"}
 
 
 def _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module=None):

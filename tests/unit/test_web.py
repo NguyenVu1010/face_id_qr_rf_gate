@@ -107,3 +107,47 @@ def test_clip_serves_correct_event(setup):
         assert r.data == b"OLDCLIP"
         r2 = c.get(f"/clips/{eid_new}.mp4")
         assert r2.status_code == 404
+
+
+def test_healthz_extended_fields(setup):
+    app, db, _hub, _uart, _ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz")
+        body = r.get_json()
+        for key in ("cap_fps", "det_fps", "events_today",
+                    "disk_free_gb", "last_grant"):
+            assert key in body, f"missing {key}"
+        # last_grant is None or a dict with name+ts
+        if body["last_grant"] is not None:
+            assert "name" in body["last_grant"]
+            assert "ts" in body["last_grant"]
+
+
+def test_healthz_preserves_enrolled_users(setup):
+    """enrolled_users must still be present after the extension."""
+    app, *_ = setup
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        assert "enrolled_users" in body
+
+
+def test_healthz_events_today_counts_inserts(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "h.db"); db.migrate()
+    db.insert_event("face", None, True)
+    db.insert_event("face", None, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/healthz")
+        assert r.get_json()["events_today"] == 2
+
+
+def test_healthz_last_grant_present(setup):
+    app, db, *_ = setup
+    # setup already inserted one granted face for alice
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        assert body["last_grant"] is not None
+        assert body["last_grant"]["name"] == "alice"
