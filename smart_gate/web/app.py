@@ -207,34 +207,19 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/healthz")
     def healthz():
-        import shutil
-        expected = {"cap", "detect", "rec", "bus-consumer", "flask",
-                    "cleanup", "uart-rx", "uart-tx", "uart-hb"}
-        active = {t.name for t in threading.enumerate()}
-        last_frame_ago = None
-        last_ts = getattr(hub, "_last_publish_mono", None)
-        if isinstance(last_ts, (int, float)):
-            last_frame_ago = max(0.0, time.monotonic() - last_ts)
-        n_users = len(db.list_users()) if hasattr(db, "list_users") else None
-        try:
-            disk_free_gb = shutil.disk_usage(str(data_dir)).free / 1024**3
-        except OSError:
-            disk_free_gb = None
-        last_grant = _last_grant_row(db)
-        body = {
-            "uptime_s": int(time.monotonic() - start_time),
-            "link_alive": bool(uart.link_alive()),
-            "last_frame_ago_s": last_frame_ago,
-            "threads_ok": expected.issubset(active),
-            "enrolled_users": n_users,
-            "cap_fps": round(cap_fps.fps(), 1) if cap_fps else None,
-            "det_fps": round(det_fps.fps(), 1) if det_fps else None,
-            "events_today": db.count_events_today(),
-            "disk_free_gb": round(disk_free_gb, 2) if disk_free_gb is not None else None,
-            "last_grant": last_grant,
-        }
-        if gate_tracker is not None:
-            body["gate"] = gate_tracker.snapshot()
+        body = _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                                   data_dir, start_time, gate_tracker)
+        if request.args.get("format") == "html":
+            panel = request.args.get("panel", "statusbar")
+            if panel == "statusbar":
+                return render_template("_partials/statusbar.html", h=body)
+            if panel == "banner":
+                return render_template("_partials/banner.html", h=body)
+            if panel == "quickstats":
+                return render_template("_partials/quickstats.html", h=body)
+            if panel == "systemcards":
+                return render_template("_partials/systemcards.html", h=body)
+            return ("unknown panel", 400)
         return jsonify(body)
 
     @app.route("/api/gate/state.json")
@@ -334,6 +319,38 @@ def _allocate_user_name(db) -> str:
                 pass
     nxt = (max(nums) + 1) if nums else 1
     return f"user_{nxt:03d}"
+
+
+def _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                        data_dir, start_time, gate_tracker=None) -> dict:
+    import shutil
+    expected = {"cap", "detect", "rec", "bus-consumer", "flask",
+                "cleanup", "uart-rx", "uart-tx", "uart-hb"}
+    active = {t.name for t in threading.enumerate()}
+    last_frame_ago = None
+    last_ts = getattr(hub, "_last_publish_mono", None)
+    if isinstance(last_ts, (int, float)):
+        last_frame_ago = max(0.0, time.monotonic() - last_ts)
+    n_users = len(db.list_users()) if hasattr(db, "list_users") else None
+    try:
+        disk_free_gb = shutil.disk_usage(str(data_dir)).free / 1024**3
+    except OSError:
+        disk_free_gb = None
+    body = {
+        "uptime_s": int(time.monotonic() - start_time),
+        "link_alive": bool(uart.link_alive()),
+        "last_frame_ago_s": last_frame_ago,
+        "threads_ok": expected.issubset(active),
+        "enrolled_users": n_users,
+        "cap_fps": round(cap_fps.fps(), 1) if cap_fps else None,
+        "det_fps": round(det_fps.fps(), 1) if det_fps else None,
+        "events_today": db.count_events_today(),
+        "disk_free_gb": round(disk_free_gb, 2) if disk_free_gb is not None else None,
+        "last_grant": _last_grant_row(db),
+    }
+    if gate_tracker is not None:
+        body["gate"] = gate_tracker.snapshot()
+    return body
 
 
 def _last_grant_row(db) -> "dict | None":

@@ -230,3 +230,60 @@ def test_events_json_period_today(setup):
         rows = c.get("/events.json?period=today").get_json()
     # setup inserted one event "today" (default ts=datetime('now'))
     assert len(rows) == 1
+
+
+def test_healthz_html_statusbar(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=statusbar")
+        assert r.status_code == 200
+        assert b'id="statusbar"' in r.data
+        assert b"LINK" in r.data
+
+
+def test_healthz_html_banner_hidden_when_link_alive(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=banner")
+        assert r.status_code == 200
+        assert b'id="link-banner"' in r.data
+        assert b"Link down" not in r.data
+
+
+def test_healthz_html_banner_shown_when_link_down(setup):
+    app, _, _, uart, _ = setup
+    uart.link_alive.return_value = False
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=banner")
+        assert b"Link down" in r.data
+
+
+def test_healthz_html_quickstats(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=quickstats")
+        assert b"cap fps" in r.data
+        assert b"det fps" in r.data
+        assert b"frame age" in r.data
+        assert b"events today" in r.data
+
+
+def test_healthz_html_systemcards(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/healthz?format=html&panel=systemcards")
+        assert b"LINK" in r.data
+        assert b"CAP" in r.data
+        assert b"DET" in r.data
+        assert b"DISK" in r.data
+
+
+def test_healthz_json_still_works_after_html_dispatcher(setup):
+    """JSON must remain the default response and preserve all fields."""
+    app, *_ = setup
+    with app.test_client() as c:
+        body = c.get("/healthz").get_json()
+        for key in ("uptime_s", "link_alive", "last_frame_ago_s",
+                    "threads_ok", "enrolled_users", "cap_fps", "det_fps",
+                    "events_today", "disk_free_gb", "last_grant"):
+            assert key in body, f"missing {key}"
