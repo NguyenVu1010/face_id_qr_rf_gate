@@ -174,3 +174,59 @@ def test_diag_status_link_down(setup):
         assert r.status_code == 503
         body = r.get_json()
         assert "error" in body
+
+
+def test_events_json_filter_method(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "fm.db"); db.migrate()
+    db.insert_event("face", None, True)
+    db.insert_event("qr", None, True)
+    db.insert_event("rfid", None, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/events.json?method=face&method=qr")
+        rows = r.get_json()
+        methods = sorted(row["method"] for row in rows)
+        assert methods == ["face", "qr"]
+
+
+def test_events_json_filter_granted(setup):
+    app, db, *_ = setup
+    db.insert_event("face", None, False)
+    with app.test_client() as c:
+        denied = c.get("/events.json?granted=0").get_json()
+        granted = c.get("/events.json?granted=1").get_json()
+    assert all(row["granted"] is False for row in denied)
+    assert all(row["granted"] is True for row in granted)
+
+
+def test_events_json_filter_q(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "fq.db"); db.migrate()
+    db.insert_user("alice"); db.insert_user("bob")
+    a, b = db.get_user_id_by_name("alice"), db.get_user_id_by_name("bob")
+    db.insert_event("face", a, True); db.insert_event("face", b, True)
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        rows = c.get("/events.json?q=ali").get_json()
+    assert len(rows) == 1 and rows[0]["user_name"] == "alice"
+
+
+def test_events_json_html_has_data_event_id(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events.json?format=html")
+        assert r.status_code == 200
+        assert b'<tr data-event-id="' in r.data
+
+
+def test_events_json_period_today(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        rows = c.get("/events.json?period=today").get_json()
+    # setup inserted one event "today" (default ts=datetime('now'))
+    assert len(rows) == 1

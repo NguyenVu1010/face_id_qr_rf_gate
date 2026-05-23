@@ -1,0 +1,17 @@
+{% for r in rows %}
+<tr data-event-id="{{ r.id }}">
+  <td class="mono ts">{{ r.ts }}</td>
+  <td><span class="pill pill-{{ r.method }}">{{ r.method }}</span></td>
+  <td>{{ r.user_name or "—" }}</td>
+  <td class="cell-ok">
+    {% if r.granted %}<span class="ok-icon">✓</span>
+    {% else %}<span class="deny-icon">✗</span>{% endif %}
+  </td>
+  <td>
+    {% if r.clip_path %}
+      <a href="#" onclick="openClip({{ r.id }}, '{{ r.ts }}', '{{ r.user_name or '' }}'); return false;">▶</a>
+    {% else %}—{% endif %}
+  </td>
+  <td class="mono detail">{{ r.detail or "" }}</td>
+</tr>
+{% endfor %}

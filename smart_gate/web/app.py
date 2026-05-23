@@ -70,16 +70,42 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/events.json")
     def events_json():
+        # Parse query params
         after_id = int(request.args.get("after_id", 0))
-        rows = db.recent_events(limit=50, after_id=after_id)
-        fmt = request.args.get("format", "json")
-        if fmt == "html":
-            return render_template_string_events(rows)
-        return jsonify([
+        before_id_raw = request.args.get("before_id")
+        before_id = int(before_id_raw) if before_id_raw else None
+        limit = min(int(request.args.get("limit", 50)), 500)
+        methods = request.args.getlist("method") or None
+        granted_raw = request.args.get("granted")
+        granted = int(granted_raw) if granted_raw in ("0", "1") else None
+        q = request.args.get("q") or None
+
+        # Period → ISO timestamp lower bound (server-side resolution)
+        since = None
+        import datetime as _dt
+        period = request.args.get("period")
+        if period == "today":
+            since = _dt.datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        elif period in ("7d", "30d"):
+            days = 7 if period == "7d" else 30
+            since = (_dt.datetime.now() - _dt.timedelta(days=days)
+                     ).strftime("%Y-%m-%d %H:%M:%S")
+
+        rows = db.recent_events(limit=limit, after_id=after_id,
+                                before_id=before_id, method=methods,
+                                granted=granted, q=q, since=since)
+        records = [
             {"id": r[0], "ts": r[1], "method": r[2], "user_id": r[3],
              "user_name": r[4], "granted": bool(r[5]),
-             "detail": r[6], "clip_path": r[7]} for r in rows
-        ])
+             "detail": r[6], "clip_path": r[7]}
+            for r in rows
+        ]
+        fmt = request.args.get("format", "json")
+        if fmt == "html":
+            return render_template("_partials/event_rows.html", rows=records)
+        return jsonify(records)
 
     @app.route("/clips/<int:event_id>.mp4")
     def clip(event_id: int):
@@ -394,16 +420,3 @@ def _annotated_jpeg(hub, overlay, cv2_module=None):
     return buf.tobytes() if ok else None
 
 
-def render_template_string_events(rows):
-    """Render the events.json HTMX fragment without using a separate template."""
-    parts = []
-    for r in rows:
-        ev_id, ts, method, _uid, name, granted, _detail, clip = r
-        ok = "✓" if granted else "✗"
-        clip_link = f'<a href="/clips/{ev_id}.mp4">▶</a>' if clip else "-"
-        name = name or "-"
-        parts.append(
-            f"<tr><td>{ts}</td><td>{method}</td><td>{name}</td>"
-            f"<td>{ok}</td><td>{clip_link}</td></tr>"
-        )
-    return "".join(parts)
