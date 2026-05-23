@@ -316,3 +316,36 @@ def test_base_has_topbar_and_banner(setup):
         assert b'href="/system"' in r.data
         assert b'app.css' in r.data
         assert b'pico' not in r.data
+
+
+def test_dashboard_has_stream_quickstats_events(setup):
+    """New design-system markup is in place."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b"Live preview" in r.data
+        assert b'src="/stream.mjpeg"' in r.data
+        assert b"Open gate" in r.data
+        assert b"Close" in r.data
+        assert b'id="quickstats"' in r.data
+        assert b'id="events-tbody"' in r.data
+        assert b'href="/events"' in r.data
+
+
+def test_dashboard_preserves_enroll_button(setup):
+    """The 'Tạo user mới' / /api/enroll workflow must survive the rewrite."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b'hx-post="/api/enroll"' in r.data
+        assert b'face_capture' in r.data           # hx-vals
+        assert b'enroll-result' in r.data          # response card target
+
+
+def test_dashboard_preserves_gate_badge(setup):
+    """The gate state badge polling /api/gate/state.json must remain."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/")
+        assert b'gate-badge' in r.data
+        assert b'/api/gate/state.json' in r.data

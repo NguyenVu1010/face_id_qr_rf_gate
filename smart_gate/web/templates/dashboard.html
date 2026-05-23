@@ -1,109 +1,143 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block body %}
-<style>
-  @keyframes pulse {
-    from { opacity: 1; transform: scale(1); }
-    to   { opacity: 0.6; transform: scale(1.05); }
-  }
-</style>
-<div class="grid">
-  <article>
-    <header>Live (bbox xanh = match, đỏ = stranger, vàng = uncertain)</header>
-    <img src="/stream.mjpeg" alt="live" style="width:100%; max-width:640px;">
-    <footer>
-      <span id="gate-badge"
-            hx-get="/api/gate/state.json"
-            hx-trigger="load, every 1s"
-            hx-swap="none"
-            style="padding:0.3rem 0.6rem;border-radius:0.3rem;
-                   background:#888;color:white;margin-right:0.5rem;
-                   font-weight:bold;">gate: idle</span>
-      <button hx-post="/api/gate/open" hx-target="#flash">Open</button>
-      <button class="secondary" hx-post="/api/gate/close" hx-target="#flash">Close</button>
-      <button class="contrast"
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <span id="gate-badge-wrap"
+        hx-get="/api/gate/state.json"
+        hx-trigger="load, every 1s"
+        hx-swap="innerHTML">
+    <span class="gate-badge" data-state="idle">gate: idle</span>
+  </span>
+</div>
+
+<div class="dashboard-grid">
+
+  <!-- Left: live stream + actions -->
+  <article class="card stream-card">
+    <header>
+      <span>Live preview</span>
+      <span class="pill pill-ok"><span class="dot dot-ok"></span> live</span>
+    </header>
+    <div class="stream-wrap">
+      <img src="/stream.mjpeg" alt="live">
+    </div>
+    <footer class="stream-actions">
+      <button class="btn btn-accent"
+              hx-post="/api/gate/open"
+              hx-swap="none"
+              data-toast-ok="Gate opening…"
+              data-toast-err="Gate command failed">&#9205; Open gate</button>
+      <button class="btn btn-secondary"
+              hx-post="/api/gate/close"
+              hx-swap="none"
+              data-toast-ok="Gate closing…"
+              data-toast-err="Gate command failed">&#9209; Close gate</button>
+      <button class="btn btn-secondary"
               hx-post="/api/enroll"
               hx-headers='{"Content-Type": "application/json"}'
               hx-vals='{"face_capture": false}'
               hx-target="#enroll-result"
+              hx-swap="innerHTML"
               hx-indicator="#enroll-spinner"
               hx-confirm="Tạo user mới + QR? Sau đó user quẹt QR/RFID lúc đứng trước cam để bind face.">
-        Tạo user mới
+        + Tạo user mới
       </button>
-      <span id="flash"></span>
-      <span id="enroll-spinner" class="htmx-indicator">⏳ creating…</span>
+      <span id="enroll-spinner" class="htmx-indicator muted">&#9203; creating…</span>
     </footer>
-    <div id="enroll-result"></div>
+    <div id="enroll-result" class="card-body"></div>
   </article>
-  <article>
-    <header>Events</header>
-    <table>
-      <thead><tr><th>time</th><th>method</th><th>user</th><th>ok</th><th>clip</th></tr></thead>
-      <tbody id="events-tbody"
-             hx-get="/events.json?format=html"
-             hx-trigger="load, every 2s"
-             hx-target="this" hx-swap="innerHTML">
-      </tbody>
-    </table>
-  </article>
+
+  <!-- Right: quickstats + recent events -->
+  <section>
+    <article class="card">
+      <header>Quick stats</header>
+      <div class="body">
+        <div id="quickstats" class="quickstats"
+             hx-get="/healthz?format=html&panel=quickstats"
+             hx-trigger="load, every 2.5s"
+             hx-swap="outerHTML">
+          <div class="stat"><div class="stat-value mono">&#8212;</div><div class="stat-label">cap fps</div></div>
+          <div class="stat"><div class="stat-value mono">&#8212;</div><div class="stat-label">det fps</div></div>
+          <div class="stat"><div class="stat-value mono">&#8212;</div><div class="stat-label">frame age</div></div>
+          <div class="stat"><div class="stat-value mono">&#8212;</div><div class="stat-label">events today</div></div>
+          <div class="stat"><div class="stat-value">&#8212;</div><div class="stat-label">last grant</div></div>
+          <div class="stat"><div class="stat-value mono">&#8212;</div><div class="stat-label">last grant ts</div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card" style="margin-top: var(--s-4);">
+      <header>
+        <span>Recent events</span>
+        <a class="btn btn-ghost" href="/events">View all &#8594;</a>
+      </header>
+      <table class="table">
+        <thead>
+          <tr><th>time</th><th>method</th><th>user</th><th>ok</th><th>clip</th></tr>
+        </thead>
+        <tbody id="events-tbody"
+               hx-get="/events.json?format=html&limit=10"
+               hx-trigger="load, every 2s"
+               hx-swap="innerHTML"></tbody>
+      </table>
+    </article>
+  </section>
+
 </div>
+
 <script>
-// Update gate-badge color + text from /api/gate/state.json responses
+// --- Gate badge: parse JSON from /api/gate/state.json into the badge ---
 document.body.addEventListener('htmx:afterRequest', function(evt) {
   if (evt.detail.pathInfo.requestPath === '/api/gate/state.json') {
-    var badge = document.getElementById('gate-badge');
-    if (!badge) return;
     try {
-      var r = JSON.parse(evt.detail.xhr.responseText);
-      var colors = {
-        'idle':         '#6c757d',  // gray
-        'opening':      '#17a2b8',  // teal
-        'open':         '#28a745',  // green
-        'timeout_warn': '#fd7e14',  // orange, warning
-        'closing':      '#ffc107',  // yellow
-        'closed':       '#6c757d',  // gray
-        'unknown':      '#dc3545',  // red — daemon lost link
-      };
-      badge.style.background = colors[r.state] || '#dc3545';
-      var s = r.state.toUpperCase().replace('_', ' ');
-      badge.textContent = 'gate: ' + s + ' (' + r.since_s.toFixed(0) + 's)';
-      // Animated red flash for timeout warning
-      if (r.state === 'timeout_warn') {
-        badge.style.animation = 'pulse 0.6s infinite alternate';
-      } else {
-        badge.style.animation = '';
-      }
-    } catch (e) {}
+      var s = JSON.parse(evt.detail.xhr.responseText);
+      var wrap = document.getElementById('gate-badge-wrap');
+      if (!wrap) return;
+      var secs = Math.round(s.since_s || 0);
+      wrap.innerHTML =
+        '<span class="gate-badge" data-state="' + (s.state || 'idle') + '">' +
+        'gate: ' + (s.state || 'idle') + ' (' + secs + 's)' +
+        (s.last_user ? ' · ' + s.last_user : '') +
+        '</span>';
+    } catch (e) { /* ignore parse errors */ }
     return;
   }
-  // /api/enroll returns JSON; render a small status card.
+
+  // --- /api/enroll response -> render a small status card ---
   if (evt.detail.pathInfo.requestPath !== '/api/enroll') return;
   var box = document.getElementById('enroll-result');
+  if (!box) return;
   try {
     var r = JSON.parse(evt.detail.xhr.responseText);
     if (r.ok) {
       var faceMsg = r.captured > 0
         ? '(face đã capture ' + r.captured + ' samples)'
-        : '(face sẽ tự bind khi user quẹt QR/RFID)';
+        : '(face sẽ tự bind khi user qu\u1edt QR/RFID)';
       box.innerHTML =
-        '<article style="margin-top:1rem;background:#d4edda;color:#155724;padding:0.75rem;">' +
-        '<strong>✓ Tạo ' + r.name + '</strong> (id=' + r.id + ') ' + faceMsg + '<br>' +
+        '<article class="card" style="margin-top:var(--s-3);border-color:var(--ok);">' +
+        '<div class="body">' +
+        '<strong style="color:var(--ok)">✓ Tạo ' + r.name + '</strong> ' +
+        '<span class="muted">(id=' + r.id + ')</span> ' + faceMsg + '<br>' +
         '<a href="' + r.qr_url + '" target="_blank">' +
-        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:0.5rem;border:1px solid #ccc;">' +
-        '</a><br>' +
-        '<a href="' + r.qr_url + '?download=1" role="button" class="contrast" ' +
-        'style="margin-top:0.5rem;padding:0.3rem 0.6rem;display:inline-block;text-decoration:none;">' +
-        '⬇ Tải QR PNG</a>' +
-        '<p style="margin-top:0.5rem;font-size:0.85em;">In ra giấy hoặc lưu vào điện thoại — ' +
-        'lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → quẹt QR → bbox chuyển xanh + ID.</p>' +
-        '</article>';
+        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:var(--s-2);border:1px solid var(--border);">' +
+        '</a>' +
+        '<div style="margin-top:var(--s-2);">' +
+        '<a class="btn btn-secondary" href="' + r.qr_url + '?download=1" download>⬇ Tải QR PNG</a>' +
+        '</div>' +
+        '<p class="muted" style="margin-top:var(--s-3);font-size:var(--fs-sm);">' +
+        'In QR ra giấy hoặc lưu vào điện thoại — lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → qu\u1edt QR → bbox chuyển xanh + ID.' +
+        '</p>' +
+        '</div></article>';
     } else {
       box.innerHTML =
-        '<article style="margin-top:1rem;background:#f8d7da;color:#721c24;padding:0.75rem;">' +
-        '<strong>✗ ' + (r.error || 'unknown') + '</strong></article>';
+        '<article class="card" style="margin-top:var(--s-3);border-color:var(--danger);">' +
+        '<div class="body"><strong style="color:var(--danger)">✗ ' +
+        (r.error || 'unknown') + '</strong></div></article>';
     }
   } catch (e) {
-    box.innerHTML = '<article>' + evt.detail.xhr.responseText + '</article>';
+    box.innerHTML = '<article class="card"><div class="body">' +
+      evt.detail.xhr.responseText + '</div></article>';
   }
 });
 </script>
