@@ -40,19 +40,12 @@ def main() -> None:
         sys.exit(1)
     print(f'  wrote {DSN_FILE} ({os.path.getsize(DSN_FILE)} bytes)')
 
-    # Strong bias: change F.Cu layer type from 'signal' to 'power' so
-    # FreeRouting refuses to use it for routing. Forces all signal nets to
-    # B.Cu (the "wires on bottom, components on top" layout).
-    # Also widen all tracks to 1.0 mm (1000 um) so FreeRouting plans routes
-    # that actually fit a 1.0 mm track + clearance — at 2.54 mm pin pitch
-    # this physically prevents tracks from weaving between component pins.
-    print('Forcing F.Cu = power-only + track width 1.0 mm ...', flush=True)
+    # Both F.Cu and B.Cu allowed as signal layers — let FreeRouting use
+    # both freely to fully route the buzzer-block area which is too tight
+    # for B.Cu-only at 1.0 mm. Default 250 µm tracks widened to 1.0 mm.
+    print('Allowing F.Cu + B.Cu signal layers, track width 1.0 mm ...', flush=True)
     with open(DSN_FILE) as f:
         dsn = f.read()
-    dsn = dsn.replace('(layer F.Cu\n      (type signal)',
-                      '(layer F.Cu\n      (type power)', 1)
-    # Override default trace width 250 µm -> 1000 µm. The string '(width 250)'
-    # appears in (rule ...) blocks (board-level and per-net-class).
     dsn = dsn.replace('(width 250)', '(width 1000)')
     with open(DSN_FILE, 'w') as f:
         f.write(dsn)
@@ -62,7 +55,7 @@ def main() -> None:
         FREEROUTING_BIN,
         '-de', DSN_FILE,
         '-do', SES_FILE,
-        '-mp', '20',           # max 20 passes for prototype-quality routing
+        '-mp', '50',           # max 50 passes — deeper optimization
         '-mt', '4',            # use 4 threads
     ]
     rc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
