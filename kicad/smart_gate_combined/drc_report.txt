@@ -1,5 +1,5 @@
 ** Drc report for /home/nguyenvd/workspace/smart_gate/kicad/smart_gate_combined/smart_gate_combined.kicad_pcb **
-** Created on 2026-05-23 12:15:07 **
+** Created on 2026-05-23 14:46:13 **
 
 ** Found 6 DRC violations **
 [silk_overlap]: Silkscreen overlap
