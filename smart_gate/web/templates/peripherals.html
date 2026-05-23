@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Peripherals{% endblock %}
+{% block body %}
+<style>
+  .perif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--s-3);
+  }
+  .perif-card {
+    background: var(--card-bg, rgba(255,255,255,0.04));
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: var(--s-3);
+    display: flex; flex-direction: column; gap: 0.4em;
+  }
+  .perif-card .name {
+    font-weight: bold; font-size: 1.1em; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .perif-card .status-pill {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: var(--fs-xs); font-weight: bold; align-self: flex-start;
+  }
+  .status-ok      { background: #28a745; color: white; }
+  .status-warning { background: #fd7e14; color: white; }
+  .status-missing { background: #dc3545; color: white; }
+  .status-unknown { background: #6c757d; color: white; }
+  .perif-card .msg { color: var(--muted); font-size: var(--fs-sm); }
+  .perif-card .ts  { color: var(--muted); font-size: var(--fs-xs); font-family: var(--mono); }
+  .perif-help {
+    margin-top: var(--s-4); padding: var(--s-3);
+    background: rgba(255,255,255,0.02); border-radius: var(--r-sm);
+    font-size: var(--fs-sm); color: var(--muted);
+  }
+  .perif-help table { width: 100%; font-size: var(--fs-xs); }
+  .perif-help td { padding: 2px 8px; }
+</style>
+
+<div class="page-header">
+  <h1>Peripherals</h1>
+  <span class="meta">Auto-refresh 2s · suy ra từ evt:log + cmd ack từ ESP32</span>
+</div>
+
+<article class="card">
+  <div id="perif-grid" class="perif-grid"
+       hx-get="/api/peripherals.json"
+       hx-trigger="load, every 2s"
+       hx-swap="innerHTML"
+       hx-headers='{"Accept": "application/json"}'>
+    <div class="perif-card">
+      <span class="name">…</span>
+      <span class="status-pill status-unknown">unknown</span>
+      <span class="msg">đang chờ daemon…</span>
+    </div>
+  </div>
+</article>
+
+<div class="perif-help">
+  <strong>Cách suy luận status:</strong>
+  <table>
+    <tr><td><strong>ok</strong></td>
+        <td>peripheral mới phát thông điệp info / mới ack một cmd thành công</td></tr>
+    <tr><td><strong>warning</strong></td>
+        <td>peripheral phát evt:log lvl=warn (vd. sensor "no echo for 30s")</td></tr>
+    <tr><td><strong>missing</strong></td>
+        <td>evt:log lvl=err, hoặc text chứa "no echo / init failed / missing / not responding"; hoặc cmd:open thất bại (LinkDown)</td></tr>
+    <tr><td><strong>unknown</strong></td>
+        <td>chưa nghe gì kể từ khi daemon khởi động — chưa biết peripheral có cắm hay không</td></tr>
+  </table>
+  <p style="margin-top:var(--s-3)">Note: <code>servo</code> và <code>buzzer</code> không có feedback từ ESP32; status "ok" của chúng được suy ra từ cmd:open ack OK (servo + LCD must respond for cmd ack). Buzzer chỉ chuyển "ok" khi firmware emit log riêng — hiện tại firmware chưa emit khi kích buzzer.</p>
+</div>
+
+<script>
+// /api/peripherals.json returns {items: [...]}. HTMX swaps innerHTML
+// with the raw JSON string by default — intercept and render cards.
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+  if (evt.detail.pathInfo.requestPath !== '/api/peripherals.json') return;
+  evt.detail.shouldSwap = false;
+  try {
+    var data = JSON.parse(evt.detail.xhr.responseText);
+    var items = data.items || [];
+    var grid = document.getElementById('perif-grid');
+    if (!grid) return;
+    var html = '';
+    items.forEach(function(p) {
+      var statusClass = 'status-' + (p.status || 'unknown');
+      var age = '';
+      if (p.age_s !== null && p.age_s !== undefined) {
+        if (p.age_s < 60) age = Math.round(p.age_s) + 's ago';
+        else if (p.age_s < 3600) age = Math.round(p.age_s / 60) + 'm ago';
+        else age = Math.round(p.age_s / 3600) + 'h ago';
+      }
+      html +=
+        '<div class="perif-card">' +
+        '<span class="name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="status-pill ' + statusClass + '">' +
+        escapeHtml(p.status || 'unknown') + '</span>' +
+        '<span class="msg">' +
+        escapeHtml(p.last_message || 'chưa có thông điệp') + '</span>' +
+        '<span class="ts">' +
+        (p.last_ts ? escapeHtml(p.last_ts) + (age ? ' · ' + age : '') : '—') +
+        '</span>' +
+        '</div>';
+    });
+    grid.innerHTML = html || '<div class="perif-card"><span class="msg">No peripherals registered</span></div>';
+  } catch (e) {
+    console.error('peripherals render error', e);
+  }
+});
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+</script>
+{% endblock %}

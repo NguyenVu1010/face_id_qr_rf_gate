@@ -20,6 +20,7 @@ from smart_gate.recognition.detector import AuthEvent, CheckInEvent
 from smart_gate.recognition.overlay import OverlayState
 from smart_gate.recognition.two_factor import TwoFactorState
 from smart_gate.link.gate_state import GateTracker
+from smart_gate.link.peripheral_status import PeripheralTracker
 from smart_gate.video.fps_counter import FpsCounter
 from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
@@ -57,6 +58,7 @@ def main(argv=None) -> int:
     overlay = OverlayState(stale_after_s=2.0)
     two_factor = TwoFactorState(ttl_s=4.0)
     gate_tracker = GateTracker()
+    peripherals = PeripheralTracker()
     cap_fps = FpsCounter(window_s=5.0)
     det_fps = FpsCounter(window_s=5.0)
     esp_log_bus = EspLogBus()
@@ -92,7 +94,8 @@ def main(argv=None) -> int:
                                reload_event),
                          kwargs={"state": two_factor,
                                  "gate_tracker": gate_tracker,
-                                 "esp_log_bus": esp_log_bus},
+                                 "esp_log_bus": esp_log_bus,
+                                 "peripherals": peripherals},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
                          args=(cfg, db, hub, uart, data_dir, shutdown),
@@ -100,7 +103,8 @@ def main(argv=None) -> int:
                                  "reload_event": reload_event,
                                  "gate_tracker": gate_tracker,
                                  "cap_fps": cap_fps, "det_fps": det_fps,
-                                 "esp_log_bus": esp_log_bus},
+                                 "esp_log_bus": esp_log_bus,
+                                 "peripherals": peripherals},
                          daemon=True),
         threading.Thread(target=_cleanup_loop, name="cleanup",
                          args=(cfg, db, data_dir, shutdown), daemon=True),
@@ -166,7 +170,8 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  reload_event: threading.Event,
                  *, state: TwoFactorState | None = None,
                  gate_tracker: GateTracker | None = None,
-                 esp_log_bus: EspLogBus | None = None) -> None:
+                 esp_log_bus: EspLogBus | None = None,
+                 peripherals: PeripheralTracker | None = None) -> None:
     last_grant: dict[int, float] = {}
     while not shutdown.is_set():
         if reload_event.is_set():
@@ -186,7 +191,7 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
         elif isinstance(evt, EspEvent):
             _handle_esp_event(evt, db, matcher, state, trig_queue,
                               uart, cfg, last_grant, reload_event,
-                              gate_tracker, esp_log_bus)
+                              gate_tracker, esp_log_bus, peripherals)
 
 
 def _audit(esp_log_bus, lvl: str, tag: str, msg: str,
@@ -296,10 +301,12 @@ def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue, esp_log_bus=None)
 
 def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
                       uart, cfg, last_grant, reload_event,
-                      gate_tracker=None, esp_log_bus=None):
-    """ESP32 events. evt:log → esp_log table. evt:rfid → 2FA pairing.
-    evt:gate → update GateTracker + log timeout_warn to events table.
-    evt:person_passed → just update tracker; gate FSM lives on ESP32."""
+                      gate_tracker=None, esp_log_bus=None,
+                      peripherals=None):
+    """ESP32 events. evt:log → esp_log table + PeripheralTracker.
+    evt:rfid → 2FA pairing + mark RFID alive.
+    evt:gate → update GateTracker + log timeout_warn.
+    evt:heartbeat → mark link alive."""
     if evt.v == "log":
         d = evt.data or {}
         log_id = db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
@@ -312,7 +319,15 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
                 "tag": d.get("tag"),
                 "msg": d.get("msg", ""),
             })
+        if peripherals is not None:
+            peripherals.update_from_log(
+                lvl=d.get("lvl", "info"), tag=d.get("tag"),
+                msg=d.get("msg", ""), ts=d.get("ts"),
+            )
         return
+    if evt.v == "heartbeat" and peripherals is not None:
+        peripherals.mark_heartbeat()
+        # fallthrough: nothing else to do for heartbeat
     if evt.v == "gate" and gate_tracker is not None:
         d = evt.data or {}
         new_state = d.get("state", "")
@@ -350,6 +365,8 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
         name = d.get("name")
         uid = db.get_user_id_by_name(name) if name else None
         granted = result == "granted"
+        if peripherals is not None:
+            peripherals.mark_rfid_scan(granted, name)
         if not granted or uid is None or state is None:
             # Not granted, or unknown UID — no 2FA possible. We deliberately
             # do NOT insert an event row for an isolated RFID-only swipe to
@@ -379,13 +396,14 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
 def _run_web(cfg, db, hub, uart, data_dir, shutdown,
              matcher=None, overlay=None, reload_event=None,
              gate_tracker=None, cap_fps=None, det_fps=None,
-             esp_log_bus=None):
+             esp_log_bus=None, peripherals=None):
     app = create_app(db=db, hub=hub, uart=uart, data_dir=data_dir,
                      matcher=matcher, overlay=overlay,
                      reload_event=reload_event,
                      gate_tracker=gate_tracker,
                      cap_fps=cap_fps, det_fps=det_fps,
-                     esp_log_bus=esp_log_bus)
+                     esp_log_bus=esp_log_bus,
+                     peripherals=peripherals)
     from werkzeug.serving import make_server
     srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
     def watcher():

@@ -52,7 +52,7 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                matcher=None, overlay=None, reload_event=None,
                gate_tracker=None, cv2_module=None,
                cap_fps=None, det_fps=None,
-               esp_log_bus=None) -> Flask:
+               esp_log_bus=None, peripherals=None) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
     qr_dir = data_dir / "qr"
@@ -156,12 +156,8 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     def _gate_action(verb: str, method: str):
         """Manual open/close from web button. Emits to esp_log_bus so the
-        dashboard Live Log panel reflects what the admin did, then sends
-        the cmd to ESP32 and writes the events row.
-
-        Note: this path doesn't go through the bus consumer's
-        _handle_manual_event — we audit + send directly so the user
-        gets immediate HTTP feedback (success or 503 on LinkDown).
+        dashboard Live Log panel reflects what the admin did, updates the
+        PeripheralTracker on success/failure, then writes the events row.
         """
         _emit_audit(esp_log_bus, "info", "cmd",
                     f"{verb} (manual from web)", direction="→")
@@ -172,15 +168,31 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                 timeout=2.0,
             )
         except (LinkDown, LinkTimeout) as e:
+            err = str(e) or e.__class__.__name__
             _emit_audit(esp_log_bus, "err", "cmd",
-                        f"{verb} FAILED: {e} — peripheral unreachable",
+                        f"{verb} FAILED: {err} — peripheral unreachable",
                         direction="←")
-            return jsonify({"error": str(e) or e.__class__.__name__}), 503
+            if peripherals is not None:
+                peripherals.mark_cmd_failed(verb, err)
+            return jsonify({"error": err}), 503
         _emit_audit(esp_log_bus, "info", "ack",
                     f"{verb} OK ({ack})" if ack else f"{verb} ack",
                     direction="←")
+        if peripherals is not None:
+            peripherals.mark_cmd_ack(verb, ok=True, detail=str(ack or ""))
         db.insert_event(method, None, True)
         return jsonify({"ok": True, "ack": ack})
+
+    @app.route("/peripherals")
+    def peripherals_page():
+        return render_template("peripherals.html")
+
+    @app.route("/api/peripherals.json")
+    def peripherals_json():
+        if peripherals is None:
+            return jsonify({"items": [], "warning":
+                            "peripheral tracker not configured"})
+        return jsonify({"items": peripherals.snapshot()})
 
     @app.route("/api/users/<name>", methods=["DELETE", "POST"])
     def user_delete(name: str):

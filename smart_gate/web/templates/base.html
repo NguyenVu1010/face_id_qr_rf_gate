@@ -14,6 +14,7 @@
     <a class="nav-link {% if request.path == '/' %}on{% endif %}" href="/">Dashboard</a>
     <a class="nav-link {% if request.path.startswith('/events') %}on{% endif %}" href="/events">Events</a>
     <a class="nav-link {% if request.path.startswith('/users') %}on{% endif %}" href="/users">Users</a>
+    <a class="nav-link {% if request.path.startswith('/peripherals') %}on{% endif %}" href="/peripherals">Peripherals</a>
     <a class="nav-link {% if request.path.startswith('/system') %}on{% endif %}" href="/system">System</a>
   </nav>
   <div id="statusbar"
