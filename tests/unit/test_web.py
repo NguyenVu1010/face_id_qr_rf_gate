@@ -403,3 +403,14 @@ def test_users_page_preserves_qr_thumbnail(setup):
         assert b'/qr/alice.png' in r.data
         # Download button ?download=1
         assert b'?download=1' in r.data
+
+
+def test_system_page_has_cards_and_log(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/system")
+        assert b'id="systemcards"' in r.data
+        assert b'id="esp-log"' in r.data
+        assert b'id="sse-status"' in r.data
+        assert b'data-diag="ping"' in r.data
+        assert b'data-diag="status"' in r.data
