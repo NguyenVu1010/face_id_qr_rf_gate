@@ -369,3 +369,37 @@ def test_events_page_has_clip_modal(setup):
         assert b'id="clip-modal"' in r.data
         assert b'id="clip-video"' in r.data
         assert b'id="events-live"' in r.data
+
+
+def test_users_page_empty_state(tmp_data_dir):
+    from unittest.mock import MagicMock
+    db = Database(tmp_data_dir / "e.db"); db.migrate()
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    with app.test_client() as c:
+        r = c.get("/users")
+        decoded = r.data.decode("utf-8", "ignore")
+        assert "No users enrolled" in decoded or "Chưa có user" in decoded
+
+
+def test_users_page_counts_users(setup):
+    app, db, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/users")
+        assert b"1 enrolled" in r.data
+        assert b"alice" in r.data
+
+
+def test_users_page_preserves_qr_thumbnail(setup):
+    """The QR column with 60x60 thumbnail and ?download=1 button must survive."""
+    app, db, *_ = setup
+    # Setup fixture inserts alice (no QR by default). Add a QR token so the
+    # 'has_qr' flag becomes truthy.
+    db.insert_qr_token("a" * 32, db.get_user_id_by_name("alice"))
+    with app.test_client() as c:
+        r = c.get("/users")
+        # Thumbnail link to /qr/alice.png
+        assert b'/qr/alice.png' in r.data
+        # Download button ?download=1
+        assert b'?download=1' in r.data
