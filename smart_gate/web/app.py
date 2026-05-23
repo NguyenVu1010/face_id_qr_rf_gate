@@ -10,9 +10,11 @@ import threading
 import time
 from pathlib import Path
 
+import json
+
 import numpy as np
 from flask import (Flask, Response, abort, jsonify, render_template, request,
-                   send_from_directory)
+                   send_from_directory, stream_with_context)
 
 from smart_gate.link.uart_client import LinkDown, LinkTimeout
 
@@ -216,6 +218,62 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             return jsonify({"state": "unknown", "since_s": 0,
                             "last_user": None})
         return jsonify(gate_tracker.snapshot())
+
+    def _row_to_dict(row):
+        # row schema from db.recent_esp_log: (id, ts, lvl, tag, msg)
+        return {"id": row[0], "ts": row[1], "lvl": row[2],
+                "tag": row[3], "msg": row[4]}
+
+    def _sse_format(item):
+        return (f"id: {item['id']}\n"
+                f"event: log\n"
+                f"data: {json.dumps(item, separators=(',', ':'))}\n\n")
+
+    @app.route("/api/esp_log")
+    def api_esp_log():
+        limit = min(int(request.args.get("limit", 100)), 500)
+        after_id = int(request.args.get("after_id", 0))
+        rows = [_row_to_dict(r) for r in db.recent_esp_log(limit=limit,
+                                                           after_id=after_id)]
+        fmt = request.args.get("format", "html")
+        if fmt == "json":
+            return jsonify(rows)
+        return render_template("_partials/esp_log_line.html", rows=rows)
+
+    @app.route("/api/esp_log/stream")
+    def api_esp_log_stream():
+        if esp_log_bus is None:
+            return jsonify({"error": "esp_log_bus not configured"}), 503
+
+        last_id = int(request.headers.get("Last-Event-ID", "0") or "0")
+
+        @stream_with_context
+        def gen():
+            # Replay rows since last_id (cap at 200 to bound payload)
+            if last_id > 0:
+                backlog = db.recent_esp_log(limit=200, after_id=last_id)
+                for row in reversed(backlog):              # oldest first
+                    yield _sse_format(_row_to_dict(row))
+
+            q = esp_log_bus.subscribe()
+            last_ping = time.monotonic()
+            try:
+                while True:
+                    item = esp_log_bus.wait_for_item(q, timeout=1.0)
+                    if item is not None:
+                        yield _sse_format(item)
+                    now = time.monotonic()
+                    if now - last_ping > 15:
+                        yield ": ping\n\n"
+                        last_ping = now
+            except GeneratorExit:
+                pass
+            finally:
+                esp_log_bus.unsubscribe(q)
+
+        return Response(gen(), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache",
+                                 "X-Accel-Buffering": "no"})
 
     return app
 
