@@ -1,7 +1,7 @@
 ** Drc report for /home/nguyenvd/workspace/smart_gate/kicad/smart_gate_combined/smart_gate_combined.kicad_pcb **
-** Created on 2026-05-23 12:00:28 **
+** Created on 2026-05-23 12:15:07 **
 
-** Found 44 DRC violations **
+** Found 6 DRC violations **
 [silk_overlap]: Silkscreen overlap
     Rule: board setup constraints silk; Severity: warning
     @(260.3500 mm, 107.7000 mm): Reference 'Q_BUZ'
@@ -26,130 +26,8 @@
     Rule: board setup constraints silk; Severity: warning
     @(72.2800 mm, 137.0800 mm): Line on Edge.Cuts
     @(79.7400 mm, 41.7425 mm): Line on F.Silkscreen
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(206.9650 mm, 72.0603 mm): Via [BUZ_DRIVE] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(234.3690 mm, 105.4040 mm): Via [BUZ_COLLECTOR] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(253.2310 mm, 50.8651 mm): Via [+3V3] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(204.2240 mm, 49.5300 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(240.4670 mm, 111.2190 mm): Via [+3V3] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(242.9180 mm, 111.2190 mm): Track [+3V3] on B.Cu, length 1.3280 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(204.0900 mm, 48.4689 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(257.8590 mm, 120.7790 mm): Via [GND] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(246.0508 mm, 43.0547 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(203.7360 mm, 99.9647 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(235.3560 mm, 117.0610 mm): Track [+5V] on B.Cu, length 1.2219 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(229.2400 mm, 45.9292 mm): Track [+5V] on B.Cu, length 0.2092 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(204.2240 mm, 49.5300 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(220.6690 mm, 82.2086 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(236.2200 mm, 117.9250 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(260.2592 mm, 78.6591 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(203.0200 mm, 99.2483 mm): Via [+5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(234.3690 mm, 105.4040 mm): Via [BUZ_COLLECTOR] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(257.8590 mm, 120.7790 mm): Via [GND] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(201.5300 mm, 70.2504 mm): Via [ESP_TX_PI_RX] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(198.3955 mm, 81.5061 mm): Via [ESP_TX_PI_RX] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(211.8090 mm, 65.0702 mm): Via [GND] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(245.3026 mm, 95.1416 mm): Via [GND] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(252.8560 mm, 78.7400 mm): Via [GND] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(247.1290 mm, 99.4009 mm): Via [HCSR_ECHO_5V] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(245.9133 mm, 82.8805 mm): Via [I2C_SCL] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(224.6280 mm, 88.1873 mm): Via [I2C_SCL] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(221.9090 mm, 78.4187 mm): Via [I2C_SCL] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(249.4980 mm, 82.5600 mm): Via [I2C_SCL] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(248.3867 mm, 56.8896 mm): Via [I2C_SDA] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(248.3870 mm, 57.9070 mm): Via [I2C_SDA] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(243.4630 mm, 104.1400 mm): Via [N$2] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(257.3610 mm, 63.5150 mm): Via [RC522_CS] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(257.7380 mm, 41.8721 mm): Via [RC522_CS] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(207.2703 mm, 77.4700 mm): Via [RC522_MOSI] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(248.5730 mm, 50.8000 mm): Via [RC522_MOSI] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(251.9570 mm, 51.6985 mm): Via [RC522_MOSI] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(208.0780 mm, 76.6618 mm): Via [RC522_MOSI] on F.Cu - B.Cu
 
-** Found 2 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; Severity: error
-    @(234.9500 mm, 104.1400 mm): Through hole pad 2 [BUZ_COLLECTOR] of Q_BUZ
-    @(234.3690 mm, 105.4040 mm): Via [BUZ_COLLECTOR] on F.Cu - B.Cu
-[unconnected_items]: Missing connection between items
-    Local override; Severity: error
-    @(234.3690 mm, 105.4040 mm): Via [BUZ_COLLECTOR] on F.Cu - B.Cu
-    @(233.6800 mm, 119.3800 mm): Through hole pad 2 [BUZ_COLLECTOR] of J_BUZ
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 

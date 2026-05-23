@@ -39,7 +39,7 @@ def main() -> None:
         if cls == 'PCB_TRACK':
             board.Remove(item)
             tracks_removed += 1
-        elif cls == 'VIA':
+        elif cls == 'PCB_VIA':
             board.Remove(item)
             vias_removed += 1
 

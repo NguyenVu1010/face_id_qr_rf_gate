@@ -33,7 +33,7 @@ SES_TO_NM = 100
 # pad → only 0.74mm gap between adjacent pad edges, which physically cannot
 # fit a 1.0mm track + clearance → routes are forced to go around component
 # pin clusters instead of weaving between pins.
-FORCE_TRACK_WIDTH_NM = 1_000_000
+FORCE_TRACK_WIDTH_NM = 500_000   # 0.5mm — balance of current capacity vs density
 
 
 def sym_str(x):

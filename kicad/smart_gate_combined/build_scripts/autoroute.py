@@ -46,7 +46,7 @@ def main() -> None:
     print('Allowing F.Cu + B.Cu signal layers, track width 1.0 mm ...', flush=True)
     with open(DSN_FILE) as f:
         dsn = f.read()
-    dsn = dsn.replace('(width 250)', '(width 1000)')
+    dsn = dsn.replace('(width 250)', '(width 500)')
     with open(DSN_FILE, 'w') as f:
         f.write(dsn)
 
@@ -55,7 +55,7 @@ def main() -> None:
         FREEROUTING_BIN,
         '-de', DSN_FILE,
         '-do', SES_FILE,
-        '-mp', '50',           # max 50 passes — deeper optimization
+        '-mp', '20',           # 20 passes — more = more optimization cruft
         '-mt', '4',            # use 4 threads
     ]
     rc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
