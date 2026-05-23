@@ -3,12 +3,12 @@
 {% block body %}
 <div class="page-header">
   <h1>Users</h1>
-  <span class="meta">{{ users|length }} enrolled</span>
+  <span class="meta" id="users-count">{{ users|length }} enrolled</span>
 </div>
 
 <article class="card">
   {% if users %}
-  <table class="table">
+  <table class="table" id="users-table">
     <thead>
       <tr>
         <th>id</th>
@@ -17,6 +17,7 @@
         <th>last seen</th>
         <th>#encodings</th>
         <th>QR</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -27,7 +28,7 @@
       {% set last_seen = u[3] %}
       {% set n_enc = u[4] %}
       {% set has_qr = u[5] %}
-      <tr>
+      <tr data-user="{{ name }}">
         <td class="mono">{{ id_ }}</td>
         <td>{{ name }}</td>
         <td class="mono ts">{{ created }}</td>
@@ -46,6 +47,16 @@
             <span class="muted">—</span>
           {% endif %}
         </td>
+        <td>
+          <button class="btn btn-danger"
+                  style="padding:2px 10px;font-size:var(--fs-xs);"
+                  hx-delete="/api/users/{{ name }}"
+                  hx-target="closest tr"
+                  hx-swap="outerHTML"
+                  hx-confirm="Xóa {{ name }}? (xóa luôn face encodings + QR token, không hồi phục được)">
+            🗑 Xóa
+          </button>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -58,4 +69,34 @@
   </div>
   {% endif %}
 </article>
+
+<script>
+// After a DELETE /api/users/<name>, the server returns JSON. We just need
+// to remove the row from the DOM and decrement the user counter. HTMX's
+// hx-swap="outerHTML" on the row would replace the row content with the
+// JSON text — intercept and remove instead.
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+  var path = evt.detail.pathInfo && evt.detail.pathInfo.requestPath || '';
+  if (!path.startsWith('/api/users/')) return;
+  if (evt.detail.requestConfig.verb !== 'delete') return;
+  evt.detail.shouldSwap = false;
+  if (evt.detail.xhr.status >= 200 && evt.detail.xhr.status < 300) {
+    var row = evt.detail.target;
+    if (row && row.parentNode) row.parentNode.removeChild(row);
+    var counter = document.getElementById('users-count');
+    if (counter) {
+      var n = Math.max(0, parseInt(counter.textContent, 10) - 1);
+      counter.textContent = n + ' enrolled';
+    }
+  } else {
+    // Display server error
+    try {
+      var r = JSON.parse(evt.detail.xhr.responseText);
+      alert('Xóa thất bại: ' + (r.error || evt.detail.xhr.status));
+    } catch (e) {
+      alert('Xóa thất bại: HTTP ' + evt.detail.xhr.status);
+    }
+  }
+});
+</script>
 {% endblock %}

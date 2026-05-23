@@ -146,6 +146,34 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         db.insert_event(method, None, True)
         return jsonify({"ok": True})
 
+    @app.route("/api/users/<name>", methods=["DELETE", "POST"])
+    def user_delete(name: str):
+        """Delete a user. Cascades face_encodings + qr_tokens via FK.
+        Removes the QR PNG. Triggers matcher reload.
+
+        Accepts either DELETE method or POST (forms-friendly, hx-post). For POST,
+        only acts if request has `?action=delete` to avoid accidental hits.
+        """
+        if request.method == "POST" and request.args.get("action") != "delete":
+            return jsonify({"error": "use DELETE or POST?action=delete"}), 405
+        if not re.match(r"^[A-Za-z0-9_\-]+$", name):
+            return jsonify({"error": "invalid name"}), 400
+        existed = db.delete_user(name)
+        if not existed:
+            return jsonify({"error": f"user {name} not found"}), 404
+        # Best-effort QR cleanup
+        qr_path = qr_dir / f"{name}.png"
+        try:
+            qr_path.unlink()
+        except FileNotFoundError:
+            pass
+        if reload_event is not None:
+            reload_event.set()
+        elif matcher is not None:
+            matcher.reload(db)
+        log.info("deleted user %s (cascade encodings/tokens + qr png)", name)
+        return jsonify({"ok": True, "name": name})
+
     @app.route("/api/enroll", methods=["POST"])
     def enroll():
         """Create a new user_NNN with a QR token. Face binds automatically

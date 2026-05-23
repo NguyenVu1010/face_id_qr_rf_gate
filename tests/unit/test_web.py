@@ -405,6 +405,52 @@ def test_users_page_preserves_qr_thumbnail(setup):
         assert b'?download=1' in r.data
 
 
+def test_users_page_has_delete_button(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/users")
+        assert b'hx-delete="/api/users/alice"' in r.data
+        assert b'data-user="alice"' in r.data
+
+
+def test_delete_user_ok(setup):
+    app, db, *_ = setup
+    with app.test_client() as c:
+        r = c.delete("/api/users/alice")
+        assert r.status_code == 200, r.data
+        body = r.get_json()
+        assert body == {"ok": True, "name": "alice"}
+    assert db.get_user_id_by_name("alice") is None
+
+
+def test_delete_user_not_found(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.delete("/api/users/nobody")
+        assert r.status_code == 404
+
+
+def test_delete_user_invalid_name(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.delete("/api/users/../etc/passwd")
+        # Flask route matches names only — anything with '/' is a different
+        # route. The 404 comes from werkzeug routing, not our handler. Either
+        # 404 or 400 is acceptable; we just want no traversal to succeed.
+        assert r.status_code in (400, 404)
+
+
+def test_delete_user_post_action_required(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        # POST without action=delete must NOT delete
+        r = c.post("/api/users/alice")
+        assert r.status_code == 405
+        # POST with action=delete works
+        r = c.post("/api/users/alice?action=delete")
+        assert r.status_code == 200
+
+
 def test_system_page_has_cards_and_log(setup):
     app, *_ = setup
     with app.test_client() as c:
