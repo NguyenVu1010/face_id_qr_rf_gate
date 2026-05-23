@@ -48,7 +48,24 @@ class PeripheralState:
     last_ts_mono: float    # internal monotonic for age computation
 
 
+# Peripherals without any feedback path back to the ESP32 — there is no
+# way to verify they are physically connected or working short of adding
+# extra sensing hardware (current sensor / microphone / scope). These
+# stay in status="na" forever; the dashboard renders them with a neutral
+# label "no feedback available".
+NO_FEEDBACK_PERIPHERALS = ("servo", "buzzer")
+
+_NA_MESSAGE = (
+    "no feedback wire — verify by physical observation only "
+    "(SG90/buzzer don't report back to MCU)"
+)
+
+
 def _new(name: str) -> PeripheralState:
+    if name in NO_FEEDBACK_PERIPHERALS:
+        return PeripheralState(name=name, status="na",
+                               last_message=_NA_MESSAGE,
+                               last_ts="", last_ts_mono=0.0)
     return PeripheralState(name=name, status="unknown",
                            last_message="", last_ts="", last_ts_mono=0.0)
 
@@ -66,8 +83,15 @@ class PeripheralTracker:
 
     def update_from_log(self, lvl: str, tag: str | None,
                         msg: str, ts: str | None = None) -> None:
-        """ESP32 evt:log → update tagged peripheral state."""
+        """ESP32 evt:log → update tagged peripheral state.
+
+        Skips peripherals in NO_FEEDBACK_PERIPHERALS — those have no
+        observability path so any 'info' log about them would be
+        firmware-side guessing, not real verification.
+        """
         if not tag or tag not in self._states:
+            return
+        if tag in NO_FEEDBACK_PERIPHERALS:
             return
         lvl = (lvl or "info").lower()
         text = (msg or "").lower()
@@ -106,21 +130,15 @@ class PeripheralTracker:
             self._link_last_alive_mono = time.monotonic()
 
     def mark_gate_state(self, state: str) -> None:
-        """evt:gate transition received → infer servo health.
-        - opening / open → servo definitely received PWM and moved
-        - closing / closed → servo moved back
-        - timeout_warn → servo opened, but person didn't pass (HC-SR04
-          issue, not servo issue; don't touch servo state here)
+        """evt:gate transition — no-op for SG90 because we can't actually
+        verify the servo moved (no feedback wire). The gate state badge
+        on the dashboard already shows transitions; duplicating that
+        into 'servo: ok' here would be misleading.
+
+        Kept as a hook so future hardware (ACS712 current sense) can fill
+        in real verification without changing callers.
         """
-        s = (state or "").lower()
-        ts = _now_iso()
-        with self._lock:
-            if s in ("opening", "open", "closing", "closed"):
-                self._states["servo"] = PeripheralState(
-                    name="servo", status="ok",
-                    last_message=f"gate state={s} → servo moved",
-                    last_ts=ts, last_ts_mono=time.monotonic(),
-                )
+        return
 
     def mark_cmd_failed(self, verb: str, error: str) -> None:
         with self._lock:

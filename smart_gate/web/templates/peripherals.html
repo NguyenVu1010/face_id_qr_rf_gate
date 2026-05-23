@@ -26,6 +26,7 @@
   .status-warning { background: #fd7e14; color: white; }
   .status-missing { background: #dc3545; color: white; }
   .status-unknown { background: #6c757d; color: white; }
+  .status-na      { background: #6f42c1; color: white; }
   .perif-card .msg { color: var(--muted); font-size: var(--fs-sm); }
   .perif-card .ts  { color: var(--muted); font-size: var(--fs-xs); font-family: var(--mono); }
   .perif-help {
@@ -67,8 +68,16 @@
         <td>evt:log lvl=err, hoặc text chứa "no echo / init failed / missing / not responding"; hoặc cmd:open thất bại (LinkDown)</td></tr>
     <tr><td><strong>unknown</strong></td>
         <td>chưa nghe gì kể từ khi daemon khởi động — chưa biết peripheral có cắm hay không</td></tr>
+    <tr><td><strong>na</strong></td>
+        <td>không thể verify — peripheral không có feedback wire về MCU (SG90 servo, buzzer chỉ nhận lệnh, không gửi tín hiệu ngược)</td></tr>
   </table>
-  <p style="margin-top:var(--s-3)">Note: <code>servo</code> và <code>buzzer</code> không có feedback từ ESP32; status "ok" của chúng được suy ra từ cmd:open ack OK (servo + LCD must respond for cmd ack). Buzzer chỉ chuyển "ok" khi firmware emit log riêng — hiện tại firmware chưa emit khi kích buzzer.</p>
+  <p style="margin-top:var(--s-3)">
+    <strong>SG90 servo</strong> và <strong>buzzer</strong> không feedback được vì:
+    SG90 chỉ có 3 dây (VCC + GND + PWM IN), không có wire trả về MCU.
+    Buzzer là loại passive/active GPIO drive. Status của chúng cố định ở <code>na</code> —
+    verify bằng quan sát/nghe thực tế. Nếu cần verify cứng thì cần thêm phần cứng:
+    ACS712 current sensor cho servo, microphone cho buzzer.
+  </p>
 </div>
 
 <script>
