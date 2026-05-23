@@ -205,6 +205,16 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             "face_capture": face_capture,
         })
 
+    @app.route("/events")
+    def events_page():
+        return render_template("events.html")
+
+    @app.route("/system")
+    def system_page():
+        body = _build_healthz_body(db, hub, uart, cap_fps, det_fps,
+                                   data_dir, start_time, gate_tracker)
+        return render_template("system.html", h=body)
+
     @app.route("/healthz")
     def healthz():
         body = _build_healthz_body(db, hub, uart, cap_fps, det_fps,

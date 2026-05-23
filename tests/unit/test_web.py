@@ -287,3 +287,19 @@ def test_healthz_json_still_works_after_html_dispatcher(setup):
                     "threads_ok", "enrolled_users", "cap_fps", "det_fps",
                     "events_today", "disk_free_gb", "last_grant"):
             assert key in body, f"missing {key}"
+
+
+def test_events_page_renders(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/events")
+        assert r.status_code == 200
+        assert b"Events" in r.data
+
+
+def test_system_page_renders(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/system")
+        assert r.status_code == 200
+        assert b"System" in r.data
