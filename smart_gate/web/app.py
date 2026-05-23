@@ -229,6 +229,23 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                 f"event: log\n"
                 f"data: {json.dumps(item, separators=(',', ':'))}\n\n")
 
+    def _diag(verb: str):
+        t0 = time.monotonic()
+        try:
+            data = uart.send_cmd(verb, timeout=2.0)
+        except (LinkDown, LinkTimeout) as e:
+            return jsonify({"error": str(e) or e.__class__.__name__}), 503
+        ack_ms = int((time.monotonic() - t0) * 1000)
+        return jsonify({"ack_ms": ack_ms, "data": data})
+
+    @app.route("/api/diag/ping", methods=["POST"])
+    def diag_ping():
+        return _diag("ping")
+
+    @app.route("/api/diag/status", methods=["POST"])
+    def diag_status():
+        return _diag("status")
+
     @app.route("/api/esp_log")
     def api_esp_log():
         limit = min(int(request.args.get("limit", 100)), 500)

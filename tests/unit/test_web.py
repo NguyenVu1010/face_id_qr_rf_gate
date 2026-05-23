@@ -151,3 +151,26 @@ def test_healthz_last_grant_present(setup):
         body = c.get("/healthz").get_json()
         assert body["last_grant"] is not None
         assert body["last_grant"]["name"] == "alice"
+
+
+def test_diag_ping_ok(setup):
+    app, _db, _hub, uart, _ = setup
+    uart.send_cmd.return_value = {"echo": "pong"}
+    with app.test_client() as c:
+        r = c.post("/api/diag/ping")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert "ack_ms" in body and isinstance(body["ack_ms"], int)
+        assert body["data"] == {"echo": "pong"}
+    uart.send_cmd.assert_called_once_with("ping", timeout=2.0)
+
+
+def test_diag_status_link_down(setup):
+    app, _, _, uart, _ = setup
+    from smart_gate.link.uart_client import LinkDown
+    uart.send_cmd.side_effect = LinkDown()
+    with app.test_client() as c:
+        r = c.post("/api/diag/status")
+        assert r.status_code == 503
+        body = r.get_json()
+        assert "error" in body
