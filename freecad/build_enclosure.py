@@ -209,6 +209,25 @@ def build_box_body(doc):
                                        slot_z - slot_h / 2))
         box = box.cut(slot)
 
+    # === Rabbet joints (ledges) around 3 free edges of north opening ===
+    # Plate seats against these inward-projecting ledges (backstop for alignment)
+    LEDGE_T = 2.0     # ledge depth into box (Y direction, behind plate)
+    # West edge ledge: at west wall, extending into box from Y=WALL
+    west_ledge = Part.makeBox(WALL, LEDGE_T,
+                               BOX_H - FLOOR_T - FRAME_H,
+                               App.Vector(0, WALL, FLOOR_T + FRAME_H))
+    box = box.fuse(west_ledge)
+    # East edge ledge
+    east_ledge = Part.makeBox(WALL, LEDGE_T,
+                               BOX_H - FLOOR_T - FRAME_H,
+                               App.Vector(OUTER_W - WALL, WALL, FLOOR_T + FRAME_H))
+    box = box.fuse(east_ledge)
+    # Top edge ledge (under lid line)
+    top_ledge = Part.makeBox(OUTER_W, LEDGE_T, WALL,
+                              App.Vector(0, WALL, BOX_H - WALL))
+    box = box.fuse(top_ledge)
+    print(f'  Added rabbet ledges (3 edges, {LEDGE_T}mm into box)')
+
     # === Chamfer outer vertical corner edges (chamfer more reliable than fillet
     # for complex geometry with pillars and cuts) ===
     outer_corners_xy = [(0, 0), (OUTER_W, 0), (0, OUTER_D), (OUTER_W, OUTER_D)]
