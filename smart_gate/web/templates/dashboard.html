@@ -2,27 +2,48 @@
 {% block title %}Dashboard{% endblock %}
 {% block body %}
 <style>
-  .dashlog {
-    max-height: 320px; overflow-y: auto;
-    font-size: var(--fs-xs); line-height: 1.4;
-    padding: var(--s-2);
-    background: rgba(0,0,0,0.25); border-radius: var(--r-sm);
+  /* Toast stack: fixed bottom-right, slide-in from right, auto-fade.
+     Each toast lives 4–6s depending on level; click to dismiss; hover pauses. */
+  #toast-stack {
+    position: fixed;
+    right: var(--s-3, 16px);
+    bottom: var(--s-3, 16px);
+    width: 340px; max-width: calc(100vw - 32px);
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    z-index: 9999; pointer-events: none;
   }
-  .dashlog-row {
-    display: flex; gap: 0.4em; padding: 2px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+  .toast {
+    pointer-events: auto;
+    background: #1f2937;
+    color: #e5e7eb;
+    border-left: 4px solid #6c757d;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    opacity: 0; transform: translateX(100%);
+    transition: opacity 250ms ease-out, transform 220ms ease-out;
+    cursor: pointer;
+    display: grid; grid-template-columns: 1.2em 4em 1fr; gap: 0.5em;
+    align-items: baseline;
   }
-  .dashlog-row:last-child { border-bottom: none; }
-  .dashlog-ts   { color: var(--muted); flex: 0 0 auto; }
-  .dashlog-dir  { flex: 0 0 1.2em; text-align: center; font-weight: bold; }
-  .dashlog-tag  { flex: 0 0 4em; color: var(--muted); }
-  .dashlog-msg  { flex: 1 1 auto; word-break: break-word; }
-  .dashlog-row.lvl-info  .dashlog-msg { color: var(--text); }
-  .dashlog-row.lvl-warn  .dashlog-msg { color: #fd7e14; }
-  .dashlog-row.lvl-err   .dashlog-msg { color: var(--danger); }
-  .dashlog-row.lvl-info  .dashlog-dir { color: var(--accent); }
-  .dashlog-row.lvl-warn  .dashlog-dir { color: #fd7e14; }
-  .dashlog-row.lvl-err   .dashlog-dir { color: var(--danger); }
+  .toast.show   { opacity: 1; transform: translateX(0); }
+  .toast.leave  { opacity: 0; transform: translateX(100%); }
+  .toast .toast-dir { font-weight: bold; text-align: center; }
+  .toast .toast-tag { color: #9ca3af; font-size: 11px; text-transform: uppercase; }
+  .toast .toast-msg { word-break: break-word; }
+  .toast-info { border-left-color: #3b82f6; }
+  .toast-info .toast-dir { color: #3b82f6; }
+  .toast-warn { border-left-color: #fd7e14; }
+  .toast-warn .toast-dir, .toast-warn .toast-msg { color: #fd7e14; }
+  .toast-err  { border-left-color: #dc3545; }
+  .toast-err  .toast-dir, .toast-err  .toast-msg { color: #ef4444; }
+  .toast-stack-status {
+    font-size: 11px; color: #6c757d; padding: 4px 8px;
+    background: rgba(0,0,0,0.4); border-radius: 4px;
+    align-self: flex-end;
+  }
 </style>
 <div class="page-header">
   <h1>Dashboard</h1>
@@ -106,72 +127,95 @@
       </table>
     </article>
 
-    <article class="card" style="margin-top: var(--s-4);">
-      <header>
-        <span>Live log <small class="muted">cmd · ack · warn</small></span>
-        <span id="dashlog-sse-status" class="pill pill-muted">…</span>
-      </header>
-      <div id="dashlog" class="dashlog mono" role="log" aria-live="polite"></div>
-    </article>
   </section>
 
 </div>
 
+<!-- Toast stack: floats at bottom-right; each toast auto-fades 4–6s. -->
+<div id="toast-stack" aria-live="polite" aria-label="Notifications">
+  <span id="dashlog-sse-status" class="toast-stack-status">connecting…</span>
+</div>
+
 <script>
-// --- Live log panel: subscribe SSE /api/esp_log/stream ---
+// --- Toast stack: render SSE events from /api/esp_log/stream as floating
+// toasts at bottom-right. Each lives 4–6s depending on level, slides in
+// from the right, fades out and removes itself. Click to dismiss; hover
+// to pause the timer. Stack capped at MAX_TOASTS — oldest dies early.
 (function() {
-  var box = document.getElementById('dashlog');
-  var statusPill = document.getElementById('dashlog-sse-status');
-  if (!box) return;
-  var MAX_ROWS = 80;
-  function setStatus(text, cls) {
-    if (!statusPill) return;
-    statusPill.textContent = text;
-    statusPill.className = 'pill ' + (cls || 'pill-muted');
+  var stack = document.getElementById('toast-stack');
+  var statusEl = document.getElementById('dashlog-sse-status');
+  if (!stack) return;
+  var MAX_TOASTS = 5;
+  var TTL_BY_LVL = { 'info': 4000, 'warn': 5000, 'warning': 5000,
+                     'err': 6000, 'error': 6000, 'fatal': 6000 };
+  function setStatus(text) {
+    if (statusEl) statusEl.textContent = text;
   }
   function lvlClass(lvl) {
-    if (lvl === 'warn' || lvl === 'warning') return 'lvl-warn';
-    if (lvl === 'err' || lvl === 'error' || lvl === 'fatal') return 'lvl-err';
-    return 'lvl-info';
+    if (lvl === 'warn' || lvl === 'warning') return 'toast-warn';
+    if (lvl === 'err' || lvl === 'error' || lvl === 'fatal') return 'toast-err';
+    return 'toast-info';
   }
   function dirArrow(d) {
-    if (d === '→') return '→';   // Pi → ESP
-    if (d === '←') return '←';   // ESP → Pi
-    return '·';                  // internal
+    if (d === '→') return '→';
+    if (d === '←') return '←';
+    return '·';
   }
   function escapeHtml(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  function appendRow(item) {
-    var ts = item.ts || '';
-    var hhmmss = ts.length >= 19 ? ts.substring(11, 19) : ts;
-    var row = document.createElement('div');
-    row.className = 'dashlog-row ' + lvlClass(item.lvl);
-    row.innerHTML =
-      '<span class="dashlog-ts">' + escapeHtml(hhmmss) + '</span>' +
-      '<span class="dashlog-dir">' + escapeHtml(dirArrow(item.direction || '·')) + '</span>' +
-      '<span class="dashlog-tag">' + escapeHtml(item.tag || '-') + '</span>' +
-      '<span class="dashlog-msg">' + escapeHtml(item.msg || '') + '</span>';
-    box.appendChild(row);
-    while (box.children.length > MAX_ROWS) box.removeChild(box.firstChild);
-    box.scrollTop = box.scrollHeight;
+  function removeToast(el) {
+    if (!el || !el.parentNode) return;
+    el.classList.add('leave');
+    setTimeout(function() {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 300);
+  }
+  function trimStack() {
+    // Toasts are flex-column-reverse, so child order is OLDEST first.
+    // Drop oldest until count ≤ MAX_TOASTS.
+    var toasts = stack.querySelectorAll('.toast');
+    var excess = toasts.length - MAX_TOASTS;
+    for (var i = 0; i < excess; i++) removeToast(toasts[i]);
+  }
+  function pushToast(item) {
+    var el = document.createElement('div');
+    el.className = 'toast ' + lvlClass(item.lvl);
+    el.innerHTML =
+      '<span class="toast-dir">' + escapeHtml(dirArrow(item.direction || '·')) + '</span>' +
+      '<span class="toast-tag">' + escapeHtml(item.tag || '-') + '</span>' +
+      '<span class="toast-msg">' + escapeHtml(item.msg || '') + '</span>';
+    stack.appendChild(el);
+    // animate in on next frame
+    requestAnimationFrame(function() { el.classList.add('show'); });
+    trimStack();
+
+    var ttl = TTL_BY_LVL[item.lvl] || 4000;
+    var timer = setTimeout(function() { removeToast(el); }, ttl);
+
+    // Hover pauses timer; mouseleave restarts a fresh one.
+    el.addEventListener('mouseenter', function() { clearTimeout(timer); });
+    el.addEventListener('mouseleave', function() {
+      timer = setTimeout(function() { removeToast(el); }, 2000);
+    });
+    // Click dismisses immediately.
+    el.addEventListener('click', function() {
+      clearTimeout(timer);
+      removeToast(el);
+    });
   }
   function open() {
-    setStatus('connecting…', 'pill-muted');
+    setStatus('connecting…');
     var es = new EventSource('/api/esp_log/stream');
-    es.addEventListener('open',  function() { setStatus('live', 'pill-ok'); });
-    es.addEventListener('error', function() {
-      setStatus('disconnected', 'pill-err');
-      // EventSource auto-reconnects; no manual loop needed.
-    });
+    es.addEventListener('open',  function() { setStatus('live'); });
+    es.addEventListener('error', function() { setStatus('disconnected'); });
     es.addEventListener('log', function(ev) {
-      try { appendRow(JSON.parse(ev.data)); } catch (e) { /* drop bad */ }
+      try { pushToast(JSON.parse(ev.data)); } catch (e) {}
     });
-    // Server may also emit unnamed `data:` events.
     es.onmessage = function(ev) {
-      try { appendRow(JSON.parse(ev.data)); } catch (e) { /* drop bad */ }
+      try { pushToast(JSON.parse(ev.data)); } catch (e) {}
     };
   }
   open();
