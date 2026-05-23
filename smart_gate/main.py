@@ -25,6 +25,7 @@ from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
 from smart_gate.video import capture as capture_mod
 from smart_gate.link.uart_client import UartClient, EspEvent, LinkDown, LinkTimeout
+from smart_gate.link.esp_log_bus import EspLogBus
 from smart_gate.web.app import create_app
 
 log = logging.getLogger("smart_gate.main")
@@ -58,6 +59,7 @@ def main(argv=None) -> int:
     gate_tracker = GateTracker()
     cap_fps = FpsCounter(window_s=5.0)
     det_fps = FpsCounter(window_s=5.0)
+    esp_log_bus = EspLogBus()
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -89,14 +91,16 @@ def main(argv=None) -> int:
                          args=(bus, db, matcher, uart, trig_queue, cfg, shutdown,
                                reload_event),
                          kwargs={"state": two_factor,
-                                 "gate_tracker": gate_tracker},
+                                 "gate_tracker": gate_tracker,
+                                 "esp_log_bus": esp_log_bus},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
                          args=(cfg, db, hub, uart, data_dir, shutdown),
                          kwargs={"matcher": matcher, "overlay": overlay,
                                  "reload_event": reload_event,
                                  "gate_tracker": gate_tracker,
-                                 "cap_fps": cap_fps, "det_fps": det_fps},
+                                 "cap_fps": cap_fps, "det_fps": det_fps,
+                                 "esp_log_bus": esp_log_bus},
                          daemon=True),
         threading.Thread(target=_cleanup_loop, name="cleanup",
                          args=(cfg, db, data_dir, shutdown), daemon=True),
@@ -161,7 +165,8 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  uart: UartClient, trig_queue: queue.Queue, cfg, shutdown,
                  reload_event: threading.Event,
                  *, state: TwoFactorState | None = None,
-                 gate_tracker: GateTracker | None = None) -> None:
+                 gate_tracker: GateTracker | None = None,
+                 esp_log_bus: EspLogBus | None = None) -> None:
     last_grant: dict[int, float] = {}
     while not shutdown.is_set():
         if reload_event.is_set():
@@ -181,7 +186,7 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
         elif isinstance(evt, EspEvent):
             _handle_esp_event(evt, db, matcher, state, trig_queue,
                               uart, cfg, last_grant, reload_event,
-                              gate_tracker)
+                              gate_tracker, esp_log_bus)
 
 
 def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
@@ -254,14 +259,22 @@ def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue):
 
 def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
                       uart, cfg, last_grant, reload_event,
-                      gate_tracker=None):
+                      gate_tracker=None, esp_log_bus=None):
     """ESP32 events. evt:log → esp_log table. evt:rfid → 2FA pairing.
     evt:gate → update GateTracker + log timeout_warn to events table.
     evt:person_passed → just update tracker; gate FSM lives on ESP32."""
     if evt.v == "log":
         d = evt.data or {}
-        db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
-                          d.get("msg", ""))
+        log_id = db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
+                                   d.get("msg", ""))
+        if esp_log_bus is not None:
+            esp_log_bus.publish({
+                "id":  log_id,
+                "ts":  d.get("ts"),
+                "lvl": d.get("lvl", "info"),
+                "tag": d.get("tag"),
+                "msg": d.get("msg", ""),
+            })
         return
     if evt.v == "gate" and gate_tracker is not None:
         d = evt.data or {}
@@ -319,12 +332,14 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
 
 def _run_web(cfg, db, hub, uart, data_dir, shutdown,
              matcher=None, overlay=None, reload_event=None,
-             gate_tracker=None, cap_fps=None, det_fps=None):
+             gate_tracker=None, cap_fps=None, det_fps=None,
+             esp_log_bus=None):
     app = create_app(db=db, hub=hub, uart=uart, data_dir=data_dir,
                      matcher=matcher, overlay=overlay,
                      reload_event=reload_event,
                      gate_tracker=gate_tracker,
-                     cap_fps=cap_fps, det_fps=det_fps)
+                     cap_fps=cap_fps, det_fps=det_fps,
+                     esp_log_bus=esp_log_bus)
     from werkzeug.serving import make_server
     srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
     def watcher():
