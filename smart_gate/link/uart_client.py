@@ -161,55 +161,82 @@ class UartClient:
                 delay = min(30.0, delay * 2)
 
     def _rx_loop(self) -> None:
+        """RX loop must NEVER let an exception escape. If the loop dies, the
+        watchdog will report it missing and the link is silently down forever.
+        Outer try/except catches any unexpected exception (e.g. UnicodeDecodeError
+        leaking from a future protocol bug, a corrupted pyserial state, etc.),
+        logs it, resets the serial handle, and continues the loop.
+        """
         while not self._shutdown.is_set():
-            if self._ser is None:
-                self._reconnect()
+            try:
                 if self._ser is None:
-                    return
-            try:
-                line = self._ser.readline()
-            except SerialException as e:
-                log.warning("rx exception: %s", e)
-                with self._port_lock:
-                    self._ser = None
-                self._connected.clear()
-                continue
-            if not line:
-                continue
-            try:
-                msg = protocol.decode(line)
-            except protocol.ProtocolError as e:
-                log.warning("malformed line %r: %s", line, e)
-                continue
-            self._last_rx = time.monotonic()
-            self._dispatch(msg)
-
-    def _tx_loop(self) -> None:
-        while not self._shutdown.is_set():
-            try:
-                item = self._tx_queue.get(timeout=0.5)
-            except queue.Empty:
-                continue
-            if item is _SENTINEL:
-                return
-            msg_id, payload, ack_event, holder = item
-            with self._port_lock:
-                ser = self._ser
-                if ser is None:
-                    holder["err"] = LinkDown()
-                    ack_event.set()
+                    self._reconnect()
+                    if self._ser is None:
+                        # _reconnect returns without _ser only on shutdown
+                        return
+                try:
+                    line = self._ser.readline()
+                except SerialException as e:
+                    log.warning("rx exception: %s", e)
+                    with self._port_lock:
+                        self._ser = None
+                    self._connected.clear()
+                    continue
+                if not line:
                     continue
                 try:
-                    ser.write(payload)
-                except SerialException as e:
-                    log.warning("tx exception: %s", e)
-                    self._ser = None
-                    self._connected.clear()
-                    holder["err"] = LinkDown()
-                    ack_event.set()
+                    msg = protocol.decode(line)
+                except protocol.ProtocolError as e:
+                    log.warning("malformed line %r: %s", line, e)
                     continue
-            with self._pending_lock:
-                self._pending[msg_id] = (ack_event, holder)
+                self._last_rx = time.monotonic()
+                self._dispatch(msg)
+            except Exception as e:
+                log.exception("rx_loop unexpected exception (continuing): %s", e)
+                with self._port_lock:
+                    if self._ser is not None:
+                        try:
+                            self._ser.close()
+                        except Exception:
+                            pass
+                        self._ser = None
+                self._connected.clear()
+                # Small sleep to avoid tight error loop if something's truly broken
+                if self._shutdown.wait(1.0):
+                    return
+
+    def _tx_loop(self) -> None:
+        """Same defense-in-depth as _rx_loop: never let an exception kill it."""
+        while not self._shutdown.is_set():
+            try:
+                try:
+                    item = self._tx_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                if item is _SENTINEL:
+                    return
+                msg_id, payload, ack_event, holder = item
+                with self._port_lock:
+                    ser = self._ser
+                    if ser is None:
+                        holder["err"] = LinkDown()
+                        ack_event.set()
+                        continue
+                    try:
+                        ser.write(payload)
+                    except SerialException as e:
+                        log.warning("tx exception: %s", e)
+                        self._ser = None
+                        self._connected.clear()
+                        holder["err"] = LinkDown()
+                        ack_event.set()
+                        continue
+                with self._pending_lock:
+                    self._pending[msg_id] = (ack_event, holder)
+            except Exception as e:
+                log.exception("tx_loop unexpected exception (continuing): %s", e)
+                if self._shutdown.wait(1.0):
+                    return
 
     def _heartbeat_loop(self) -> None:
         while not self._shutdown.wait(self._ping_interval):
