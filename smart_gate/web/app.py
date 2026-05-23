@@ -112,52 +112,61 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/api/enroll", methods=["POST"])
     def enroll():
-        """Auto-name + capture N samples from live FrameHub stream.
+        """Create a new user_NNN with a QR token. Face binds automatically
+        on first QR scan or RFID swipe matching this user.
 
-        Body (JSON, optional): {"samples": 3, "delay_s": 0.8}
-        Returns: {"ok": true, "name": "user_001", "captured": 3, "qr_url": "..."}
+        Body (JSON, optional): {"face_capture": false, "samples": 3}
+          face_capture=false (default): just creates user + QR, no face.
+            User holds the QR up to the webcam and the daemon auto-enrolls
+            the visible face under this user.
+          face_capture=true: captures N face samples from the live stream
+            immediately, like the CLI enroll. Useful when no QR/RFID flow
+            is available.
+
+        Returns: {"ok": true, "name": "user_001", "id": N,
+                  "captured": M, "qr_url": "..."}
         """
         body = request.get_json(silent=True) or {}
+        face_capture = bool(body.get("face_capture", False))
         n_samples = max(1, min(int(body.get("samples", 3)), 10))
         delay_s = max(0.2, min(float(body.get("delay_s", 0.8)), 3.0))
 
-        # Allocate next user_NNN
-        try:
-            name = _allocate_user_name(db)
-        except RuntimeError as e:
-            return jsonify({"error": str(e)}), 500
+        name = _allocate_user_name(db)
 
-        try:
-            encs = _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module)
-        except RuntimeError as e:
-            return jsonify({"error": str(e)}), 503
-
-        if len(encs) < n_samples:
-            return jsonify({
-                "error": f"only captured {len(encs)}/{n_samples} samples — "
-                         "face not detected in some frames",
-                "captured": len(encs),
-            }), 400
+        encs = []
+        if face_capture:
+            try:
+                encs = _flask_capture_face_samples(hub, n_samples, delay_s,
+                                                  cv2_module)
+            except RuntimeError as e:
+                return jsonify({"error": str(e)}), 503
+            if len(encs) < n_samples:
+                return jsonify({
+                    "error": f"only captured {len(encs)}/{n_samples} "
+                             "samples — face not detected in some frames",
+                    "captured": len(encs),
+                }), 400
 
         from smart_gate.cli import qr as qr_mod
         uid = db.insert_user(name)
         for i, enc in enumerate(encs):
             db.insert_face_encoding(uid, enc.astype("float32").tobytes(), i)
-        qr_path = qr_mod.issue_initial(db, name, qr_dir)
+        _ = qr_mod.issue_initial(db, name, qr_dir)
 
-        # Reload matcher in-process (we're the same process as daemon)
         if reload_event is not None:
             reload_event.set()
         elif matcher is not None:
             matcher.reload(db)
 
-        log.info("enrolled %s (id=%d, %d samples)", name, uid, len(encs))
+        log.info("created user %s (id=%d, %d face samples; face_capture=%s)",
+                 name, uid, len(encs), face_capture)
         return jsonify({
             "ok": True,
             "name": name,
             "id": uid,
             "captured": len(encs),
             "qr_url": f"/qr/{name}.png",
+            "face_capture": face_capture,
         })
 
     @app.route("/healthz")

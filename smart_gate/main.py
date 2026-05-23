@@ -18,6 +18,7 @@ from smart_gate.recognition.matcher import Matcher
 from smart_gate.recognition import detector as detector_mod
 from smart_gate.recognition.detector import AuthEvent
 from smart_gate.recognition.overlay import OverlayState
+from smart_gate.recognition.pending_enrollment import PendingEnrollment
 from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
 from smart_gate.video import capture as capture_mod
@@ -51,6 +52,7 @@ def main(argv=None) -> int:
 
     hub = FrameHub()
     overlay = OverlayState(stale_after_s=2.0)
+    pending = PendingEnrollment()
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -70,13 +72,15 @@ def main(argv=None) -> int:
                          args=(cfg, hub, ring, shutdown), daemon=True),
         threading.Thread(target=detector_mod.run_detector, name="detect",
                          args=(cfg, hub, matcher, bus, shutdown),
-                         kwargs={"overlay": overlay}, daemon=True),
+                         kwargs={"overlay": overlay, "pending": pending},
+                         daemon=True),
         threading.Thread(target=run_recorder, name="rec",
                          args=(hub, ring, trig_queue, db, data_dir, cfg, shutdown),
                          daemon=True),
         threading.Thread(target=_consume_bus, name="bus-consumer",
                          args=(bus, db, matcher, uart, trig_queue, cfg, shutdown,
                                reload_event),
+                         kwargs={"pending": pending},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
                          args=(cfg, db, hub, uart, data_dir, shutdown),
@@ -144,7 +148,8 @@ def _write_pidfile() -> None:
 
 def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  uart: UartClient, trig_queue: queue.Queue, cfg, shutdown,
-                 reload_event: threading.Event) -> None:
+                 reload_event: threading.Event,
+                 *, pending=None) -> None:
     last_grant: dict[int, float] = {}
     last_stranger = 0.0
     while not shutdown.is_set():
@@ -157,17 +162,25 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
         except queue.Empty:
             continue
         if isinstance(evt, AuthEvent):
-            _handle_auth_event(evt, db, uart, trig_queue, cfg, last_grant)
+            _handle_auth_event(evt, db, matcher, uart, trig_queue, cfg,
+                               last_grant, pending, reload_event)
             if not evt.granted:
                 last_stranger = _maybe_emit_stranger(evt, db, trig_queue,
                                                     cfg, last_stranger)
         elif isinstance(evt, EspEvent):
-            _handle_esp_event(evt, db, trig_queue)
+            _handle_esp_event(evt, db, matcher, trig_queue, pending,
+                              reload_event)
 
 
-def _handle_auth_event(evt: AuthEvent, db, uart, trig_queue, cfg, last_grant):
+def _handle_auth_event(evt: AuthEvent, db, matcher, uart, trig_queue, cfg,
+                       last_grant, pending=None, reload_event=None):
     now = time.monotonic()
     if evt.granted:
+        # Auto-enroll: if the most recent face was unmatched and is fresh,
+        # bind it to this credential's user. QR grants land here.
+        if pending is not None and evt.method == "qr":
+            _maybe_auto_enroll(db, matcher, evt.user_id, pending,
+                               reload_event, source="qr")
         prev = last_grant.get(evt.user_id, -1e9)
         if now - prev < cfg.recognition.auth_cooldown_s:
             return
@@ -189,6 +202,31 @@ def _handle_auth_event(evt: AuthEvent, db, uart, trig_queue, cfg, last_grant):
             log.warning("trigger_queue full, dropping clip for event %d", ev_id)
 
 
+def _maybe_auto_enroll(db, matcher, user_id, pending, reload_event, source):
+    """If pending holds a fresh unmatched face embedding, insert it as a new
+    face_encoding under user_id so the face becomes 'green' on next frame.
+    No-op if pending is stale, empty, or already matched."""
+    pf = pending.get_if_fresh(ttl_s=3.0)
+    if pf is None or pf.matched:
+        return
+    # Sanity: check user exists
+    rows = db.list_users()
+    user_exists = any(r[0] == user_id for r in rows)
+    if not user_exists:
+        return
+    n_samples = db.connect().execute(
+        "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (user_id,)
+    ).fetchone()[0]
+    db.insert_face_encoding(user_id, pf.embedding.astype("float32").tobytes(),
+                            n_samples)
+    log.info("auto-enrolled face under user_id=%d via %s (now %d samples)",
+             user_id, source, n_samples + 1)
+    # Clear pending so subsequent grants in the same session don't double-add.
+    pending.clear()
+    if reload_event is not None:
+        reload_event.set()
+
+
 def _maybe_emit_stranger(evt, db, trig_queue, cfg, last_stranger):
     now = time.monotonic()
     if now - last_stranger < cfg.recognition.stranger_cooldown_s:
@@ -202,7 +240,8 @@ def _maybe_emit_stranger(evt, db, trig_queue, cfg, last_stranger):
     return now
 
 
-def _handle_esp_event(evt: EspEvent, db, trig_queue):
+def _handle_esp_event(evt: EspEvent, db, matcher, trig_queue,
+                      pending=None, reload_event=None):
     if evt.v == "log":
         d = evt.data or {}
         db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
@@ -214,6 +253,11 @@ def _handle_esp_event(evt: EspEvent, db, trig_queue):
         name = d.get("name")
         uid = db.get_user_id_by_name(name) if name else None
         granted = result == "granted"
+        # Auto-enroll on granted RFID: bind currently-detected stranger face
+        # to this RFID's user.
+        if granted and uid is not None and pending is not None:
+            _maybe_auto_enroll(db, matcher, uid, pending, reload_event,
+                               source="rfid")
         ev_id = db.insert_event("rfid", uid, granted,
                                 detail=str(d))
         try:

@@ -31,7 +31,7 @@ class AuthEvent:
 
 
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
-                 *, deps=None, overlay=None) -> None:
+                 *, deps=None, overlay=None, pending=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
         {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
     When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
@@ -63,18 +63,63 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
         if bgr is None:
             continue
         try:
-            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay)
+            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay, pending)
         except Exception as e:
             log.exception("detector frame failed: %s", e)
 
 
-def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None):
+def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, pending=None):
     cv2 = deps["cv2"]
     pyzbar = deps["pyzbar"]
     fr = deps["face_recognition"]
     mp_face = deps.get("mp_face")
 
-    # --- QR
+    # --- Face first: write pending + overlay BEFORE handling QR so that the
+    #     bus consumer sees a fresh pending embedding when it processes any
+    #     QR auth event emitted next.
+    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    if mp_face is not None:
+        bbox, encs = _detect_and_encode_mediapipe(rgb, mp_face, fr)
+    else:
+        bbox, encs = _detect_and_encode_hog(rgb, fr)
+
+    if not encs:
+        if overlay is not None:
+            overlay.clear()
+        if pending is not None:
+            pending.clear()
+    else:
+        probe = encs[0].astype("float32")
+        user_id, distance = matcher.match_face(probe)
+        is_match = (user_id is not None
+                    and distance < cfg.recognition.face_threshold)
+        if is_match:
+            if overlay is not None:
+                name = (matcher.user_name(user_id)
+                        if hasattr(matcher, "user_name") else f"id={user_id}")
+                overlay.set(bbox, f"{name} ({distance:.2f})",
+                            color=(0, 255, 0))
+            bus.put(AuthEvent("face", user_id, granted=True,
+                              detail={"distance": float(distance)}))
+            if pending is not None:
+                pending.set(probe, matched=True, user_id=user_id)
+        else:
+            # Anything not a confirmed match shows as RED — single class
+            # 'unknown' instead of stranger/uncertain split. Stranger event
+            # (granted=0) is still emitted once distance is past the upper
+            # band, so the events log distinguishes 'face seen but rejected'
+            # from 'face seen, distance unclear'.
+            if overlay is not None:
+                overlay.set(bbox, f"unknown ({distance:.2f})"
+                            if distance != float("inf") else "unknown",
+                            color=(0, 0, 255))
+            if pending is not None:
+                pending.set(probe, matched=False, user_id=None)
+            if distance > cfg.recognition.uncertain_band[1]:
+                bus.put(AuthEvent("face", None, granted=False,
+                                  detail={"distance": float(distance)}))
+
+    # --- QR (emit AFTER face so pending is ready for auto-enroll)
     for sym in pyzbar.decode(bgr):
         try:
             token = sym.data.decode("utf-8", errors="replace")
@@ -83,34 +128,6 @@ def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None):
         user_id = matcher.lookup_qr(token)
         if user_id is not None:
             bus.put(AuthEvent("qr", user_id, granted=True))
-
-    # --- Face
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    if mp_face is not None:
-        bbox, encs = _detect_and_encode_mediapipe(rgb, mp_face, fr)
-    else:
-        bbox, encs = _detect_and_encode_hog(rgb, fr)
-    if not encs:
-        if overlay is not None:
-            overlay.clear()
-        return
-    probe = encs[0].astype("float32")
-    user_id, distance = matcher.match_face(probe)
-    if user_id is not None and distance < cfg.recognition.face_threshold:
-        bus.put(AuthEvent("face", user_id, granted=True,
-                          detail={"distance": float(distance)}))
-        if overlay is not None:
-            name = matcher.user_name(user_id) if hasattr(matcher, "user_name") else f"id={user_id}"
-            overlay.set(bbox, f"{name} ({distance:.2f})", color=(0, 255, 0))
-    elif distance > cfg.recognition.uncertain_band[1]:
-        bus.put(AuthEvent("face", None, granted=False,
-                          detail={"distance": float(distance)}))
-        if overlay is not None:
-            overlay.set(bbox, f"stranger ({distance:.2f})", color=(0, 0, 255))
-    else:
-        # In uncertain band — show yellow without emitting auth event
-        if overlay is not None:
-            overlay.set(bbox, f"? ({distance:.2f})", color=(0, 200, 255))
 
 
 def _detect_and_encode_mediapipe(rgb, mp_face, fr):

@@ -11,13 +11,14 @@
       <button class="contrast"
               hx-post="/api/enroll"
               hx-headers='{"Content-Type": "application/json"}'
+              hx-vals='{"face_capture": false}'
               hx-target="#enroll-result"
               hx-indicator="#enroll-spinner"
-              hx-confirm="Sẵn sàng? Đứng trước cam ~3 giây.">
-        Enroll
+              hx-confirm="Tạo user mới + QR? Sau đó user quẹt QR/RFID lúc đứng trước cam để bind face.">
+        Tạo user mới
       </button>
       <span id="flash"></span>
-      <span id="enroll-spinner" class="htmx-indicator">⏳ capturing…</span>
+      <span id="enroll-spinner" class="htmx-indicator">⏳ creating…</span>
     </footer>
     <div id="enroll-result"></div>
   </article>
@@ -41,13 +42,18 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
   try {
     var r = JSON.parse(evt.detail.xhr.responseText);
     if (r.ok) {
+      var faceMsg = r.captured > 0
+        ? '(face đã capture ' + r.captured + ' samples)'
+        : '(face sẽ tự bind khi user quẹt QR/RFID)';
       box.innerHTML =
         '<article style="margin-top:1rem;background:#d4edda;color:#155724;padding:0.75rem;">' +
-        '<strong>✓ Enrolled ' + r.name + '</strong> (id=' + r.id + ', ' +
-        r.captured + ' samples)<br>' +
+        '<strong>✓ Tạo ' + r.name + '</strong> (id=' + r.id + ') ' + faceMsg + '<br>' +
         '<a href="' + r.qr_url + '" target="_blank">' +
         '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:0.5rem;">' +
-        '</a></article>';
+        '</a>' +
+        '<p style="margin-top:0.5rem;font-size:0.85em;">In QR ra giấy hoặc lưu vào điện thoại — ' +
+        'lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → quẹt QR → bbox chuyển xanh + ID.</p>' +
+        '</article>';
     } else {
       box.innerHTML =
         '<article style="margin-top:1rem;background:#f8d7da;color:#721c24;padding:0.75rem;">' +
