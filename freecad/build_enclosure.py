@@ -71,6 +71,7 @@ USBC_X = PCB_OX + 115.56         # 119.69
 # === Output ===
 PROJECT_DIR = '/home/nguyenvd/workspace/smart_gate'
 FCSTD_PATH = os.path.join(PROJECT_DIR, 'freecad', 'smart_gate_enclosure.FCStd')
+PCB_STEP_PATH = os.path.join(PROJECT_DIR, '3d', 'smart_gate_combined.step')
 
 
 def build_box_body(doc):
@@ -262,6 +263,38 @@ def build_lid(doc):
     return feat
 
 
+def import_pcb(doc):
+    """Import the motherboard PCB STEP file and position it on top of standoffs.
+
+    KiCad-exported STEP uses the kicad-canvas origin; translate so the PCB
+    board-bottom-left aligns with (PCB_OX, PCB_OY, FLOOR_T+STANDOFF_H) in box.
+    """
+    if not os.path.exists(PCB_STEP_PATH):
+        print(f'  PCB STEP not found at {PCB_STEP_PATH}; skipping')
+        return None
+    shape = Part.read(PCB_STEP_PATH)
+    bb = shape.BoundBox
+    print(f'  PCB STEP raw bbox: X=[{bb.XMin:.1f}, {bb.XMax:.1f}], '
+          f'Y=[{bb.YMin:.1f}, {bb.YMax:.1f}], Z=[{bb.ZMin:.1f}, {bb.ZMax:.1f}]')
+
+    # KiCad exports STEP with Y axis flipped (KiCad screen-Y down → world-Y).
+    # Mirror across XZ plane (Y=0) to restore J_PWR/J_PI to their KiCad-Y positions.
+    shape = shape.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0))
+    bb = shape.BoundBox
+
+    # Translate so PCB bbox bottom-left → (PCB_OX, PCB_OY, FLOOR_T+STANDOFF_H)
+    dx = PCB_OX - bb.XMin
+    dy = PCB_OY - bb.YMin
+    dz = (FLOOR_T + STANDOFF_H) - bb.ZMin
+    shape.translate(App.Vector(dx, dy, dz))
+
+    feat = doc.addObject('Part::Feature', 'MotherboardPCB')
+    feat.Shape = shape
+    feat.ViewObject.ShapeColor = (0.05, 0.4, 0.1, 1.0)   # PCB green
+    feat.ViewObject.Transparency = 0
+    return feat
+
+
 def main():
     if 'smart_gate_enclosure' in [d.Name for d in App.listDocuments().values()]:
         App.closeDocument('smart_gate_enclosure')
@@ -270,6 +303,7 @@ def main():
     box = build_box_body(doc)
     plate = build_connector_plate(doc)
     lid = build_lid(doc)
+    pcb = import_pcb(doc)
 
     print(f'Box bbox: X=[{box.Shape.BoundBox.XMin:.1f}, {box.Shape.BoundBox.XMax:.1f}], '
           f'Y=[{box.Shape.BoundBox.YMin:.1f}, {box.Shape.BoundBox.YMax:.1f}], '
@@ -282,13 +316,15 @@ def main():
     doc.saveAs(FCSTD_PATH)
     print(f'Saved {FCSTD_PATH}')
 
-    # STL export
+    # STL export (only the 3 printed parts, not the imported PCB)
     import Mesh
     EXPORT_DIR = os.path.join(PROJECT_DIR, 'freecad', 'exports')
     os.makedirs(EXPORT_DIR, exist_ok=True)
     for feat, fname in [(box, 'box_body.stl'),
                         (plate, 'connector_plate.stl'),
                         (lid, 'lid.stl')]:
+        if feat is None:
+            continue
         out = os.path.join(EXPORT_DIR, fname)
         Mesh.export([feat], out)
         size_kb = os.path.getsize(out) / 1024
