@@ -16,9 +16,9 @@ from smart_gate.config import load_config
 from smart_gate.data.db import Database
 from smart_gate.recognition.matcher import Matcher
 from smart_gate.recognition import detector as detector_mod
-from smart_gate.recognition.detector import AuthEvent
+from smart_gate.recognition.detector import AuthEvent, CheckInEvent
 from smart_gate.recognition.overlay import OverlayState
-from smart_gate.recognition.pending_enrollment import PendingEnrollment
+from smart_gate.recognition.two_factor import TwoFactorState
 from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
 from smart_gate.video import capture as capture_mod
@@ -52,7 +52,7 @@ def main(argv=None) -> int:
 
     hub = FrameHub()
     overlay = OverlayState(stale_after_s=2.0)
-    pending = PendingEnrollment()
+    two_factor = TwoFactorState(ttl_s=4.0)
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -72,7 +72,7 @@ def main(argv=None) -> int:
                          args=(cfg, hub, ring, shutdown), daemon=True),
         threading.Thread(target=detector_mod.run_detector, name="detect",
                          args=(cfg, hub, matcher, bus, shutdown),
-                         kwargs={"overlay": overlay, "pending": pending},
+                         kwargs={"overlay": overlay, "state": two_factor},
                          daemon=True),
         threading.Thread(target=run_recorder, name="rec",
                          args=(hub, ring, trig_queue, db, data_dir, cfg, shutdown),
@@ -80,7 +80,7 @@ def main(argv=None) -> int:
         threading.Thread(target=_consume_bus, name="bus-consumer",
                          args=(bus, db, matcher, uart, trig_queue, cfg, shutdown,
                                reload_event),
-                         kwargs={"pending": pending},
+                         kwargs={"state": two_factor},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
                          args=(cfg, db, hub, uart, data_dir, shutdown),
@@ -149,9 +149,8 @@ def _write_pidfile() -> None:
 def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  uart: UartClient, trig_queue: queue.Queue, cfg, shutdown,
                  reload_event: threading.Event,
-                 *, pending=None) -> None:
+                 *, state: TwoFactorState | None = None) -> None:
     last_grant: dict[int, float] = {}
-    last_stranger = 0.0
     while not shutdown.is_set():
         if reload_event.is_set():
             reload_event.clear()
@@ -161,87 +160,89 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
             evt = bus.get(timeout=0.5)
         except queue.Empty:
             continue
-        if isinstance(evt, AuthEvent):
-            _handle_auth_event(evt, db, matcher, uart, trig_queue, cfg,
-                               last_grant, pending, reload_event)
-            if not evt.granted:
-                last_stranger = _maybe_emit_stranger(evt, db, trig_queue,
-                                                    cfg, last_stranger)
+        if isinstance(evt, CheckInEvent):
+            _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                            last_grant, reload_event)
+        elif isinstance(evt, AuthEvent):
+            # Manual_open / manual_close only — bypasses 2FA.
+            _handle_manual_event(evt, db, uart, trig_queue)
         elif isinstance(evt, EspEvent):
-            _handle_esp_event(evt, db, matcher, trig_queue, pending,
-                              reload_event)
+            _handle_esp_event(evt, db, matcher, state, trig_queue,
+                              uart, cfg, last_grant, reload_event)
 
 
-def _handle_auth_event(evt: AuthEvent, db, matcher, uart, trig_queue, cfg,
-                       last_grant, pending=None, reload_event=None):
-    now = time.monotonic()
-    if evt.granted:
-        # Auto-enroll: if the most recent face was unmatched and is fresh,
-        # bind it to this credential's user. QR grants land here.
-        if pending is not None and evt.method == "qr":
-            _maybe_auto_enroll(db, matcher, evt.user_id, pending,
-                               reload_event, source="qr")
-        prev = last_grant.get(evt.user_id, -1e9)
-        if now - prev < cfg.recognition.auth_cooldown_s:
-            return
-        last_grant[evt.user_id] = now
-        rows = db.connect().execute("SELECT name FROM users WHERE id=?",
-                                    (evt.user_id,)).fetchone()
-        name = rows[0] if rows else "?"
-        ev_id = db.insert_event(evt.method, evt.user_id, True,
-                                detail=str(evt.detail) if evt.detail else None)
-        db.touch_last_seen(evt.user_id)
-        try:
-            uart.send_cmd("open", {"user": name, "reason": evt.method},
-                          timeout=2.0)
-        except (LinkDown, LinkTimeout) as e:
-            log.warning("uart open failed: %s", e)
-        try:
-            trig_queue.put_nowait(RecordingTrigger(ev_id, evt.ts_mono))
-        except queue.Full:
-            log.warning("trigger_queue full, dropping clip for event %d", ev_id)
+def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
+                    last_grant, reload_event):
+    """A face + credential pair was observed within TTL. Apply 2FA logic:
+    - face matched same user as credential → grant + cmd:open + log event
+    - face was unmatched → auto-enroll under credential's user, then grant
+    - face matched DIFFERENT user → reject (mismatch event, no cmd:open)
+    """
+    grant_uid = evt.grant_user_id
+    face_uid = evt.face_matched_user_id
+    src = evt.grant_source
 
-
-def _maybe_auto_enroll(db, matcher, user_id, pending, reload_event, source):
-    """If pending holds a fresh unmatched face embedding, insert it as a new
-    face_encoding under user_id so the face becomes 'green' on next frame.
-    No-op if pending is stale, empty, or already matched."""
-    pf = pending.get_if_fresh(ttl_s=3.0)
-    if pf is None or pf.matched:
+    # Mismatch: face matched user X, credential said Y, X != Y → security event
+    if face_uid is not None and face_uid != grant_uid:
+        face_name = matcher.user_name(face_uid) if hasattr(matcher, "user_name") else f"id={face_uid}"
+        grant_name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
+        db.insert_event(
+            "mismatch", None, False,
+            detail=f"face={face_name} credential={grant_name} src={src}",
+        )
+        log.warning("checkin mismatch: face=%s credential=%s via %s — gate stays closed",
+                    face_name, grant_name, src)
         return
-    # Sanity: check user exists
-    rows = db.list_users()
-    user_exists = any(r[0] == user_id for r in rows)
-    if not user_exists:
-        return
-    n_samples = db.connect().execute(
-        "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (user_id,)
-    ).fetchone()[0]
-    db.insert_face_encoding(user_id, pf.embedding.astype("float32").tobytes(),
-                            n_samples)
-    log.info("auto-enrolled face under user_id=%d via %s (now %d samples)",
-             user_id, source, n_samples + 1)
-    # Clear pending so subsequent grants in the same session don't double-add.
-    pending.clear()
-    if reload_event is not None:
-        reload_event.set()
 
+    # Auto-enroll: face unmatched, credential valid. Bind embedding to user.
+    if face_uid is None and evt.face_embedding:
+        n_samples = db.connect().execute(
+            "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (grant_uid,)
+        ).fetchone()[0]
+        db.insert_face_encoding(grant_uid, evt.face_embedding, n_samples)
+        log.info("auto-enrolled face under user_id=%d via %s (now %d samples)",
+                 grant_uid, src, n_samples + 1)
+        if reload_event is not None:
+            reload_event.set()
 
-def _maybe_emit_stranger(evt, db, trig_queue, cfg, last_stranger):
+    # Cooldown so spam scans don't open the gate repeatedly.
     now = time.monotonic()
-    if now - last_stranger < cfg.recognition.stranger_cooldown_s:
-        return last_stranger
-    ev_id = db.insert_event(evt.method, None, False,
-                            detail=str(evt.detail) if evt.detail else None)
+    prev = last_grant.get(grant_uid, -1e9)
+    if now - prev < cfg.recognition.auth_cooldown_s:
+        return
+    last_grant[grant_uid] = now
+
+    name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
+    detail = f"distance={evt.face_distance:.3f}"
+    ev_id = db.insert_event(src, grant_uid, True, detail=detail)
+    db.touch_last_seen(grant_uid)
+    try:
+        uart.send_cmd("open", {"user": name, "reason": src}, timeout=2.0)
+    except (LinkDown, LinkTimeout) as e:
+        log.warning("uart open failed: %s", e)
     try:
         trig_queue.put_nowait(RecordingTrigger(ev_id, evt.ts_mono))
     except queue.Full:
-        pass
-    return now
+        log.warning("trigger_queue full, dropping clip for event %d", ev_id)
 
 
-def _handle_esp_event(evt: EspEvent, db, matcher, trig_queue,
-                      pending=None, reload_event=None):
+def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue):
+    """Manual_open / manual_close from web button — bypasses 2FA."""
+    if evt.method not in ("manual_open", "manual_close"):
+        return  # ignore legacy face/qr events that shouldn't be emitted now
+    verb = "open" if evt.method == "manual_open" else "close"
+    payload = {"user": "admin", "reason": "manual"} if verb == "open" else None
+    try:
+        uart.send_cmd(verb, payload, timeout=2.0)
+    except (LinkDown, LinkTimeout) as e:
+        log.warning("uart %s failed: %s", verb, e)
+    db.insert_event(evt.method, None, True)
+
+
+def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
+                      uart, cfg, last_grant, reload_event):
+    """ESP32 events. evt:log → esp_log table. evt:rfid → 2FA pairing
+    against current face state."""
     if evt.v == "log":
         d = evt.data or {}
         db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
@@ -253,13 +254,30 @@ def _handle_esp_event(evt: EspEvent, db, matcher, trig_queue,
         name = d.get("name")
         uid = db.get_user_id_by_name(name) if name else None
         granted = result == "granted"
-        # Auto-enroll on granted RFID: bind currently-detected stranger face
-        # to this RFID's user.
-        if granted and uid is not None and pending is not None:
-            _maybe_auto_enroll(db, matcher, uid, pending, reload_event,
-                               source="rfid")
-        ev_id = db.insert_event("rfid", uid, granted,
-                                detail=str(d))
+        if not granted or uid is None or state is None:
+            # Not granted, or unknown UID — no 2FA possible. We deliberately
+            # do NOT insert an event row for an isolated RFID-only swipe to
+            # avoid the spam the user reported.
+            if not granted:
+                log.info("rfid denied: %s", d)
+            return
+        # Pair with current face via two-factor state.
+        pair = state.set_grant_and_try_match(uid, "rfid")
+        if pair is not None:
+            # We're in bus consumer thread already — turn the pair into a
+            # CheckInEvent and dispatch it inline.
+            checkin = CheckInEvent(
+                face_matched_user_id=pair.face_matched_user_id,
+                face_embedding=(pair.face_embedding.astype("float32").tobytes()
+                                if pair.face_matched_user_id is None else None),
+                face_distance=pair.face_distance,
+                grant_user_id=pair.grant_user_id,
+                grant_source=pair.grant_source,
+            )
+            _handle_checkin(checkin, db, matcher, uart, trig_queue, cfg,
+                            last_grant, reload_event)
+        # If pair is None, the grant is held in `state` for up to ttl_s
+        # seconds awaiting a face — no event written yet, no gate open.
         try:
             trig_queue.put_nowait(RecordingTrigger(ev_id, time.monotonic()))
         except queue.Full:

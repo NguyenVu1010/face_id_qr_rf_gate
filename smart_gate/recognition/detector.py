@@ -23,15 +23,31 @@ log = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class AuthEvent:
-    method: str                     # 'face' | 'qr'
+    """Legacy 1-factor event. Kept for manual_open/close from the web only.
+    Detector no longer emits AuthEvent for face or QR; it emits CheckInEvent
+    when face+grant are both present.
+    """
+    method: str                     # 'manual_open' | 'manual_close'
     user_id: int | None
     granted: bool
     detail: dict = dataclasses.field(default_factory=dict)
     ts_mono: float = dataclasses.field(default_factory=time.monotonic)
 
 
+@dataclasses.dataclass
+class CheckInEvent:
+    """Two-factor check-in: detector saw a face AND a credential within TTL.
+    The bus consumer turns this into a DB event row and a cmd:open."""
+    face_matched_user_id: int | None       # None ⇒ auto-enroll embedding under grant_user_id
+    face_embedding: bytes | None           # for auto-enroll; numpy serialised
+    face_distance: float
+    grant_user_id: int
+    grant_source: str                      # 'qr' or 'rfid'
+    ts_mono: float = dataclasses.field(default_factory=time.monotonic)
+
+
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
-                 *, deps=None, overlay=None, pending=None) -> None:
+                 *, deps=None, overlay=None, state=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
         {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
     When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
@@ -63,71 +79,79 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
         if bgr is None:
             continue
         try:
-            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay, pending)
+            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay, state)
         except Exception as e:
             log.exception("detector frame failed: %s", e)
 
 
-def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, pending=None):
+def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, state=None):
     cv2 = deps["cv2"]
     pyzbar = deps["pyzbar"]
     fr = deps["face_recognition"]
     mp_face = deps.get("mp_face")
 
-    # --- Face first: write pending + overlay BEFORE handling QR so that the
-    #     bus consumer sees a fresh pending embedding when it processes any
-    #     QR auth event emitted next.
+    # --- Face first ---
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     if mp_face is not None:
         bbox, encs = _detect_and_encode_mediapipe(rgb, mp_face, fr)
     else:
         bbox, encs = _detect_and_encode_hog(rgb, fr)
 
+    pair_from_face = None
     if not encs:
         if overlay is not None:
             overlay.clear()
-        if pending is not None:
-            pending.clear()
     else:
         probe = encs[0].astype("float32")
         user_id, distance = matcher.match_face(probe)
         is_match = (user_id is not None
                     and distance < cfg.recognition.face_threshold)
-        if is_match:
-            if overlay is not None:
+        # Overlay: green if matched, red if not. Display only, no DB write.
+        if overlay is not None:
+            if is_match:
                 name = (matcher.user_name(user_id)
                         if hasattr(matcher, "user_name") else f"id={user_id}")
                 overlay.set(bbox, f"{name} ({distance:.2f})",
                             color=(0, 255, 0))
-            bus.put(AuthEvent("face", user_id, granted=True,
-                              detail={"distance": float(distance)}))
-            if pending is not None:
-                pending.set(probe, matched=True, user_id=user_id)
-        else:
-            # Anything not a confirmed match shows as RED — single class
-            # 'unknown' instead of stranger/uncertain split. Stranger event
-            # (granted=0) is still emitted once distance is past the upper
-            # band, so the events log distinguishes 'face seen but rejected'
-            # from 'face seen, distance unclear'.
-            if overlay is not None:
-                overlay.set(bbox, f"unknown ({distance:.2f})"
-                            if distance != float("inf") else "unknown",
-                            color=(0, 0, 255))
-            if pending is not None:
-                pending.set(probe, matched=False, user_id=None)
-            if distance > cfg.recognition.uncertain_band[1]:
-                bus.put(AuthEvent("face", None, granted=False,
-                                  detail={"distance": float(distance)}))
+            else:
+                lbl = (f"unknown ({distance:.2f})"
+                       if distance != float("inf") else "unknown")
+                overlay.set(bbox, lbl, color=(0, 0, 255))
+        # Update two-factor state with this face. If a credential grant was
+        # already pending in TTL, we'll get a CheckInPair back.
+        if state is not None:
+            pair_from_face = state.set_face_and_try_match(
+                embedding=probe,
+                matched_user_id=user_id if is_match else None,
+                distance=float(distance) if distance != float("inf") else 1e9,
+            )
 
-    # --- QR (emit AFTER face so pending is ready for auto-enroll)
+    # --- QR ---
+    pair_from_qr = None
     for sym in pyzbar.decode(bgr):
         try:
             token = sym.data.decode("utf-8", errors="replace")
         except Exception:
             continue
-        user_id = matcher.lookup_qr(token)
-        if user_id is not None:
-            bus.put(AuthEvent("qr", user_id, granted=True))
+        qr_user_id = matcher.lookup_qr(token)
+        if qr_user_id is None:
+            continue
+        if state is not None:
+            pair_from_qr = state.set_grant_and_try_match(qr_user_id, "qr")
+        # Only first valid QR per frame counts
+        break
+
+    # Emit at most one CheckInEvent per frame.
+    pair = pair_from_face or pair_from_qr
+    if pair is not None:
+        bus.put(CheckInEvent(
+            face_matched_user_id=pair.face_matched_user_id,
+            face_embedding=(pair.face_embedding.astype("float32").tobytes()
+                            if pair.face_matched_user_id is None else None),
+            face_distance=pair.face_distance,
+            grant_user_id=pair.grant_user_id,
+            grant_source=pair.grant_source,
+        ))
 
 
 def _detect_and_encode_mediapipe(rgb, mp_face, fr):
