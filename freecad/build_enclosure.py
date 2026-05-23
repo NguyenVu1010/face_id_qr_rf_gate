@@ -124,13 +124,15 @@ def build_box_body(doc):
                                    App.Vector(sx, sy, FLOOR_T - 0.05))
         box = box.fuse(post.cut(pilot))
 
-    # === Cutouts ===
-    # 1. DC jack on WEST wall — round Ø11mm
+    # === Cutouts (swapped per user request: DC on EAST, peripherals on WEST) ===
+    # 1. DC jack on EAST wall (X=OUTER_W) — round Ø11mm
+    # Cable runs internally from J_PWR (near PCB west edge) east to wall
     dc_z = FLOOR_T + PCB_T + 6.0   # ~14.1mm
-    dc_y = PCB_OY + J_PWR_Y
+    dc_y = PCB_OY + J_PWR_Y        # same Y as PCB header
     dc = Part.makeCylinder(11.0 / 2 + 0.25, WALL + 2)
-    dc.Placement = App.Placement(App.Vector(-1, dc_y, dc_z),
-                                  App.Rotation(App.Vector(0, 1, 0), 90))
+    dc.Placement = App.Placement(
+        App.Vector(OUTER_W - WALL - 1, dc_y, dc_z),
+        App.Rotation(App.Vector(0, 1, 0), 90))
     box = box.cut(dc)
 
     # 2. USB-C cable hole on SOUTH wall — oval 12x6
@@ -142,12 +144,12 @@ def build_box_body(doc):
                                    usbc_z - usbc_h / 2))
     box = box.cut(usbc)
 
-    # 3. Peripheral wire exit slots on EAST wall — 4 slots
-    slot_w, slot_h = 5.0, 10.0
-    slot_z = PI_PCB_TOP_Z + 18    # 39mm above floor
+    # 3. Peripheral wire exit slots on WEST wall (X=0) — 4 slots, 15x20mm each
+    slot_w, slot_h = 15.0, 20.0    # Y (along wall) x Z (vertical)
+    slot_z = PI_PCB_TOP_Z + 18     # 39mm above floor
     for slot_y in [25, 55, 80, 105]:
         slot = Part.makeBox(WALL + 2, slot_w, slot_h,
-                            App.Vector(OUTER_W - WALL - 1,
+                            App.Vector(-1,
                                        slot_y - slot_w / 2,
                                        slot_z - slot_h / 2))
         box = box.cut(slot)

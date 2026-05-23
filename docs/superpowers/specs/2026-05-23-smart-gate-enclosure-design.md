@@ -164,9 +164,9 @@ Pi extends in box: X=[108.69, 164.69], Y=[17.95, 102.95].
 
 | Wall | Cutout | Position | Size |
 |---|---|---|---|
-| WEST (X=0) | DC jack | center (Y=27.4, Z=14.6) | round Ø11mm |
+| EAST (X=210) | DC jack | center (Y=27.4, Z=14.6) | round Ø11mm. Internal cable ~185mm from J_PWR header east to wall. |
 | SOUTH (Y=135) | USB-C cable | center (X=119.7, Z=28) | oval 12×6mm |
-| EAST (X=210) | Peripheral wire exits | distributed at peripheral header Y positions | oval 5×10mm each, 4-6 slots |
+| WEST (X=0) | Peripheral wire exits | distributed at peripheral header Y positions | rect 15×20mm each (Y×Z), 4 slots at Y=[25, 55, 80, 105] |
 | North wall frame | Plate mount holes | 4× along frame | M3 heat-set holes Ø4.2mm |
 
 Standoffs in floor (assume PCB mount holes at corners with 5mm inset):
