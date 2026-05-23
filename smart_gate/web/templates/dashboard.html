@@ -111,17 +111,22 @@
       </div>
     </article>
 
-    <article class="card" style="margin-top: var(--s-4);">
+    <article id="recent-events-card" class="card" style="margin-top: var(--s-4);">
       <header>
-        <span>Recent events</span>
-        <a class="btn btn-ghost" href="/events">View all &#8594;</a>
+        <span>Recent events <small class="muted">(5 mới nhất)</small></span>
+        <span>
+          <a class="btn btn-ghost" href="/events">View all &#8594;</a>
+          <button type="button" id="recent-events-close" class="btn btn-ghost"
+                  title="Đóng panel này (refresh trang để hiện lại)"
+                  style="padding:0 8px;font-size:1.1em;line-height:1;">&times;</button>
+        </span>
       </header>
       <table class="table">
         <thead>
           <tr><th>time</th><th>method</th><th>user</th><th>ok</th><th>clip</th></tr>
         </thead>
         <tbody id="events-tbody"
-               hx-get="/events.json?format=html&limit=10"
+               hx-get="/events.json?format=html&limit=5"
                hx-trigger="load, every 2s"
                hx-swap="innerHTML"></tbody>
       </table>
@@ -219,6 +224,24 @@
     };
   }
   open();
+})();
+
+// --- Recent events panel: dismiss button ---
+(function() {
+  var btn  = document.getElementById('recent-events-close');
+  var card = document.getElementById('recent-events-card');
+  if (!btn || !card) return;
+  btn.addEventListener('click', function() {
+    card.style.display = 'none';
+    // Stop the HTMX polling on the hidden tbody so we don't keep
+    // burning network/CPU for an invisible card. Reload page to bring
+    // it back.
+    var tbody = document.getElementById('events-tbody');
+    if (tbody) {
+      tbody.removeAttribute('hx-trigger');
+      if (window.htmx) window.htmx.process(tbody);
+    }
+  });
 })();
 
 // --- Gate badge: parse JSON from /api/gate/state.json into the badge ---
