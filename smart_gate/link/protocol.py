@@ -46,7 +46,12 @@ def decode(line: bytes) -> dict:
         raise ProtocolError(f"line too long: {len(line) + 1}")
     try:
         obj = json.loads(line)
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, UnicodeDecodeError, UnicodeError) as e:
+        # json.loads on bytes auto-detects encoding via BOM/heuristics. Random
+        # garbage bytes (e.g. floating UART RX before the ESP32 is flashed)
+        # can drive the auto-detector into utf-32-be and raise UnicodeDecodeError
+        # which is NOT a JSONDecodeError. Treat all of them as ProtocolError so
+        # the rx loop can drop the line and move on.
         raise ProtocolError(f"bad json: {e}") from e
     if not isinstance(obj, dict):
         raise ProtocolError("not a json object")
