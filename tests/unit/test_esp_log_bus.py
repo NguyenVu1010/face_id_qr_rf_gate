@@ -64,3 +64,24 @@ def test_wait_unblocks_on_publish():
     bus.publish({"id": 42})
     t.join(timeout=1.0)
     assert received == [{"id": 42}]
+
+
+def test_unsubscribe_uses_identity_not_value():
+    """Two empty subscribers compare equal; unsubscribe must remove by identity.
+
+    The tricky case: when q2 is subscribed first, list.remove(q1) would find q2
+    first (because empty deques are equal) and silently remove the wrong entry.
+    """
+    bus = EspLogBus()
+    # Subscribe q2 FIRST so it sits at index 0 in the internal list.
+    # list.remove(q1) with value equality would then remove q2 instead.
+    q2 = bus.subscribe()
+    q1 = bus.subscribe()
+    assert bus.subscriber_count() == 2
+    # Both q1 and q2 are empty deques; q1 == q2 is True
+    assert q1 == q2
+    bus.unsubscribe(q1)
+    assert bus.subscriber_count() == 1
+    # The remaining subscriber must be q2 (by identity), so publishing reaches it.
+    bus.publish({"id": 99})
+    assert bus.wait_for_item(q2, timeout=0.5) == {"id": 99}

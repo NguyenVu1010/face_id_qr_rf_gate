@@ -28,10 +28,7 @@ class EspLogBus:
 
     def unsubscribe(self, q: collections.deque) -> None:
         with self._lock:
-            try:
-                self._subscribers.remove(q)
-            except ValueError:
-                pass
+            self._subscribers[:] = [s for s in self._subscribers if s is not q]
 
     def publish(self, item: dict) -> None:
         with self._cond:
