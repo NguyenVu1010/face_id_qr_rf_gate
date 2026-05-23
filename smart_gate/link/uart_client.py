@@ -118,18 +118,44 @@ class UartClient:
         return holder.get("data")
 
     def _reconnect(self) -> None:
+        """Open the serial port with exponential backoff.
+
+        Logs a single WARNING on the first failure and then throttles
+        further "still not available" messages to once per minute, so a
+        missing ESP32 does not spam the journal. Logs a single INFO on
+        recovery. The reconnect loop only exits on shutdown.
+        """
         delay = 1.0
+        fail_count = 0
+        last_log_mono = 0.0
+        log_throttle_s = 60.0
         while not self._shutdown.is_set():
             try:
                 self._ser = _open_serial(self._port, self._baud, timeout=1.0)
                 self._connected.set()
                 self._last_rx = time.monotonic()
-                log.info("link up: %s @ %d", self._port, self._baud)
+                if fail_count > 0:
+                    log.info("link recovered after %d retries: %s @ %d",
+                             fail_count, self._port, self._baud)
+                else:
+                    log.info("link up: %s @ %d", self._port, self._baud)
                 return
             except SerialException as e:
                 self._ser = None
                 self._connected.clear()
-                log.warning("link open failed: %s; retry in %.1fs", e, delay)
+                now = time.monotonic()
+                if fail_count == 0:
+                    log.warning(
+                        "link not available (%s): %s; will keep retrying "
+                        "(further messages throttled to once per minute)",
+                        self._port, e,
+                    )
+                    last_log_mono = now
+                elif now - last_log_mono >= log_throttle_s:
+                    log.warning("link %s still not available (attempt %d): %s",
+                                self._port, fail_count + 1, e)
+                    last_log_mono = now
+                fail_count += 1
                 if self._shutdown.wait(delay):
                     return
                 delay = min(30.0, delay * 2)
