@@ -1,6 +1,5 @@
 import threading
 import time
-import pytest
 from smart_gate.link.esp_log_bus import EspLogBus
 
 
