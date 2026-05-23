@@ -277,12 +277,13 @@ def import_pcb(doc):
     print(f'  PCB STEP raw bbox: X=[{bb.XMin:.1f}, {bb.XMax:.1f}], '
           f'Y=[{bb.YMin:.1f}, {bb.YMax:.1f}], Z=[{bb.ZMin:.1f}, {bb.ZMax:.1f}]')
 
-    # KiCad exports STEP with Y axis flipped (KiCad screen-Y down → world-Y).
-    # Mirror across XZ plane (Y=0) to restore J_PWR/J_PI to their KiCad-Y positions.
-    shape = shape.mirror(App.Vector(0, 0, 0), App.Vector(0, 1, 0))
+    # KiCad-exported STEP has Y axis flipped AND X orientation that doesn't
+    # match my cutout convention. Rotate 180° around Z axis (mirror both X+Y)
+    # so J_PWR ends up near east wall (matching its DC jack cutout at box-X=210).
+    shape.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), 180)
     bb = shape.BoundBox
 
-    # Translate so PCB bbox bottom-left → (PCB_OX, PCB_OY, FLOOR_T+STANDOFF_H)
+    # Translate so rotated PCB bbox bottom-left → (PCB_OX, PCB_OY, FLOOR_T+STANDOFF_H)
     dx = PCB_OX - bb.XMin
     dy = PCB_OY - bb.YMin
     dz = (FLOOR_T + STANDOFF_H) - bb.ZMin
