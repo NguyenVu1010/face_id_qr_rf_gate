@@ -49,9 +49,12 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
         '<article style="margin-top:1rem;background:#d4edda;color:#155724;padding:0.75rem;">' +
         '<strong>✓ Tạo ' + r.name + '</strong> (id=' + r.id + ') ' + faceMsg + '<br>' +
         '<a href="' + r.qr_url + '" target="_blank">' +
-        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:0.5rem;">' +
-        '</a>' +
-        '<p style="margin-top:0.5rem;font-size:0.85em;">In QR ra giấy hoặc lưu vào điện thoại — ' +
+        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:0.5rem;border:1px solid #ccc;">' +
+        '</a><br>' +
+        '<a href="' + r.qr_url + '?download=1" role="button" class="contrast" ' +
+        'style="margin-top:0.5rem;padding:0.3rem 0.6rem;display:inline-block;text-decoration:none;">' +
+        '⬇ Tải QR PNG</a>' +
+        '<p style="margin-top:0.5rem;font-size:0.85em;">In ra giấy hoặc lưu vào điện thoại — ' +
         'lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → quẹt QR → bbox chuyển xanh + ID.</p>' +
         '</article>';
     } else {

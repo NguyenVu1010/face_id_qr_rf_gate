@@ -91,7 +91,13 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             abort(400)
         if not (qr_dir / f"{name}.png").exists():
             abort(404)
-        return send_from_directory(qr_dir, f"{name}.png", mimetype="image/png")
+        # ?download=1 forces browser to save instead of inline display.
+        as_attachment = request.args.get("download") in ("1", "true", "yes")
+        return send_from_directory(
+            qr_dir, f"{name}.png", mimetype="image/png",
+            as_attachment=as_attachment,
+            download_name=f"smart_gate_{name}.png" if as_attachment else None,
+        )
 
     @app.route("/api/gate/open", methods=["POST"])
     def gate_open():
