@@ -1,13 +1,16 @@
 """Flask web admin.
 
-Factory pattern (`create_app`) so tests pass mocks for db/hub/uart.
+Factory pattern (`create_app`) so tests pass mocks for db/hub/uart/matcher/overlay.
 """
 from __future__ import annotations
 
-import json
 import logging
+import re
+import threading
 import time
 from pathlib import Path
+
+import numpy as np
 from flask import (Flask, Response, abort, jsonify, render_template, request,
                    send_from_directory)
 
@@ -23,10 +26,15 @@ _PLACEHOLDER_JPEG = (
     b"\x05\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xfb\xa0\xff\xd9"
 )
 
+_USER_NAME_RE = re.compile(r"^user_\d+$")
 
-def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None) -> Flask:
+
+def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
+               matcher=None, overlay=None, reload_event=None,
+               cv2_module=None) -> Flask:
     start_time = start_time or time.monotonic()
     data_dir = Path(data_dir)
+    qr_dir = data_dir / "qr"
     app = Flask(__name__,
                 template_folder=str(Path(__file__).parent / "templates"),
                 static_folder=str(Path(__file__).parent / "static"))
@@ -41,10 +49,11 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/stream.mjpeg")
     def stream():
+        """MJPEG with face-detection bbox overlay drawn from OverlayState."""
         def gen():
             try:
                 while True:
-                    jpg = hub.wait_jpeg(timeout=2.0)
+                    jpg = _annotated_jpeg(hub, overlay, cv2_module)
                     if jpg is None:
                         jpg = _PLACEHOLDER_JPEG
                     yield (b"--FRAME\r\nContent-Type: image/jpeg\r\n"
@@ -75,6 +84,15 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             abort(404)
         return send_from_directory(data_dir, clip_path, mimetype="video/mp4")
 
+    @app.route("/qr/<name>.png")
+    def qr_image(name: str):
+        # Defensive: only allow alphanumeric/underscore names.
+        if not re.match(r"^[A-Za-z0-9_\-]+$", name):
+            abort(400)
+        if not (qr_dir / f"{name}.png").exists():
+            abort(404)
+        return send_from_directory(qr_dir, f"{name}.png", mimetype="image/png")
+
     @app.route("/api/gate/open", methods=["POST"])
     def gate_open():
         return _gate_action("open", "manual_open")
@@ -92,9 +110,58 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         db.insert_event(method, None, True)
         return jsonify({"ok": True})
 
+    @app.route("/api/enroll", methods=["POST"])
+    def enroll():
+        """Auto-name + capture N samples from live FrameHub stream.
+
+        Body (JSON, optional): {"samples": 3, "delay_s": 0.8}
+        Returns: {"ok": true, "name": "user_001", "captured": 3, "qr_url": "..."}
+        """
+        body = request.get_json(silent=True) or {}
+        n_samples = max(1, min(int(body.get("samples", 3)), 10))
+        delay_s = max(0.2, min(float(body.get("delay_s", 0.8)), 3.0))
+
+        # Allocate next user_NNN
+        try:
+            name = _allocate_user_name(db)
+        except RuntimeError as e:
+            return jsonify({"error": str(e)}), 500
+
+        try:
+            encs = _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module)
+        except RuntimeError as e:
+            return jsonify({"error": str(e)}), 503
+
+        if len(encs) < n_samples:
+            return jsonify({
+                "error": f"only captured {len(encs)}/{n_samples} samples — "
+                         "face not detected in some frames",
+                "captured": len(encs),
+            }), 400
+
+        from smart_gate.cli import qr as qr_mod
+        uid = db.insert_user(name)
+        for i, enc in enumerate(encs):
+            db.insert_face_encoding(uid, enc.astype("float32").tobytes(), i)
+        qr_path = qr_mod.issue_initial(db, name, qr_dir)
+
+        # Reload matcher in-process (we're the same process as daemon)
+        if reload_event is not None:
+            reload_event.set()
+        elif matcher is not None:
+            matcher.reload(db)
+
+        log.info("enrolled %s (id=%d, %d samples)", name, uid, len(encs))
+        return jsonify({
+            "ok": True,
+            "name": name,
+            "id": uid,
+            "captured": len(encs),
+            "qr_url": f"/qr/{name}.png",
+        })
+
     @app.route("/healthz")
     def healthz():
-        import threading
         expected = {"cap", "detect", "rec", "bus-consumer", "flask",
                     "cleanup", "uart-rx", "uart-tx", "uart-hb"}
         active = {t.name for t in threading.enumerate()}
@@ -102,14 +169,101 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         last_ts = getattr(hub, "_last_publish_mono", None)
         if last_ts is not None:
             last_frame_ago = max(0.0, time.monotonic() - last_ts)
+        n_users = len(db.list_users()) if hasattr(db, "list_users") else None
         return jsonify({
             "uptime_s": int(time.monotonic() - start_time),
             "link_alive": bool(uart.link_alive()),
             "last_frame_ago_s": last_frame_ago,
             "threads_ok": expected.issubset(active),
+            "enrolled_users": n_users,
         })
 
     return app
+
+
+def _allocate_user_name(db) -> str:
+    """Generate next user_NNN id where NNN is one greater than the current max."""
+    rows = db.list_users()
+    nums = []
+    for row in rows:
+        name = row[1]
+        if _USER_NAME_RE.match(name):
+            try:
+                nums.append(int(name.split("_")[1]))
+            except (IndexError, ValueError):
+                pass
+    nxt = (max(nums) + 1) if nums else 1
+    return f"user_{nxt:03d}"
+
+
+def _flask_capture_face_samples(hub, n_samples, delay_s, cv2_module=None):
+    """Block-grab N BGR frames from FrameHub, return list of 128-d encodings.
+
+    Each sample: poll FrameHub up to 8s for a frame containing a detectable
+    face; if found, encode and append. If no face within deadline, skip that
+    slot. Caller decides what to do with partial results.
+    """
+    if cv2_module is None:
+        import cv2 as cv2_module
+    import face_recognition as fr
+
+    encs: list[np.ndarray] = []
+    for i in range(n_samples):
+        if i > 0:
+            time.sleep(delay_s)
+        deadline = time.monotonic() + 8.0
+        enc = None
+        while time.monotonic() < deadline:
+            bgr = hub.wait_bgr(timeout=2.0)
+            if bgr is None:
+                continue
+            enc = _encode_face(bgr, cv2_module, fr)
+            if enc is not None:
+                break
+        if enc is not None:
+            encs.append(enc)
+    return encs
+
+
+def _encode_face(bgr, cv2_module, fr):
+    rgb = cv2_module.cvtColor(bgr, cv2_module.COLOR_BGR2RGB)
+    locations = fr.face_locations(rgb, model="hog", number_of_times_to_upsample=1)
+    if not locations:
+        return None
+    locations.sort(key=lambda l: (l[2] - l[0]) * (l[1] - l[3]), reverse=True)
+    encs = fr.face_encodings(rgb, known_face_locations=locations[:1],
+                             num_jitters=1)
+    return encs[0] if encs else None
+
+
+def _annotated_jpeg(hub, overlay, cv2_module=None):
+    """Return a JPEG (bytes) with the latest BGR frame + bbox overlay drawn.
+
+    If cv2 is unavailable, falls back to raw cap-thread JPEG (no overlay).
+    """
+    if cv2_module is None:
+        try:
+            import cv2 as cv2_module
+        except ImportError:
+            jpg = hub.wait_jpeg(timeout=2.0)
+            return jpg
+
+    bgr = hub.wait_bgr(timeout=2.0)
+    if bgr is None:
+        return None
+
+    annotated = bgr.copy()
+    info = overlay.get_if_fresh() if overlay is not None else None
+    if info is not None and info.bbox is not None:
+        x, y, w, h = info.bbox
+        cv2_module.rectangle(annotated, (x, y), (x + w, y + h), info.color, 2)
+        if info.label:
+            cv2_module.putText(annotated, info.label, (x, max(20, y - 8)),
+                               cv2_module.FONT_HERSHEY_SIMPLEX,
+                               0.7, info.color, 2)
+    ok, buf = cv2_module.imencode(".jpg", annotated,
+                                  [cv2_module.IMWRITE_JPEG_QUALITY, 75])
+    return buf.tobytes() if ok else None
 
 
 def render_template_string_events(rows):

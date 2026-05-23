@@ -14,6 +14,7 @@ class Matcher:
         self._lock = threading.RLock()
         self._faces: list[tuple[int, np.ndarray]] = []
         self._qrs: dict[str, int] = {}
+        self._names: dict[int, str] = {}
         self.reload(db)
 
     def reload(self, db) -> None:
@@ -23,9 +24,15 @@ class Matcher:
             for user_id, emb in rows
         ]
         qrs = db.load_active_qr_tokens()
+        names = {row[0]: row[1] for row in db.list_users()}
         with self._lock:
             self._faces = faces
             self._qrs = qrs
+            self._names = names
+
+    def user_name(self, user_id: int) -> str:
+        with self._lock:
+            return self._names.get(user_id, f"id={user_id}")
 
     def match_face(self, probe: np.ndarray) -> tuple[int | None, float]:
         with self._lock:

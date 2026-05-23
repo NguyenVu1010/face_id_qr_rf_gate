@@ -31,7 +31,7 @@ class AuthEvent:
 
 
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
-                 *, deps=None) -> None:
+                 *, deps=None, overlay=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
         {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
     When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
@@ -63,12 +63,12 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
         if bgr is None:
             continue
         try:
-            _process_frame(bgr, cfg, matcher, event_bus, deps)
+            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay)
         except Exception as e:
             log.exception("detector frame failed: %s", e)
 
 
-def _process_frame(bgr, cfg, matcher, bus, deps):
+def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None):
     cv2 = deps["cv2"]
     pyzbar = deps["pyzbar"]
     fr = deps["face_recognition"]
@@ -87,42 +87,57 @@ def _process_frame(bgr, cfg, matcher, bus, deps):
     # --- Face
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     if mp_face is not None:
-        encs = _encode_via_mediapipe(rgb, mp_face, fr)
+        bbox, encs = _detect_and_encode_mediapipe(rgb, mp_face, fr)
     else:
-        encs = _encode_via_hog(rgb, fr)
+        bbox, encs = _detect_and_encode_hog(rgb, fr)
     if not encs:
+        if overlay is not None:
+            overlay.clear()
         return
     probe = encs[0].astype("float32")
     user_id, distance = matcher.match_face(probe)
     if user_id is not None and distance < cfg.recognition.face_threshold:
         bus.put(AuthEvent("face", user_id, granted=True,
                           detail={"distance": float(distance)}))
+        if overlay is not None:
+            name = matcher.user_name(user_id) if hasattr(matcher, "user_name") else f"id={user_id}"
+            overlay.set(bbox, f"{name} ({distance:.2f})", color=(0, 255, 0))
     elif distance > cfg.recognition.uncertain_band[1]:
         bus.put(AuthEvent("face", None, granted=False,
                           detail={"distance": float(distance)}))
+        if overlay is not None:
+            overlay.set(bbox, f"stranger ({distance:.2f})", color=(0, 0, 255))
+    else:
+        # In uncertain band — show yellow without emitting auth event
+        if overlay is not None:
+            overlay.set(bbox, f"? ({distance:.2f})", color=(0, 200, 255))
 
 
-def _encode_via_mediapipe(rgb, mp_face, fr):
+def _detect_and_encode_mediapipe(rgb, mp_face, fr):
+    """Returns (bbox, encodings). bbox is (x, y, w, h) pixel coords or None."""
     result = mp_face.process(rgb)
     if not getattr(result, "detections", None):
-        return []
+        return None, []
     box = _best_box(result.detections, rgb.shape)
     if box is None:
-        return []
+        return None, []
     roi = _pad_and_crop(rgb, box, pad=0.20)
-    return fr.face_encodings(roi, num_jitters=1)
+    encs = fr.face_encodings(roi, num_jitters=1)
+    return box, encs
 
 
-def _encode_via_hog(rgb, fr):
-    # face_recognition.face_locations returns [(top, right, bottom, left), ...]
+def _detect_and_encode_hog(rgb, fr):
     locations = fr.face_locations(rgb, model="hog",
                                   number_of_times_to_upsample=1)
     if not locations:
-        return []
-    # Keep the largest face only (matches single-face semantics of the MP path).
+        return None, []
+    # Keep the largest face only.
     locations.sort(key=lambda l: (l[2] - l[0]) * (l[1] - l[3]), reverse=True)
-    return fr.face_encodings(rgb, known_face_locations=locations[:1],
+    encs = fr.face_encodings(rgb, known_face_locations=locations[:1],
                              num_jitters=1)
+    top, right, bottom, left = locations[0]
+    bbox = (left, top, right - left, bottom - top)
+    return bbox, encs
 
 
 def _best_box(detections, rgb_shape):

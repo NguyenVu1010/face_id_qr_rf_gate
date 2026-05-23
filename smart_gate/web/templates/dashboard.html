@@ -3,13 +3,23 @@
 {% block body %}
 <div class="grid">
   <article>
-    <header>Live</header>
+    <header>Live (bbox xanh = match, đỏ = stranger, vàng = uncertain)</header>
     <img src="/stream.mjpeg" alt="live" style="width:100%; max-width:640px;">
     <footer>
       <button hx-post="/api/gate/open" hx-target="#flash">Open</button>
       <button class="secondary" hx-post="/api/gate/close" hx-target="#flash">Close</button>
+      <button class="contrast"
+              hx-post="/api/enroll"
+              hx-headers='{"Content-Type": "application/json"}'
+              hx-target="#enroll-result"
+              hx-indicator="#enroll-spinner"
+              hx-confirm="Sẵn sàng? Đứng trước cam ~3 giây.">
+        Enroll
+      </button>
       <span id="flash"></span>
+      <span id="enroll-spinner" class="htmx-indicator">⏳ capturing…</span>
     </footer>
+    <div id="enroll-result"></div>
   </article>
   <article>
     <header>Events</header>
@@ -23,4 +33,29 @@
     </table>
   </article>
 </div>
+<script>
+// /api/enroll returns JSON; render a small status card.
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+  if (evt.detail.pathInfo.requestPath !== '/api/enroll') return;
+  var box = document.getElementById('enroll-result');
+  try {
+    var r = JSON.parse(evt.detail.xhr.responseText);
+    if (r.ok) {
+      box.innerHTML =
+        '<article style="margin-top:1rem;background:#d4edda;color:#155724;padding:0.75rem;">' +
+        '<strong>✓ Enrolled ' + r.name + '</strong> (id=' + r.id + ', ' +
+        r.captured + ' samples)<br>' +
+        '<a href="' + r.qr_url + '" target="_blank">' +
+        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:0.5rem;">' +
+        '</a></article>';
+    } else {
+      box.innerHTML =
+        '<article style="margin-top:1rem;background:#f8d7da;color:#721c24;padding:0.75rem;">' +
+        '<strong>✗ ' + (r.error || 'unknown') + '</strong></article>';
+    }
+  } catch (e) {
+    box.innerHTML = '<article>' + evt.detail.xhr.responseText + '</article>';
+  }
+});
+</script>
 {% endblock %}

@@ -17,6 +17,7 @@ from smart_gate.data.db import Database
 from smart_gate.recognition.matcher import Matcher
 from smart_gate.recognition import detector as detector_mod
 from smart_gate.recognition.detector import AuthEvent
+from smart_gate.recognition.overlay import OverlayState
 from smart_gate.video.framehub import FrameHub
 from smart_gate.video.recorder import RingBuffer, RecordingTrigger, run_recorder, cleanup_pass
 from smart_gate.video import capture as capture_mod
@@ -49,6 +50,7 @@ def main(argv=None) -> int:
     matcher = Matcher(db)
 
     hub = FrameHub()
+    overlay = OverlayState(stale_after_s=2.0)
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -67,7 +69,8 @@ def main(argv=None) -> int:
         threading.Thread(target=capture_mod.run_capture, name="cap",
                          args=(cfg, hub, ring, shutdown), daemon=True),
         threading.Thread(target=detector_mod.run_detector, name="detect",
-                         args=(cfg, hub, matcher, bus, shutdown), daemon=True),
+                         args=(cfg, hub, matcher, bus, shutdown),
+                         kwargs={"overlay": overlay}, daemon=True),
         threading.Thread(target=run_recorder, name="rec",
                          args=(hub, ring, trig_queue, db, data_dir, cfg, shutdown),
                          daemon=True),
@@ -76,7 +79,10 @@ def main(argv=None) -> int:
                                reload_event),
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
-                         args=(cfg, db, hub, uart, data_dir, shutdown), daemon=True),
+                         args=(cfg, db, hub, uart, data_dir, shutdown),
+                         kwargs={"matcher": matcher, "overlay": overlay,
+                                 "reload_event": reload_event},
+                         daemon=True),
         threading.Thread(target=_cleanup_loop, name="cleanup",
                          args=(cfg, db, data_dir, shutdown), daemon=True),
         threading.Thread(target=_watchdog, name="watchdog",
@@ -216,8 +222,11 @@ def _handle_esp_event(evt: EspEvent, db, trig_queue):
             pass
 
 
-def _run_web(cfg, db, hub, uart, data_dir, shutdown):
-    app = create_app(db=db, hub=hub, uart=uart, data_dir=data_dir)
+def _run_web(cfg, db, hub, uart, data_dir, shutdown,
+             matcher=None, overlay=None, reload_event=None):
+    app = create_app(db=db, hub=hub, uart=uart, data_dir=data_dir,
+                     matcher=matcher, overlay=overlay,
+                     reload_event=reload_event)
     from werkzeug.serving import make_server
     srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
     def watcher():
