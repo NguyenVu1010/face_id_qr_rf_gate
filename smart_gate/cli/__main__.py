@@ -51,7 +51,10 @@ def main(argv=None) -> int:
     db.migrate()
 
     if args.cmd == "enroll":
-        enroll_mod.enroll(db, args.name, qr_dir, args.samples, args.camera)
+        # Prefer the config's camera_device (stable /dev path from udev)
+        # over --camera. --camera is still accepted as an override.
+        camera_src = cfg.video.camera_device or args.camera
+        enroll_mod.enroll(db, args.name, qr_dir, args.samples, camera_src)
     elif args.cmd == "users" and args.users_cmd == "list":
         users_mod.list_users(db)
     elif args.cmd == "users" and args.users_cmd == "delete":

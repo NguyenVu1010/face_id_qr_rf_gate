@@ -41,10 +41,12 @@ def enroll(db, name: str, qr_dir: Path, n_samples: int = 5,
     return path
 
 
-def _capture_samples(name: str, n_samples: int, camera_index: int, deps) -> list:
+def _capture_samples(name: str, n_samples: int, camera_index, deps) -> list:
     cv2 = deps["cv2"]
     mp_face = deps["mp_face"]
     fr = deps["face_recognition"]
+    # camera_index may be an int (index) or a str (path like /dev/smart-gate-camera);
+    # cv2.VideoCapture accepts both.
     cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)

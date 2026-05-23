@@ -65,11 +65,20 @@ def run_capture(cfg, hub, ring, shutdown: threading.Event,
         cap.release()
 
 
+def _camera_source(cfg):
+    """Return the cv2.VideoCapture source: device path string if camera_device
+    is set, otherwise the integer camera_index."""
+    if cfg.video.camera_device:
+        return cfg.video.camera_device
+    return cfg.video.camera_index
+
+
 def _open_camera(cv2_module, cfg, shutdown: threading.Event | None = None):
     fail_count = 0
     last_log_mono = 0.0
+    source = _camera_source(cfg)
     while shutdown is None or not shutdown.is_set():
-        cap = cv2_module.VideoCapture(cfg.video.camera_index, cv2_module.CAP_V4L2)
+        cap = cv2_module.VideoCapture(source, cv2_module.CAP_V4L2)
         if cap.isOpened():
             cap.set(cv2_module.CAP_PROP_FOURCC,
                     cv2_module.VideoWriter_fourcc(*"MJPG"))
@@ -78,23 +87,23 @@ def _open_camera(cv2_module, cfg, shutdown: threading.Event | None = None):
             cap.set(cv2_module.CAP_PROP_FPS, cfg.video.fps)
             cap.set(cv2_module.CAP_PROP_BUFFERSIZE, 1)
             if fail_count > 0:
-                log.info("camera %d recovered after %d retries; open @ %dx%d %dfps",
-                         cfg.video.camera_index, fail_count, cfg.video.width,
+                log.info("camera %s recovered after %d retries; open @ %dx%d %dfps",
+                         source, fail_count, cfg.video.width,
                          cfg.video.height, cfg.video.fps)
             else:
-                log.info("camera %d open @ %dx%d %dfps",
-                         cfg.video.camera_index, cfg.video.width,
+                log.info("camera %s open @ %dx%d %dfps",
+                         source, cfg.video.width,
                          cfg.video.height, cfg.video.fps)
             return cap
         now = time.monotonic()
         if fail_count == 0:
-            log.warning("camera %d not available; will keep retrying every 5s "
+            log.warning("camera %s not available; will keep retrying every 5s "
                         "(further messages throttled to once per minute)",
-                        cfg.video.camera_index)
+                        source)
             last_log_mono = now
         elif now - last_log_mono >= _LOG_THROTTLE_S:
-            log.warning("camera %d still not available (attempt %d)",
-                        cfg.video.camera_index, fail_count + 1)
+            log.warning("camera %s still not available (attempt %d)",
+                        source, fail_count + 1)
             last_log_mono = now
         fail_count += 1
         if shutdown is None:

@@ -25,6 +25,7 @@ else:
 @dataclass(frozen=True)
 class VideoCfg:
     camera_index: int = 0
+    camera_device: str = ""        # if set, used as cv2 source instead of camera_index
     width: int = 640
     height: int = 480
     fps: int = 15

@@ -1,5 +1,10 @@
 [video]
+# camera_index is used only when camera_device is empty. Run
+# scripts/setup-camera-udev.sh once to pin a stable /dev path and set
+# camera_device accordingly — that way the daemon is not affected by
+# enumeration order if other USB devices are added later.
 camera_index = 0
+camera_device = ""          # e.g. "/dev/smart-gate-camera"
 width = 640
 height = 480
 fps = 15
