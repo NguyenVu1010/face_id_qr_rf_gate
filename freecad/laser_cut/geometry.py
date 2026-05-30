@@ -2,7 +2,7 @@
 
 import math
 
-MICA_T = 3.0
+MICA_T = 5.0
 KERF = 0.1
 JOINT_TOL = 0.15
 TAB_W = 20.0

@@ -7,7 +7,7 @@ File:    mica_gate_pillar.pdf (or .svg)
 
 VẬT LIỆU
 --------
-Mica acrylic trong suốt, độ dày 3 mm.
+Mica acrylic trong suốt, độ dày 5 mm.
 Khổ tấm: 1000 × 600 mm (1 tấm đủ).
 
 NÉT CẮT vs NÉT KHẮC

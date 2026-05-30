@@ -75,7 +75,7 @@ LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 
 
 Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four interior corners of the pillar. The wooden posts:
 - Anchor the 7 acrylic faces via finger joints (for fixed faces) or M3 self-tap screws into the wood (for removable faces).
-- Carry the load and stiffness — acrylic 3mm alone is too flexible for a 30cm-tall pillar.
+- Carry the load and stiffness — acrylic 5mm gives the pillar good rigidity at 30cm height (3mm would noticeably flex; 5mm is rigid in the hand). Wooden corner posts still anchor mounting/disassembly.
 - Total 4 posts × 280mm = 1.12m of 10×10mm pine wood.
 
 ## 4. Dimensions & materials
@@ -84,15 +84,15 @@ Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four
 
 | Axis | Outer dimension | Inner dimension (after walls) |
 |---|---|---|
-| X (width) | 150 mm | 144 mm (150 - 2×3mm walls) |
-| Y (depth) | 240 mm | 234 mm |
-| Z (height) | 300 mm | 297 mm (300 - 3mm BOTTOM) |
+| X (width) | 150 mm | 140 mm (150 - 2×5mm walls) |
+| Y (depth) | 240 mm | 230 mm |
+| Z (height) | 300 mm | 290 mm (300 - 5mm BOTTOM - 5mm TOP-region) |
 
 ### 4.2 Material list
 
 | Item | Spec | Qty |
 |---|---|---|
-| Clear acrylic sheet | 3 mm thickness, transparent | ~0.30 m² (8 pieces) |
+| Clear acrylic sheet | 5 mm thickness, transparent | ~0.30 m² (8 pieces) |
 | Pine wood batten | 10 × 10 mm cross-section | 1.2 m (4 posts × 280mm + offcuts) |
 | M3 × 12 Phillips screws | For BACK panel | 6 |
 | M3 × 12 Phillips screws | For LEFT panel | 4 |
@@ -123,7 +123,7 @@ No through-cuts. Optional engrave at center: project name + version.
 Face-local coords: X 0–150, V 0–101.82 (V = position along the sloped hypotenuse, from FRONT-top edge at V=0 to TOP-FLAT-front edge at V=101.82).
 
 - **RFID engrave marker:** rectangle 60 × 35 mm, centered. Outline only (engrave depth 0.2mm, not through-cut). Position: X 45–105, V 33.41–68.41.
-- The RC522 RFID PCB mounts behind this marker on the inside surface. RF passes through 3mm acrylic with negligible loss.
+- The RC522 RFID PCB mounts behind this marker on the inside surface. RF passes through 5mm acrylic with negligible loss (acrylic is non-conductive and non-magnetic; thickness does not measurably affect 13.56MHz RFID read range).
 
 ### 5.3 TOP-FLAT (150 × 168)
 
@@ -175,7 +175,7 @@ Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it h
 
 ### 5.6 BACK (150 × 300, removable)
 
-- **Adapter cable hole:** Ø10mm at (X=15, Z=110). Rubber grommet press-fit. Position aligned with J_PWR barrel axis when PCB is on LEFT-panel standoffs (stack: 3mm LEFT panel + 5mm standoff + 1.6mm PCB + ~6mm to barrel center axis = trụ X≈15.6; barrel axis exits toward BACK at Y≈221.5, Z=110). Cable jumper inside trụ from hole to J_PWR is ~20mm.
+- **Adapter cable hole:** Ø10mm at (X=17, Z=110). Rubber grommet press-fit. Position aligned with J_PWR barrel axis when PCB is on LEFT-panel standoffs (stack: 5mm LEFT panel + 5mm standoff + 1.6mm PCB + ~6mm to barrel center axis = trụ X≈17.6; barrel axis exits toward BACK at Y≈221.5, Z=110). Cable jumper inside trụ from hole to J_PWR is ~20mm.
 - **Mount holes:** 6× Ø3.5mm clearance for M3 screws into wooden corner posts:
   - Bottom edge: (X=8, Z=8), (X=142, Z=8)
   - Top edge: (X=8, Z=292), (X=142, Z=292)
@@ -194,7 +194,7 @@ Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it h
 
 | Component | Mounted to | Method | Position |
 |---|---|---|---|
-| Motherboard PCB (200×120mm) | LEFT panel inside surface | 4× nylon standoff Ø6mm × 5mm tall on inside of LEFT panel + 4× M3×8 screws from outside LEFT through standoffs into PCB mount holes | PCB plane at trụ X=8 (3mm panel + 5mm standoff); top of PCB at X=9.6. PCB long axis along trụ Y (depth), short axis along trụ Z. PCB extends Y=20–220, Z=90–210. Pi 4 USB stack reaches X≈39.6 (points into trụ interior in +X direction). |
+| Motherboard PCB (200×120mm) | LEFT panel inside surface | 4× nylon standoff Ø6mm × 5mm tall on inside of LEFT panel + 4× M3×8 screws from outside LEFT through standoffs into PCB mount holes | PCB plane at trụ X=10 (5mm panel + 5mm standoff); top of PCB at X=11.6. PCB long axis along trụ Y (depth), short axis along trụ Z. PCB extends Y=20–220, Z=90–210. Pi 4 USB stack reaches X≈41.6 (points into trụ interior in +X direction). |
 | Pi 4B | J_PI socket on PCB | Plug-in via socket | Pi sits in +X direction from PCB (into trụ interior). Pi USB stack reaches X≈39.6. |
 | ESP32 DevKit | J_ESP socket on PCB | Plug-in | Co-located with PCB |
 | LM2596 buck module | J_BUCK header | Plug-in | On PCB |
@@ -228,9 +228,9 @@ Faces interlock with each other and with the wooden corner posts via finger join
 
 - **Tab width:** 20 mm
 - **Slot width:** 20 mm + 0.15 mm tolerance (= 20.15 mm in CAD)
-- **Tab thickness:** 3 mm (= sheet thickness)
+- **Tab thickness:** 5 mm (= sheet thickness)
 - **Pattern:** alternating 4 tabs / 3 slots per long edge, with 5mm flat margins at each end
-- **Edge engagement:** 3 mm depth (= sheet thickness)
+- **Edge engagement:** 5 mm depth (= sheet thickness)
 - **Bonding:** apply acrylic cement (Cosmofen PMMA) to all finger joints during assembly. Once cured (~10 min), bond is permanent.
 
 ### 8.2 Screwed faces (LEFT, BACK)
@@ -253,7 +253,7 @@ All 4 edges of SLOPE have matching finger joints with their respective neighbors
 Python script `freecad/laser_cut/build_mica_pillar.py`:
 - Library: `ezdxf` (DXF) or `reportlab` (PDF). Choose `ezdxf` then convert to PDF via `cairo` or `matplotlib` for cleaner vector output.
 - Parameters at top of script:
-  - `MICA_THICKNESS = 3.0` mm
+  - `MICA_THICKNESS = 5.0` mm
   - `KERF = 0.1` mm (laser kerf compensation)
   - `JOINT_TOLERANCE = 0.15` mm
   - `PILLAR_W = 150`, `PILLAR_D = 240`, `PILLAR_H = 300`
@@ -352,7 +352,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | Finger joints too tight | Reduce `JOINT_TOLERANCE` (e.g., 0.15 → 0.2 mm), re-cut affected pieces |
 | Finger joints too loose | Increase tolerance, re-cut |
 | LCD cutout off-center | Tweak coords in §5.3, re-cut TOP-FLAT only |
-| RFID won't read through 3mm mica | Should not occur (RF transparent); verify RC522 antenna parallel to slope |
+| RFID won't read through 5mm mica | Should not occur (RF transparent); verify RC522 antenna parallel to slope |
 | Pillar wobbles | Verify wooden posts are tight; add a base plate option |
 
 ## 12. Decisions log
@@ -366,7 +366,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 5 | 2026-05-31 | LCD on TOP-FLAT, RFID on SLOPE facet, HC-SR04 on RIGHT | Matches reference image; SLOPE provides ergonomic badge tap angle |
 | 6 | 2026-05-31 | Camera tower as separate 3D-printed part | Avoids crowding TOP face cutouts; reuses existing FDM printer |
 | 7 | 2026-05-31 | Decorative LED status bar removed | Simplification; firmware/BOM unchanged |
-| 8 | 2026-05-31 | 3mm clear acrylic | Standard cheap stock; transparent shows internals for demo; rigid enough at 40cm |
+| 8 | 2026-05-31 | 5mm clear acrylic | Standard cheap stock (slightly pricier than 3mm); transparent shows internals for demo; 5mm is rigid in the hand at 30cm height. |
 | 9 | 2026-05-31 | Wooden corner posts + finger joints | Acrylic alone too flexible; posts also accept M3 self-tap for removable panels |
 | 10 | 2026-05-31 | BACK and LEFT removable for maintenance | RIGHT carries arm slot + HC-SR04 → must be fixed; LEFT gives PCB/component access (PCB mounted on LEFT inside), BACK gives cable/connector access |
 | 11 | 2026-05-31 | Adapter 12V cable enters via BACK Ø10mm grommet | User picked BACK lower corner |
@@ -380,6 +380,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 19 | 2026-05-31 | PCB motherboard mounted on LEFT panel (not BACK) — PCB long axis along trụ Y, short axis along trụ Z; 4 mount holes added to LEFT panel. | Fixes load asymmetry; keeps BACK free for easy removal; BACK now only carries the adapter hole |
 | 20 | 2026-05-31 | BACK adapter cable hole repositioned from (X=15, Z=15) to (X=15, Z=110) to align with J_PWR barrel axis (PCB-on-LEFT geometry). | Cable jumper inside trụ drops from ~120mm to ~20mm; avoids awkward routing across the pillar base |
 | 21 | 2026-05-31 | TOP gains 14×6mm USB-plug pass-through at (X=75, Y=160), 50mm behind camera cable hole so the webcam USB-A connector can thread down to the Pi. | Keeps USB connection accessible without opening any panel |
+| 22 | 2026-05-31 | Mica thickness 3mm → 5mm | User requested switch for sturdier feel. Acrylic cost +70%, cut time slightly longer. BACK adapter hole X shifted 15→17 to keep J_PWR barrel-axis alignment. PCB face at trụ X=10 (was 8). |
 
 ## 13. Open questions
 
@@ -398,8 +399,8 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 |---|---|---|
 | Finger-joint tolerance wrong → pieces won't fit | High on first cut | Cut test piece per §11.2 before full sheet |
 | Acrylic cracks during M3 self-tap | Medium | All M3 threading is into wood, not acrylic; acrylic only has Ø3.2 clearance holes |
-| 3mm mica too flexible at 40cm height | Medium | Wooden corner posts provide structure; pillar should not be pushed laterally |
-| RFID reads weakly through 3mm mica + standoff gap | Low | RC522 antenna designed for 1-5cm range; gap of 5mm + 3mm mica = 8mm, within range |
+| 5mm mica still flexes if pushed laterally at 30cm height | Low | Wooden corner posts anchor structure; 5mm is rigid in hand-feel test |
+| RFID reads weakly through 5mm mica + standoff gap | Low | RC522 antenna designed for 1-5cm range; gap of 5mm + 5mm mica = 10mm, well within range |
 | Cable bundle binds when closing LEFT panel | Medium | Route cables to BACK side, away from LEFT panel; allow 20mm slack |
 | Servo can't lift drop-arm (200mm × 15mm × 3mm acrylic) under its own weight | Low | SG90 stall torque ~1.8 kg·cm; arm mass ~9g, moment arm ~100mm → torque ~0.09 kg·cm — well within servo capability |
 | Glue cement attacks acrylic surface finish | Low | Cosmofen PMMA is designed for acrylic; apply only on joint edges, not faces |
