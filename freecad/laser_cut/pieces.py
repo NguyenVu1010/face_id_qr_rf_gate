@@ -1,5 +1,6 @@
 """Per-piece composition. Each builder returns a Piece with outline + cuts + engraves."""
 
+import math
 from dataclasses import dataclass, field
 
 from freecad.laser_cut.cutouts import (
@@ -51,9 +52,6 @@ def build_arm() -> Piece:
         circle(13.0, 7.5, 1.1),
     ]
     return Piece(name="ARM", outline=outline, cuts=cuts)
-
-
-import math  # noqa: E402 (appended at module scope for readability)
 
 
 def build_top() -> Piece:

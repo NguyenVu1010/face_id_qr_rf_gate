@@ -107,7 +107,7 @@ Four vertical wooden corner posts (10×10mm pine wood × 380mm tall) at the four
 
 ### 4.3 Sheet nesting
 
-8 pieces fit on a single **800 × 500 mm** acrylic sheet, or on 2 standard 600 × 400 mm sheets. Total cut area ~0.25 m² + ~25% gap/kerf overhead.
+8 pieces fit on a single **800 × 600 mm** acrylic sheet, or on 2 standard 600 × 400 mm sheets. Total cut area ~0.25 m² + ~25% gap/kerf overhead.
 
 ## 5. Per-face cutout coordinates
 
@@ -246,7 +246,7 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 
 ### 9.2 PDF layout conventions
 
-- **Page size:** A2 (420 × 594 mm) — large enough for nesting 1 sheet
+- **Page size:** 800 × 600 mm (1:1 scale with the laser sheet). The PDF is a layout reference; laser shops typically import the SVG directly into their CAM tool which reads geometry in absolute mm, ignoring page size.
 - **Cut lines:** RGB(255, 0, 0), stroke width 0.001 mm (hairline) — most laser cutters interpret red as "cut"
 - **Engrave lines:** RGB(0, 0, 0), stroke width 0.1 mm — most cutters interpret black as "engrave"
 - **Etch fills (for RFID marker rectangle interior):** RGB(0, 0, 255), stroke width 0.05 mm
@@ -256,7 +256,7 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 
 ### 9.3 Nesting
 
-Pieces arranged on 800 × 500 mm sheet:
+Pieces arranged on 800 × 600 mm sheet. (Original 500 mm height was too small to nest both rows with 8mm gaps; row 2 ends at y≈536mm.)
 - Row 1: FRONT (150×370) + BACK (150×400) + LEFT (120×400) + RIGHT (120×400) — width 540, height 400
 - Row 2: TOP (150×90) + SLOPE (150×42.4) + BOTTOM (150×120) + ARM (150×15) — width 600, height 120
 

@@ -1,5 +1,8 @@
 import pytest
 
+pytest.importorskip("svgwrite")
+pytest.importorskip("cairosvg")
+
 
 @pytest.mark.integration
 def test_full_build_produces_svg_and_pdf(tmp_path):
