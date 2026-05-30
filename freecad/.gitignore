@@ -2,5 +2,7 @@
 *.FCStd
 *.FCBak
 
-# Exported meshes — rebuild from build_enclosure.py
+# Exported meshes — rebuild from build scripts
 exports/*.stl
+# Track camera tower STL (task 9 deliverable)
+!exports/camera_tower.stl
