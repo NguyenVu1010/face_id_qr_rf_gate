@@ -52,15 +52,15 @@ def test_top_has_lcd_and_camera_features():
     assert len(p.engraves) == 0
 
 
-def test_slope_has_engrave_marker():
+def test_slope_is_blank_panel():
     p = build_slope()
     assert p.name == "SLOPE"
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
     assert max(xs) == 150.0
     assert abs(max(ys) - 101.82) < 0.1
-    assert len(p.engraves) == 1
-    assert p.engraves[0].kind == "engrave"
+    assert len(p.cuts) == 0
+    assert len(p.engraves) == 0
 
 
 def test_left_is_pentagon_with_mount_holes():

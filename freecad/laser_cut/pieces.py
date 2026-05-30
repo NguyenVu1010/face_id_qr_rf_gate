@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from freecad.laser_cut.cutouts import (
     Shape, circle, rect,
     servo_cutout, hc_sr04_holes, hc_sr04_pcb_mount,
-    rfid_engrave_marker, arm_slot,
+    arm_slot,
 )
 from freecad.laser_cut.geometry import pentagon_outline
 
@@ -83,11 +83,14 @@ def build_top() -> Piece:
 
 
 def build_slope() -> Piece:
+    # SLOPE facet has no cutouts or engravings: the RC522 RFID reader is
+    # bonded to the inside surface and reads through the mica (RF passes
+    # cleanly through 3-10mm acrylic — non-conductive, non-magnetic). No
+    # visual marker on the outside — keeps the panel clean.
     slope_proj = 72.0
     hypotenuse = math.sqrt(slope_proj ** 2 + slope_proj ** 2)
     outline = _rect_outline(150.0, hypotenuse)
-    engraves = [rfid_engrave_marker(cx=75.0, cy=hypotenuse / 2, w=60.0, h=35.0)]
-    return Piece(name="SLOPE", outline=outline, engraves=engraves)
+    return Piece(name="SLOPE", outline=outline)
 
 
 def build_left() -> Piece:
