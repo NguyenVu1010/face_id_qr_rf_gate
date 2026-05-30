@@ -51,9 +51,12 @@ def build_arm() -> Piece:
         circle(5.0, 7.5, 1.1),
         circle(13.0, 7.5, 1.1),
     ]
-    # 5 engraved stripes (paint red after cutting for red/white barrier look)
-    engraves = [rect(cx=x, cy=7.5, w=30.0, h=12.0, kind="engrave")
-                for x in (30.0, 70.0, 110.0, 150.0, 190.0)]
+    # 5 engraved stripes (paint red after cutting for red/white barrier look).
+    # Centers at X=35..185 with stripe width 20mm leave 5mm margins inside the
+    # arm (avoids extending past arm length 200mm) and clear the two mount
+    # holes at X=5/X=13.
+    engraves = [rect(cx=x, cy=7.5, w=20.0, h=10.0, kind="engrave")
+                for x in (35.0, 75.0, 115.0, 155.0, 185.0)]
     return Piece(name="ARM", outline=outline, cuts=cuts, engraves=engraves)
 
 

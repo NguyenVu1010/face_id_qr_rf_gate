@@ -53,7 +53,15 @@ def _draw_label(dwg: svgwrite.Drawing, name: str, offset: tuple[float, float],
 
 
 def render_svg(pieces: list[Piece], positions: dict[str, tuple[float, float]],
-               output_path: Path):
+               output_path: Path, include_labels: bool = False):
+    """Render all pieces to an SVG file.
+
+    `include_labels=False` (default) omits the piece-name text labels so the
+    laser cutter sees only geometry (some laser CAM tools interpret <text> as
+    extra engrave paths and can mis-process them). Set True only when
+    generating a human-readable proof; pass that proof file to the user, not
+    to the shop.
+    """
     dwg = svgwrite.Drawing(
         str(output_path),
         size=(f"{SHEET_W}mm", f"{SHEET_H}mm"),
@@ -67,7 +75,8 @@ def render_svg(pieces: list[Piece], positions: dict[str, tuple[float, float]],
             _draw_shape(dwg, cut, offset)
         for eng in piece.engraves:
             _draw_shape(dwg, eng, offset)
-        _draw_label(dwg, piece.name, offset, piece.outline)
+        if include_labels:
+            _draw_label(dwg, piece.name, offset, piece.outline)
     dwg.save()
 
 
