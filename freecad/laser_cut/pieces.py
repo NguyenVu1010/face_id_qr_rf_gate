@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from freecad.laser_cut.cutouts import (
     Shape, circle, rect, lcd_window,
-    servo_cutout, hc_sr04_holes, rfid_engrave_marker,
+    servo_cutout, hc_sr04_holes, rfid_engrave_marker, arm_slot,
 )
 from freecad.laser_cut.geometry import pentagon_outline
 
@@ -46,12 +46,15 @@ def build_bottom() -> Piece:
 
 
 def build_arm() -> Piece:
-    outline = _rect_outline(150.0, 15.0)
+    outline = _rect_outline(200.0, 15.0)
     cuts = [
         circle(5.0, 7.5, 1.1),
         circle(13.0, 7.5, 1.1),
     ]
-    return Piece(name="ARM", outline=outline, cuts=cuts)
+    # 5 engraved stripes (paint red after cutting for red/white barrier look)
+    engraves = [rect(cx=x, cy=7.5, w=30.0, h=12.0, kind="engrave")
+                for x in (30.0, 70.0, 110.0, 150.0, 190.0)]
+    return Piece(name="ARM", outline=outline, cuts=cuts, engraves=engraves)
 
 
 def build_top() -> Piece:
@@ -88,8 +91,8 @@ def build_left() -> Piece:
 def build_right() -> Piece:
     outline = pentagon_outline(depth=240.0, height=300.0, slope=72.0)
     cuts: list[Shape] = []
-    cuts.extend(servo_cutout(cx=120.0, cy=150.0))
-    cuts.extend(hc_sr04_holes(cx=120.0, cy=220.0))
-    cuts.append(circle(80.0, 220.0, 1.6))
-    cuts.append(circle(160.0, 220.0, 1.6))
+    cuts.extend(hc_sr04_holes(cx=120.0, cy=80.0))           # lowered from Z=220
+    cuts.append(circle(80.0, 80.0, 1.6))                     # HC-SR04 mount hole
+    cuts.append(circle(160.0, 80.0, 1.6))                    # HC-SR04 mount hole
+    cuts.append(arm_slot(cx=120.0, cy=215.0))                # arm retraction slot
     return Piece(name="RIGHT", outline=outline, cuts=cuts)

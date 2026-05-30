@@ -6,3 +6,5 @@
 exports/*.stl
 # Track camera tower STL (task 9 deliverable)
 !exports/camera_tower.stl
+# Track servo bracket STL (barrier arm pivot redesign deliverable)
+!exports/servo_bracket.stl

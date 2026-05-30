@@ -68,7 +68,7 @@ LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 
 | TOP-FLAT | Z=300 | 150 × 168 (X × Y, Y range 72–240) | No | LCD + camera tower mount |
 | BACK | Y=240 | 150 × 300 | **Yes** | Adapter cable hole + 6× M3 |
 | LEFT | X=0 | Pentagon 240×300 (top-front corner clipped) | **Yes** | 4× M3 mount holes |
-| RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Servo + HC-SR04 |
+| RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Arm slot + HC-SR04 |
 | BOTTOM | Z=0 | 150 × 240 | No | Optional vent slots |
 
 ### 3.4 Internal frame
@@ -100,7 +100,8 @@ Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four
 | M3 × 6 Phillips screws | For LCD module to TOP | 4 |
 | M3 × 10 Phillips screws | For camera tower to TOP | 4 |
 | M2 × 8 Phillips screws | For drop-arm to servo horn | 2 |
-| M2.5 × 6 screws | For servo flange | 2 |
+| M2.5 × 6 screws | For servo flange to bracket wall | 2 |
+| Servo bracket STL (3D-printed) | PLA/PETG, base 50×40mm, wall H=147mm | 1 |
 | Nylon standoffs PCB | M3, OD 6mm, height 5mm | 4 |
 | Acrylic cement | Cosmofen PMMA or Acrifix 1S | 50 ml bottle |
 | Rubber grommet | Inner Ø6mm, outer Ø10mm | 1 (BACK cable hole) |
@@ -151,12 +152,11 @@ Holes inset 5–8 mm from edges to land on the 10×10mm wooden posts.
 
 ### 5.5 RIGHT (pentagon, fixed)
 
-Same outline as LEFT (mirrored). Internal cutouts:
+Same outline as LEFT (mirrored). Internal cutouts (servo no longer mounts to RIGHT face — moves inside on a bracket):
 
-- **Servo shaft hole:** Ø8 mm at (Y=120, Z=150).
-- **Servo flange mount holes:** 2× Ø2.7mm at (Y=106, Z=150) and (Y=134, Z=150). Spacing 28mm matches SG90 flange tabs. *Note: exact offset depends on the specific SG90 unit; verify against user's part before cutting (see §13).*
-- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=106.5, Z=220) and (Y=133.5, Z=220). Center-to-center 27mm (matches typical HC-SR04 board layout).
-- **HC-SR04 PCB mount holes:** 2× Ø3.2mm at (Y=80, Z=220) and (Y=160, Z=220). For zip-tie or 2× M3 screws holding PCB flat against inside of RIGHT face.
+- **Arm slot:** 20×130 mm rectangle at (Y=120, Z=215), spanning Y 110–130 × Z 150–280. Allows the drop-arm to retract through the panel during rotation (arm pivots inside trụ; when open, arm is vertical inside trụ; when closed, arm passes through slot and sticks out horizontally).
+- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=106.5, Z=80) and (Y=133.5, Z=80). Center-to-center 27mm. *Lowered from Z=220 to Z=80 to avoid the arm slot.*
+- **HC-SR04 PCB mount holes:** 2× Ø3.2mm at (Y=80, Z=80) and (Y=160, Z=80). For zip-tie or 2× M3 screws holding PCB flat against inside of RIGHT face.
 
 ### 5.6 BACK (150 × 300, removable)
 
@@ -186,7 +186,8 @@ Same outline as LEFT (mirrored). Internal cutouts:
 | LCD 20×4 module | TOP-FLAT inside surface | 4× M3×6 self-tap from outside through TOP into LCD module standoffs | Module body at Y_local 5–65, X 26–124. Header on east short edge (X=124 side) facing +X to reach J_LCD. |
 | RC522 RFID | SLOPE facet inside surface | 4× M3 standoffs 5mm tall glued to SLOPE inside with acrylic cement; RC522 PCB bolted to standoffs | RC522 antenna pointing outward through SLOPE. PCB parallel to slope plane. |
 | HC-SR04 module | RIGHT face inside surface | 2× M3×6 through RIGHT into nylon standoffs glued to inside; or zip-tie via 2 board holes | Transducers poke through the 2× Ø16mm holes from inside |
-| SG90 servo | RIGHT face inside surface | 2× M2.5×6 through RIGHT into servo flange tabs from outside | Servo body inside trụ, shaft axis along X, shaft pokes through Ø8mm hole to outside |
+| SG90 servo | 3D-printed bracket on BOTTOM face inside | Bracket holds servo with shaft axis along Y, tip at (X=120, Y=120, Z=150). 2× M2.5 secure servo flange to bracket wall. Bracket base bonded to BOTTOM face inside. | Servo body inside trụ at Z≈0–150 |
+| Drop-arm pivot | Inside trụ via bracket shaft | Arm pivots at (X=120, Y=120, Z=150) inside trụ; arm extends through RIGHT-face slot when closed (horizontal), retracts inside when open (vertical) | Arm length 200mm; 5 engraved stripes painted red |
 | Camera tower | TOP-FLAT outside surface | 4× M3×10 through TOP from inside upward into tower flange | Cylindrical 3D-printed tower, Ø20mm × 120mm tall, USB cable runs inside cylinder |
 
 ## 7. Cable routing
@@ -285,8 +286,9 @@ Gap between pieces ≥ 5 mm (for kerf + handling).
    d. Mount LCD onto TOP via 4× M3×6 from outside.
    e. Mount RC522 onto SLOPE standoffs.
    f. Mount HC-SR04 onto RIGHT standoffs.
-   g. Mount SG90 servo onto RIGHT face via 2× M2.5×6.
-   h. Bolt drop-arm onto SG90 horn via 2× M2×8.
+   7a. 3D-print the servo bracket (`freecad/exports/servo_bracket.stl`). Bolt SG90 servo onto the bracket wall with 2× M2.5. Bond bracket base to BOTTOM face inside the trụ at position (X=120, Y=120, Z=0) using acrylic cement.
+   g. Mount SG90 servo (already on bracket) inside trụ; bracket bonded to BOTTOM face.
+   h. Bolt drop-arm onto SG90 horn via 2× M2×8; thread arm through RIGHT-face slot.
    i. Bolt camera tower (3D-printed) onto TOP via 4× M3×10. Thread USB webcam cable down through TOP Ø8mm hole into trụ. Plug into Pi USB port.
 8. **Attach BACK panel** (which now carries the PCB) to wooden posts via 6× M3×12.
 9. **Attach LEFT panel** to wooden posts via 4× M3×12.
@@ -356,6 +358,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 12 | 2026-05-31 | PDF output single A2 page, red=cut / black=engrave | Standard laser shop convention |
 | 13 | 2026-05-31 | Slope facet 30mm × 30mm (was 60mm) | 60mm slope left too little TOP depth for LCD + camera mount |
 | 14 | 2026-05-31 | Slope facet enlarged to 72mm × 72mm (hyp 101.82mm) | Provides sufficient facet area (70×40mm RFID module fits on slope); TOP shortened to 168mm, FRONT to 228mm |
+| 15 | 2026-05-31 | Pivot moved inside trụ; arm slides through RIGHT-face slot when opened; arm length 200mm; 5 engraved stripes for red/white painting after cut. | User redesign: arm now pivots inside bracket, cleaner mechanism, better aesthetics with striped arm |
 
 ## 13. Open questions
 
@@ -366,6 +369,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 5. **HC-SR04 transducer hole spacing** — Assumed 27mm center-to-center, standard. Verify on user's specific HC-SR04 module before cutting.
 6. **Pi USB-C power input** — Existing PCB design feeds Pi via GPIO 5V from LM2596. This spec assumes the same path (no USB-C cable into trụ). If user later needs USB-C power, add a Ø6mm slot on BACK panel.
 7. **Drop-arm rest position when closed** — Spec says arm horizontal pointing -Y (forward of FRONT). Confirm this matches user's intent for physical demo, or whether arm should point +Y (backward) when closed.
+8. **Arm length 200mm extends 50mm above TOP face when raised vertical.** Acceptable for demo aesthetics?
 
 ## 14. Risks
 

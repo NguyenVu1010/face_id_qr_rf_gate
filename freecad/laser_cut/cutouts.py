@@ -53,5 +53,12 @@ def hc_sr04_holes(cx: float, cy: float, spacing: float = 27.0,
     ]
 
 
+def arm_slot(cx: float, cy: float, w: float = 20.0, h: float = 130.0) -> Shape:
+    """Vertical slot for the drop-arm to retract through.
+    cx/cy = center of slot. w (Y direction on the face) × h (Z direction on the face).
+    """
+    return rect(cx, cy, w, h, kind="cut")
+
+
 def rfid_engrave_marker(cx: float, cy: float, w: float = 50.0, h: float = 30.0) -> Shape:
     return rect(cx, cy, w, h, kind="engrave")

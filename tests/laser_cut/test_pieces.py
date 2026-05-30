@@ -35,9 +35,10 @@ def test_arm_dimensions_and_holes():
     assert p.name == "ARM"
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
-    assert max(xs) == 150.0
+    assert max(xs) == 200.0
     assert max(ys) == 15.0
     assert len(p.cuts) == 2
+    assert len(p.engraves) == 5
 
 
 def test_top_has_lcd_and_camera_features():
@@ -66,9 +67,9 @@ def test_left_is_pentagon_with_mount_holes():
     assert len(p.cuts) == 4
 
 
-def test_right_has_servo_and_hc_sr04():
+def test_right_has_arm_slot_and_hc_sr04():
     p = build_right()
     assert p.name == "RIGHT"
     assert len(p.outline) == 5
-    # servo: 1 shaft + 2 flange = 3; hc-sr04 transducers: 2; mount holes: 2 → 7
-    assert len(p.cuts) == 7
+    # hc-sr04 transducers: 2; mount holes: 2; arm slot: 1 → 5
+    assert len(p.cuts) == 5
