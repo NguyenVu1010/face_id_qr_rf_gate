@@ -120,5 +120,5 @@ def build_right() -> Piece:
     cuts: list[Shape] = []
     cuts.extend(hc_sr04_holes(cx=120.0, cy=80.0))            # 2 transducer Ø16, spacing 26
     cuts.extend(hc_sr04_pcb_mount(cx=120.0, cy=80.0))        # 4 M2 corner holes at PCB 45x20 corners
-    cuts.append(arm_slot(cx=120.0, cy=220.0))                # arm retraction slot Z=140-300
+    cuts.append(arm_slot(cx=120.0, cy=200.0))                # arm retraction slot Z=120-280
     return Piece(name="RIGHT", outline=outline, cuts=cuts)
