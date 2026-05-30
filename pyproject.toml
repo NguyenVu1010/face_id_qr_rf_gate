@@ -8,6 +8,12 @@ version = "0.1.0"
 requires-python = ">=3.11"
 description = "Pi 5 application for the smart_gate access-control demo"
 
+[project.optional-dependencies]
+laser_cut = [
+    "svgwrite==1.4.3",
+    "cairosvg==2.7.1",
+]
+
 [tool.setuptools.packages.find]
 include = ["smart_gate*"]
 exclude = ["tests*"]
