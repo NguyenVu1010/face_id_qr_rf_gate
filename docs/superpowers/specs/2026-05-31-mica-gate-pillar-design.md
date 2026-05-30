@@ -65,10 +65,10 @@ LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 
 |---|---|---|---|---|
 | FRONT | Y=0 | 150 × 228 | No | None (optional engraving) |
 | SLOPE | 45° from Y=0,Z=228 to Y=72,Z=300 | 150 × 101.82 | No | RFID engrave marker |
-| TOP-FLAT | Z=300 | 150 × 168 (X × Y, Y range 72–240) | No | LCD + camera tower mount |
+| TOP-FLAT | Z=300 | 150 × 168 (X × Y, Y range 72–240) | No | LCD + camera tower mount + USB-plug pass-through |
 | BACK | Y=240 | 150 × 300 | **Yes** | Adapter cable hole + 6× M3 |
-| LEFT | X=0 | Pentagon 240×300 (top-front corner clipped) | **Yes** | 4× M3 mount holes |
-| RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Arm slot + HC-SR04 |
+| LEFT | X=0 | Pentagon 240×300 (top-front corner clipped) | **Yes** | 4× corner mount holes + 4× PCB standoff M3 |
+| RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Arm slot + HC-SR04 + corner-mount HC-SR04 (no servo here) |
 | BOTTOM | Z=0 | 150 × 240 | No | Optional vent slots |
 
 ### 3.4 Internal frame
@@ -96,7 +96,7 @@ Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four
 | Pine wood batten | 10 × 10 mm cross-section | 1.2 m (4 posts × 280mm + offcuts) |
 | M3 × 12 Phillips screws | For BACK panel | 6 |
 | M3 × 12 Phillips screws | For LEFT panel | 4 |
-| M3 × 8 Phillips screws | For PCB to BACK standoffs | 4 |
+| M3 × 8 Phillips screws | For PCB to LEFT standoffs | 4 |
 | M3 × 6 Phillips screws | For LCD module to TOP | 4 |
 | M3 × 10 Phillips screws | For camera tower to TOP | 4 |
 | M2 × 8 Phillips screws | For drop-arm to servo horn | 2 |
@@ -127,9 +127,10 @@ Face-local coords: X 0–150, V 0–101.82 (V = position along the sloped hypote
 
 ### 5.3 TOP-FLAT (150 × 168)
 
-- **LCD viewing cutout:** 98 × 40 mm rectangle with 4mm corner fillets. Centered at (X=75, Y=35). Cut bounds: X 26–124, Y 15–55.
+- **LCD viewing cutout:** 98 × 40 mm rectangle with **square corners** (no fillets). Centered at (X=75, Y=35). Cut bounds: X 26–124, Y 15–55.
 - **LCD mounting holes:** 4× Ø3.2 mm clearance holes at (X, Y) = (28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5). Spacing 93 × 55 mm (matches standard 20×4 I2C LCD module).
-- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=120). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 112), (83, 112), (67, 128), (83, 128). Tower flange bolts down with 4× M3.
+- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=110). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 102), (83, 102), (67, 118), (83, 118). Tower flange bolts down with 4× M3. *(Camera cable hole shifted from Y=120 to Y=110 to leave room for USB pass-through.)*
+- **USB-plug pass-through:** 14 × 6 mm rectangle at center (X=75, Y=160). Fits a USB-A plug for routing the webcam cable from the camera tower down to the Pi USB port. Approximately 50mm behind the camera cable hole; ~8mm margin to BACK edge of TOP.
 
 ### 5.4 LEFT (pentagon, removable)
 
@@ -150,17 +151,31 @@ Outline vertices (face-local Y horizontal-back from FRONT edge, Z vertical-up):
 
 Holes inset 5–8 mm from edges to land on the 10×10mm wooden posts.
 
+**PCB standoff mount holes:** 4× Ø3.2mm clearance for M3 screws into nylon standoffs. The motherboard PCB (200×120mm) sits on these standoffs against the inside surface of the LEFT panel. PCB long axis runs along trụ Y (depth), short axis along trụ Z. Hole positions (face-local Y, Z):
+- (Y=25, Z=95) — PCB SE corner
+- (Y=215, Z=95) — PCB SW corner
+- (Y=25, Z=205) — PCB NE corner
+- (Y=215, Z=205) — PCB NW corner
+
+These match PCB-local mount points 5mm inset from the 200×120mm PCB corners.
+
 ### 5.5 RIGHT (pentagon, fixed)
 
-Same outline as LEFT (mirrored). Internal cutouts (servo no longer mounts to RIGHT face — moves inside on a bracket):
+Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it has been moved inside the trụ on a 3D-printed bracket (see §6). Internal cutouts:
 
-- **Arm slot:** 20×130 mm rectangle at (Y=120, Z=215), spanning Y 110–130 × Z 150–280. Allows the drop-arm to retract through the panel during rotation (arm pivots inside trụ; when open, arm is vertical inside trụ; when closed, arm passes through slot and sticks out horizontally).
-- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=106.5, Z=80) and (Y=133.5, Z=80). Center-to-center 27mm. *Lowered from Z=220 to Z=80 to avoid the arm slot.*
-- **HC-SR04 PCB mount holes:** 2× Ø3.2mm at (Y=80, Z=80) and (Y=160, Z=80). For zip-tie or 2× M3 screws holding PCB flat against inside of RIGHT face.
+- **Arm retraction slot:** 20 × 130 mm rectangle centered at (Y=120, Z=215). Spans Y 110–130 × Z 150–280. Allows the drop-arm to retract through the panel during rotation (arm pivots inside trụ; when open, arm is vertical inside trụ; when closed, arm passes through slot and sticks out horizontally).
+- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=107, Z=80) and (Y=133, Z=80). Center-to-center **26mm** per HC-SR04 datasheet. *Lowered from Z=220 to Z=80 to avoid the arm slot.*
+- **HC-SR04 PCB corner mount holes:** 4× Ø2.2mm clearance (for M2 screws into the HC-SR04 board's own corner holes). Positions (Y, Z):
+  - (Y=99.5, Z=72) — board top-left
+  - (Y=140.5, Z=72) — board top-right
+  - (Y=99.5, Z=88) — board bottom-left
+  - (Y=140.5, Z=88) — board bottom-right
+  
+  Spacing 41×16mm, derived from 45×20mm HC-SR04 PCB with 2mm corner inset.
 
 ### 5.6 BACK (150 × 300, removable)
 
-- **Adapter cable hole:** Ø10mm at (X=15, Z=15). Bottom-left corner area, rubber grommet press-fit.
+- **Adapter cable hole:** Ø10mm at (X=15, Z=110). Rubber grommet press-fit. Position aligned with J_PWR barrel axis when PCB is on LEFT-panel standoffs (stack: 3mm LEFT panel + 5mm standoff + 1.6mm PCB + ~6mm to barrel center axis = trụ X≈15.6; barrel axis exits toward BACK at Y≈221.5, Z=110). Cable jumper inside trụ from hole to J_PWR is ~20mm.
 - **Mount holes:** 6× Ø3.5mm clearance for M3 screws into wooden corner posts:
   - Bottom edge: (X=8, Z=8), (X=142, Z=8)
   - Top edge: (X=8, Z=292), (X=142, Z=292)
@@ -170,38 +185,38 @@ Same outline as LEFT (mirrored). Internal cutouts (servo no longer mounts to RIG
 
 - **Vent slots (optional):** 5× rectangular 30×3 mm slots, centered along the X axis, at Y = 40, 80, 120, 160, 200 — or skip if user prefers sealed bottom. Default: include slots for passive cooling of Pi.
 
-### 5.8 Drop-arm (150 × 15 × 3)
+### 5.8 Drop-arm (200 × 15 × 3)
 
 - **Mounting holes:** 2× Ø2.2mm at distance 5mm and 13mm from one short end (8mm spacing matches SG90 1-arm horn).
-- **Decoration:** optional engrave red/white stripes (5 stripes of 30mm each along length).
+- **Decoration:** 5 engraved stripes (20mm wide × 5mm tall) centered along arm at X = 35, 75, 115, 155, 185. Paint red after cutting for red/white barrier look. Stripes clear the 2 mount holes at X=5/13 and stay inside the 200mm arm length.
 
 ## 6. Internal mounting strategy
 
 | Component | Mounted to | Method | Position |
 |---|---|---|---|
-| Motherboard PCB (200×120mm) | BACK panel inside surface | 4× nylon standoff Ø6mm × 5mm tall, M3×8 screws from outside BACK through panel into standoff | PCB vertical: long axis along Z, short axis along X. PCB center at (X=75, Z=180). PCB extends Z=80–280, X=15–135. |
-| Pi 4B | J_PI socket on PCB | Plug-in via socket | Pi sits in +Y direction from PCB toward FRONT. Pi USB stack reaches ~30mm into trụ interior. |
+| Motherboard PCB (200×120mm) | LEFT panel inside surface | 4× nylon standoff Ø6mm × 5mm tall on inside of LEFT panel + 4× M3×8 screws from outside LEFT through standoffs into PCB mount holes | PCB plane at trụ X=8 (3mm panel + 5mm standoff); top of PCB at X=9.6. PCB long axis along trụ Y (depth), short axis along trụ Z. PCB extends Y=20–220, Z=90–210. Pi 4 USB stack reaches X≈39.6 (points into trụ interior in +X direction). |
+| Pi 4B | J_PI socket on PCB | Plug-in via socket | Pi sits in +X direction from PCB (into trụ interior). Pi USB stack reaches X≈39.6. |
 | ESP32 DevKit | J_ESP socket on PCB | Plug-in | Co-located with PCB |
 | LM2596 buck module | J_BUCK header | Plug-in | On PCB |
 | LCD 20×4 module | TOP-FLAT inside surface | 4× M3×6 self-tap from outside through TOP into LCD module standoffs | Module body at Y_local 5–65, X 26–124. Header on east short edge (X=124 side) facing +X to reach J_LCD. |
 | RC522 RFID | SLOPE facet inside surface | 4× M3 standoffs 5mm tall glued to SLOPE inside with acrylic cement; RC522 PCB bolted to standoffs | RC522 antenna pointing outward through SLOPE. PCB parallel to slope plane. |
-| HC-SR04 module | RIGHT face inside surface | 2× M3×6 through RIGHT into nylon standoffs glued to inside; or zip-tie via 2 board holes | Transducers poke through the 2× Ø16mm holes from inside |
-| SG90 servo | 3D-printed bracket on BOTTOM face inside | Bracket holds servo with shaft axis along Y, tip at (X=120, Y=120, Z=150). 2× M2.5 secure servo flange to bracket wall. Bracket base bonded to BOTTOM face inside. | Servo body inside trụ at Z≈0–150 |
-| Drop-arm pivot | Inside trụ via bracket shaft | Arm pivots at (X=120, Y=120, Z=150) inside trụ; arm extends through RIGHT-face slot when closed (horizontal), retracts inside when open (vertical) | Arm length 200mm; 5 engraved stripes painted red |
+| HC-SR04 module | RIGHT face inside surface | Module sits on inside surface of RIGHT panel; 2 transducer cylinders pass through the 2× Ø16mm holes; 4× M2 screws through M2 PCB corner holes from outside RIGHT into M2 nylon standoffs glued to inside | Transducers poke through the 2× Ø16mm holes at (Y=107, Z=80) and (Y=133, Z=80) |
+| SG90 servo | 3D-printed bracket (`freecad/exports/servo_bracket.stl`) bonded to BOTTOM face inside trụ | Bracket positions servo shaft at trụ (X=120, Y=120, Z=150) with shaft axis along Y. 2× M2.5 screws secure servo flange to bracket wall. Bracket base bonded to BOTTOM face inside with acrylic cement. | Servo body bounding box approx X=113–126, Y=120–143, Z=139–161 |
+| Drop-arm pivot | SG90 servo horn outside the servo body | 2× M2 screws through arm into horn arm | Pivot at trụ (X=120, Y=120, Z=150). Arm 200mm × 15mm × 3mm. Closed: arm horizontal +X, extends through RIGHT-face slot. Open: arm vertical +Z, mostly inside trụ; tip pokes ~50mm above TOP face. |
 | Camera tower | TOP-FLAT outside surface | 4× M3×10 through TOP from inside upward into tower flange | Cylindrical 3D-printed tower, Ø20mm × 120mm tall, USB cable runs inside cylinder |
 
 ## 7. Cable routing
 
 | Cable | Length | From | To | Path |
 |---|---|---|---|---|
-| 12V DC | 150 mm | Adapter (external) | J_PWR on PCB | Through Ø10mm BACK grommet → direct down to J_PWR |
+| 12V DC | ~20 mm | Adapter (external) | J_PWR on PCB | Through Ø10mm BACK grommet at (X=15, Z=110) → ~20mm straight jumper inside trụ to J_PWR barrel jack |
 | Pi power (5V) | — | LM2596 output (on-PCB) | Pi GPIO 5V pins via J_PI socket | Internal PCB trace, no external cable |
 | LCD I2C (4-wire) | 250 mm | J_LCD on PCB | LCD module on TOP | Up along inside of RIGHT face, then over to LCD east-edge header |
 | RFID SPI (7-wire) | 200 mm | J_RFID on PCB | RC522 on SLOPE | Up along inside of FRONT face, then to RC522 header |
-| Servo (3-wire) | 150 mm | J_SVO on PCB | SG90 on RIGHT face | Direct from PCB east edge to servo body |
-| HC-SR04 (4-wire) | 180 mm | J_USR on PCB | HC-SR04 on RIGHT face | Direct east, then up to Z=300 |
+| Servo (3-wire) | 150 mm | J_SVO on PCB | SG90 on bracket (BOTTOM inside) | From PCB on LEFT panel → east along BOTTOM to servo bracket at (X=120, Y=120, Z=0) |
+| HC-SR04 (4-wire) | 180 mm | J_USR on PCB | HC-SR04 on RIGHT face | From PCB on LEFT panel → east to RIGHT face, up to Z=80 |
 | Buzzer (2-wire) | 150 mm | J_BUZ on PCB | Buzzer (mounted where?) | **TBD — see §13** |
-| USB webcam | 250 mm | Pi 4 USB port | Webcam in camera tower | Up through TOP Ø8mm hole, inside cylinder, to webcam at tower top |
+| USB webcam | 250 mm | Webcam in camera tower | Pi 4 USB port | Webcam at tower top → cable down inside cylinder → through TOP Ø8mm hole at (X=75, Y=110) → USB-A plug threaded through TOP 14×6mm USB pass-through at (X=75, Y=160) → plug into Pi USB port |
 
 All cables use Dupont female-female 40-pin sets (already in shopping list).
 
@@ -251,7 +266,7 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 - **Cut lines:** RGB(255, 0, 0), stroke width 0.001 mm (hairline) — most laser cutters interpret red as "cut"
 - **Engrave lines:** RGB(0, 0, 0), stroke width 0.1 mm — most cutters interpret black as "engrave"
 - **Etch fills (for RFID marker rectangle interior):** RGB(0, 0, 255), stroke width 0.05 mm
-- **Each piece labeled** with engraved text at one corner: `FRONT`, `BACK`, `LEFT`, `RIGHT`, `TOP`, `SLOPE`, `BOTTOM`, `ARM`
+- **Each piece labeled** with engraved text at one corner: `FRONT`, `BACK`, `LEFT`, `RIGHT`, `TOP`, `SLOPE`, `BOTTOM`, `ARM`. *Disabled by default in the build script (`include_labels=False`) because some laser CAM tools interpret `<text>` elements as additional engrave paths. Re-enable only for human-readable proofs.*
 - **Orientation arrow** engraved on each piece pointing toward the piece's "TOP edge" (the edge that mounts upward in the assembled pillar)
 - **Title block** at one corner of the page: project name, date, mica thickness, scale 1:1
 
@@ -274,15 +289,15 @@ Gap between pieces ≥ 5 mm (for kerf + handling).
    d. Wait 10 min for cement to set.
 4. **Mount internal components** through the open LEFT and BACK access:
    a. Install heat-shrink sleeves on cable bundles.
-   b. Glue 4× nylon standoffs to BACK panel inside surface at PCB mount positions.
+   b. Glue 4× nylon standoffs to LEFT panel inside surface at PCB mount positions (Y=25/215, Z=95/205).
    c. Glue RC522 standoffs to SLOPE inside.
-   d. Glue HC-SR04 standoffs to RIGHT inside (above the 2 transducer holes).
+   d. Glue 4× M2 nylon standoffs to RIGHT inside at HC-SR04 PCB corner positions (around the 2× Ø16mm transducer holes).
 5. **Glue SLOPE facet** to FRONT-top + LEFT-top-front + RIGHT-top-front edges. Use clamps to hold during cure.
 6. **Glue TOP-FLAT** to LEFT-top + RIGHT-top + SLOPE-top + the (still-open) BACK-top edge. Wait for cure.
 7. **Install components**:
    a. Plug Pi 4 + ESP32 + LM2596 into PCB sockets.
    b. Connect peripheral cables (I2C → LCD pigtail, SPI → RC522 pigtail, servo, HC-SR04, buzzer).
-   c. Mount PCB to BACK panel standoffs via 4× M3×8.
+   c. Mount PCB to LEFT panel standoffs via 4× M3×8.
    d. Mount LCD onto TOP via 4× M3×6 from outside.
    e. Mount RC522 onto SLOPE standoffs.
    f. Mount HC-SR04 onto RIGHT standoffs.
@@ -290,8 +305,8 @@ Gap between pieces ≥ 5 mm (for kerf + handling).
    g. Mount SG90 servo (already on bracket) inside trụ; bracket bonded to BOTTOM face.
    h. Bolt drop-arm onto SG90 horn via 2× M2×8; thread arm through RIGHT-face slot.
    i. Bolt camera tower (3D-printed) onto TOP via 4× M3×10. Thread USB webcam cable down through TOP Ø8mm hole into trụ. Plug into Pi USB port.
-8. **Attach BACK panel** (which now carries the PCB) to wooden posts via 6× M3×12.
-9. **Attach LEFT panel** to wooden posts via 4× M3×12.
+8. **Attach LEFT panel** (which carries the PCB) to wooden posts via 4× M3×12.
+9. **Attach BACK panel** to wooden posts via 6× M3×12.
 10. **Power test.** Plug 12V adapter through BACK grommet, into J_PWR. System boots; LCD displays; arm exercises.
 
 **Total assembly time:** ~90 minutes first time. Most time is glue cure (~30 min total). Maintenance access (LEFT/BACK panel only): ~5 min reopen.
@@ -353,20 +368,26 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 7 | 2026-05-31 | Decorative LED status bar removed | Simplification; firmware/BOM unchanged |
 | 8 | 2026-05-31 | 3mm clear acrylic | Standard cheap stock; transparent shows internals for demo; rigid enough at 40cm |
 | 9 | 2026-05-31 | Wooden corner posts + finger joints | Acrylic alone too flexible; posts also accept M3 self-tap for removable panels |
-| 10 | 2026-05-31 | BACK and LEFT removable for maintenance | RIGHT carries servo/HC-SR04 → must be fixed; BACK gives PCB access, LEFT gives cable access |
+| 10 | 2026-05-31 | BACK and LEFT removable for maintenance | RIGHT carries arm slot + HC-SR04 → must be fixed; LEFT gives PCB/component access (PCB mounted on LEFT inside), BACK gives cable/connector access |
 | 11 | 2026-05-31 | Adapter 12V cable enters via BACK Ø10mm grommet | User picked BACK lower corner |
 | 12 | 2026-05-31 | PDF output single A2 page, red=cut / black=engrave | Standard laser shop convention |
 | 13 | 2026-05-31 | Slope facet 30mm × 30mm (was 60mm) | 60mm slope left too little TOP depth for LCD + camera mount |
 | 14 | 2026-05-31 | Slope facet enlarged to 72mm × 72mm (hyp 101.82mm) | Provides sufficient facet area (70×40mm RFID module fits on slope); TOP shortened to 168mm, FRONT to 228mm |
 | 15 | 2026-05-31 | Pivot moved inside trụ; arm slides through RIGHT-face slot when opened; arm length 200mm; 5 engraved stripes for red/white painting after cut. | User redesign: arm now pivots inside bracket, cleaner mechanism, better aesthetics with striped arm |
+| 16 | 2026-05-31 | Arm pivot moved inside trụ; RIGHT face gets 20×130mm arm slot; servo relocated from RIGHT panel to a 3D-printed bracket on BOTTOM face; HC-SR04 lowered to Z=80 to avoid the arm slot. | Cleaner RIGHT face; bracket gives servo precise positioning at (X=120, Y=120, Z=150) |
+| 17 | 2026-05-31 | HC-SR04 mount geometry corrected to PCB datasheet — 26mm transducer spacing, 4 M2 holes at PCB corners (45×20mm board, 41×16mm hole spacing). | Previous spec used 27mm spacing and only 2 mount holes — inaccurate; replaced with full 4-corner M2 mount |
+| 18 | 2026-05-31 | LCD cutout uses square corners (rect, no fillet) per user request. | Some laser CAM tools handle filled rects more reliably than filleted paths; simpler output |
+| 19 | 2026-05-31 | PCB motherboard mounted on LEFT panel (not BACK) — PCB long axis along trụ Y, short axis along trụ Z; 4 mount holes added to LEFT panel. | Fixes load asymmetry; keeps BACK free for easy removal; BACK now only carries the adapter hole |
+| 20 | 2026-05-31 | BACK adapter cable hole repositioned from (X=15, Z=15) to (X=15, Z=110) to align with J_PWR barrel axis (PCB-on-LEFT geometry). | Cable jumper inside trụ drops from ~120mm to ~20mm; avoids awkward routing across the pillar base |
+| 21 | 2026-05-31 | TOP gains 14×6mm USB-plug pass-through at (X=75, Y=160), 50mm behind camera cable hole so the webcam USB-A connector can thread down to the Pi. | Keeps USB connection accessible without opening any panel |
 
 ## 13. Open questions
 
-1. **PCB mount hole positions** — Assumed at PCB corners 5mm inset. Implementation must verify by reading actual MountingHole footprints from `smart_gate_combined.kicad_pcb`. If different, adjust standoff positions on BACK panel.
-2. **SG90 servo flange dimensions** — Assumed 28mm hole spacing; exact value depends on user's specific SG90 unit (some clones vary ±1mm). Verify against the physical part before cutting RIGHT face.
-3. **Buzzer mounting location** — Not yet assigned a face. Options: (a) inside trụ, sound escapes via vent slots (muffled); (b) RIGHT face with a small Ø10mm hole; (c) BACK face inside surface, sound through panel. Default: inside trụ near BOTTOM vents. Confirm with user during implementation.
+1. **PCB mount hole positions** — ~~Assumed at PCB corners 5mm inset.~~ Now anchored — see §5.4 (LEFT panel) and §6 (internal mounting). PCB mount holes locked at 5mm inset from PCB corners. **Status: RESOLVED.**
+2. **SG90 servo flange dimensions** — Servo no longer mounted to RIGHT panel; flange constraint moved to the 3D-printed bracket (which still uses the 28mm assumption — verify against user's specific SG90 before printing bracket). **Status: PARTIAL — verify bracket flange spacing against actual SG90 before 3D-printing.**
+3. **Buzzer mounting location** — Not yet assigned a face. Options: (a) inside trụ, sound escapes via vent slots (muffled); (b) RIGHT face with a small Ø10mm hole; (c) BACK face inside surface, sound through panel. Default: inside trụ near BOTTOM vents. Confirm with user during implementation. **Status: TBD.**
 4. **Camera tower geometry** — Sized Ø20mm × 120mm tall in this spec, but exact webcam dimensions vary. If user's webcam is a Logitech C270 (60×30×60mm), tower needs a top platform instead of a cylinder cap. Confirm webcam model before designing 3D-print STL.
-5. **HC-SR04 transducer hole spacing** — Assumed 27mm center-to-center, standard. Verify on user's specific HC-SR04 module before cutting.
+5. **HC-SR04 transducer hole spacing** — ~~Assumed 27mm center-to-center.~~ Set to **26mm** per datasheet. **Status: RESOLVED.**
 6. **Pi USB-C power input** — Existing PCB design feeds Pi via GPIO 5V from LM2596. This spec assumes the same path (no USB-C cable into trụ). If user later needs USB-C power, add a Ø6mm slot on BACK panel.
 7. **Drop-arm rest position when closed** — Spec says arm horizontal pointing -Y (forward of FRONT). Confirm this matches user's intent for physical demo, or whether arm should point +Y (backward) when closed.
 8. **Arm length 200mm extends 50mm above TOP face when raised vertical.** Acceptable for demo aesthetics?
@@ -380,7 +401,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 3mm mica too flexible at 40cm height | Medium | Wooden corner posts provide structure; pillar should not be pushed laterally |
 | RFID reads weakly through 3mm mica + standoff gap | Low | RC522 antenna designed for 1-5cm range; gap of 5mm + 3mm mica = 8mm, within range |
 | Cable bundle binds when closing LEFT panel | Medium | Route cables to BACK side, away from LEFT panel; allow 20mm slack |
-| Servo can't lift drop-arm (150mm × 15mm × 3mm acrylic) under its own weight | Low | SG90 stall torque ~1.8 kg·cm; arm mass ~7g, moment arm ~75mm → torque ~0.05 kg·cm — well within servo capability |
+| Servo can't lift drop-arm (200mm × 15mm × 3mm acrylic) under its own weight | Low | SG90 stall torque ~1.8 kg·cm; arm mass ~9g, moment arm ~100mm → torque ~0.09 kg·cm — well within servo capability |
 | Glue cement attacks acrylic surface finish | Low | Cosmofen PMMA is designed for acrylic; apply only on joint edges, not faces |
 | 3D-printed camera tower wobbles | Medium | Tower base flange should be ≥50mm diameter for stability; consider 5mm wall thickness |
 | User's specific SG90 / RC522 / HC-SR04 part dimensions differ from spec | Medium | Per-component verification step before cutting (see open questions §13) |

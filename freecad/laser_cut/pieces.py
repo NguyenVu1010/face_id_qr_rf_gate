@@ -30,9 +30,11 @@ def build_front() -> Piece:
 def build_back() -> Piece:
     outline = _rect_outline(150.0, 300.0)
     cuts: list[Shape] = []
-    # Ø10mm adapter cable entry — aligned with J_PWR jack barrel which
-    # exits at trụ (Y≈221.5, Z≈110) when PCB is mounted on LEFT panel.
-    cuts.append(circle(10.0, 110.0, 5.0))
+    # Ø10mm adapter cable entry — aligned with the J_PWR barrel axis when
+    # PCB sits on LEFT-panel standoffs. Stack: 3mm LEFT panel + 5mm nylon
+    # standoff + 1.6mm PCB + ~6mm to barrel center axis = X≈15.6 from the
+    # LEFT face. Barrel exits toward +Y (BACK) at Y≈221.5, Z≈110.
+    cuts.append(circle(15.0, 110.0, 5.0))
     for x, y in [
         (8.0, 8.0), (142.0, 8.0),
         (8.0, 292.0), (142.0, 292.0),
