@@ -83,10 +83,19 @@ def pentagon_outline(depth: float, height: float, slope: float) -> list[tuple[fl
 
 
 def fillet_rect(width: float, height: float, radius: float, segments: int = 8) -> list[tuple[float, float]]:
-    """Rectangle [0,width] x [0,height] with all 4 corners rounded by radius."""
+    """Rectangle [0,width] x [0,height] with all 4 corners rounded by radius.
+
+    Returns an OPEN polyline (last point != first point) walking CCW from
+    the bottom edge: bottom-right tangent → SE arc → right edge top-tangent
+    → NE arc → top edge → NW arc → left edge bottom-tangent → SW arc, ending
+    at (r, 0.0).
+
+    `segments` controls arc smoothness; default 8 trades smoothness for
+    DXF/SVG file size (4 corners × 8 segments + 4 straight-edge anchors = 36
+    vertices total).
+    """
     r = radius
     pts: list[tuple[float, float]] = []
-    pts.append((r, 0.0))
     pts.append((width - r, 0.0))
     # SE corner
     for i in range(1, segments + 1):
@@ -103,8 +112,12 @@ def fillet_rect(width: float, height: float, radius: float, segments: int = 8) -
         a = math.radians(90 + 90 * i / segments)
         pts.append((r + r * math.cos(a), height - r + r * math.sin(a)))
     pts.append((0.0, r))
-    # SW corner
+    # SW corner — last arc step lands exactly at (r, 0.0) by geometry; snap
+    # to avoid floating-point drift on the closing vertex.
     for i in range(1, segments + 1):
-        a = math.radians(180 + 90 * i / segments)
-        pts.append((r + r * math.cos(a), r + r * math.sin(a)))
+        if i == segments:
+            pts.append((r, 0.0))
+        else:
+            a = math.radians(180 + 90 * i / segments)
+            pts.append((r + r * math.cos(a), r + r * math.sin(a)))
     return pts

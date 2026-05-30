@@ -50,12 +50,20 @@ def test_pentagon_outline_left_right_face():
 
 
 def test_fillet_rect_corner_count():
-    pts = fillet_rect(width=98, height=40, radius=4, segments=8)
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    assert min(xs) == 0.0
-    assert max(xs) == 98.0
-    assert min(ys) == 0.0
-    assert max(ys) == 40.0
-    # 4 corners × 8 segments + connecting points; allow ±4 for impl detail
-    assert 30 <= len(pts) <= 40
+    width, height, radius, segments = 98, 40, 4, 8
+    pts = fillet_rect(width=width, height=height, radius=radius, segments=segments)
+    # Exact count: 4 corners × `segments` arc points + 4 straight-edge anchors
+    assert len(pts) == 4 * segments + 4
+    # Bounds: all points lie within [0, width] x [0, height]
+    for x, y in pts:
+        assert 0 - 1e-9 <= x <= width + 1e-9, f"x={x} out of [0,{width}]"
+        assert 0 - 1e-9 <= y <= height + 1e-9, f"y={y} out of [0,{height}]"
+    # Tangent anchors present (these mark each corner's start/end)
+    assert (radius, 0.0) in pts
+    assert (width - radius, 0.0) in pts
+    # An arc point at SW corner should be at distance `radius` from center (r, r)
+    sw_arc_pts = [(x, y) for x, y in pts if x < radius and y < radius]
+    assert sw_arc_pts, "expected at least one SW arc point inside the corner quadrant"
+    for x, y in sw_arc_pts:
+        d = ((x - radius) ** 2 + (y - radius) ** 2) ** 0.5
+        assert abs(d - radius) < 1e-9, f"arc point ({x},{y}) not on radius {radius}"
