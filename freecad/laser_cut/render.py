@@ -12,8 +12,8 @@ from freecad.laser_cut.layout import SHEET_W, SHEET_H
 
 CUT_COLOR = "#ff0000"
 ENGRAVE_COLOR = "#000000"
-CUT_STROKE = "0.05"
-ENGRAVE_STROKE = "0.1"
+CUT_STROKE = "0.3"
+ENGRAVE_STROKE = "0.5"
 
 
 def _polyline_d(points: list[tuple[float, float]], close: bool = True) -> str:
