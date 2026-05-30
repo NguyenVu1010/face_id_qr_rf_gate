@@ -43,11 +43,11 @@ User stands at Y<0 facing +Y direction to read the FRONT face during check-in. A
 ### 3.2 Silhouette (side view, looking at LEFT face from outside)
 
 ```
-                Z=300 ┌──── TOP-FLAT (210mm Y-deep) ───┐
+                Z=300 ┌──── TOP-FLAT (168mm Y-deep) ───┐
                       │                                │
                       │                                │
                       ╱  SLOPE 45° (RFID zone)         │
-                Z=270 ╱   30mm × 30mm × 42.4mm hyp     │
+                Z=228 ╱   72mm × 72mm × 101.8mm hyp    │
                       │                                │
                       │                                │
                       │   FRONT vertical               │   BACK vertical
@@ -57,15 +57,15 @@ User stands at Y<0 facing +Y direction to read the FRONT face during check-in. A
                       Y=0                              Y=240
 ```
 
-LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 30×30mm triangle corner removed (creating the 45° slope edge).
+LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 72×72mm triangle corner removed (creating the 45° slope edge).
 
 ### 3.3 Face roster
 
 | Face | Plane | Outline | Removable | Cutouts |
 |---|---|---|---|---|
-| FRONT | Y=0 | 150 × 270 | No | None (optional engraving) |
-| SLOPE | 45° from Y=0,Z=270 to Y=30,Z=300 | 150 × 42.43 | No | RFID engrave marker |
-| TOP-FLAT | Z=300 | 150 × 210 (X × Y, Y range 30–240) | No | LCD + camera tower mount |
+| FRONT | Y=0 | 150 × 228 | No | None (optional engraving) |
+| SLOPE | 45° from Y=0,Z=228 to Y=72,Z=300 | 150 × 101.82 | No | RFID engrave marker |
+| TOP-FLAT | Z=300 | 150 × 168 (X × Y, Y range 72–240) | No | LCD + camera tower mount |
 | BACK | Y=240 | 150 × 300 | **Yes** | Adapter cable hole + 6× M3 |
 | LEFT | X=0 | Pentagon 240×300 (top-front corner clipped) | **Yes** | 4× M3 mount holes |
 | RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Servo + HC-SR04 |
@@ -113,22 +113,22 @@ Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four
 
 All coordinates are face-local: origin at bottom-left corner of the face when viewing from outside, X horizontal-right, Y vertical-up.
 
-### 5.1 FRONT (150 × 270)
+### 5.1 FRONT (150 × 228)
 
 No through-cuts. Optional engrave at center: project name + version.
 
-### 5.2 SLOPE facet (150 × 42.43)
+### 5.2 SLOPE facet (150 × 101.82)
 
-Face-local coords: X 0–150, V 0–42.43 (V = position along the sloped hypotenuse, from FRONT-top edge at V=0 to TOP-FLAT-front edge at V=42.43).
+Face-local coords: X 0–150, V 0–101.82 (V = position along the sloped hypotenuse, from FRONT-top edge at V=0 to TOP-FLAT-front edge at V=101.82).
 
-- **RFID engrave marker:** rectangle 50 × 30 mm, centered. Outline only (engrave depth 0.2mm, not through-cut). Position: X 50–100, V 6.2–36.2.
+- **RFID engrave marker:** rectangle 60 × 35 mm, centered. Outline only (engrave depth 0.2mm, not through-cut). Position: X 45–105, V 33.41–68.41.
 - The RC522 RFID PCB mounts behind this marker on the inside surface. RF passes through 3mm acrylic with negligible loss.
 
-### 5.3 TOP-FLAT (150 × 210)
+### 5.3 TOP-FLAT (150 × 168)
 
 - **LCD viewing cutout:** 98 × 40 mm rectangle with 4mm corner fillets. Centered at (X=75, Y=35). Cut bounds: X 26–124, Y 15–55.
 - **LCD mounting holes:** 4× Ø3.2 mm clearance holes at (X, Y) = (28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5). Spacing 93 × 55 mm (matches standard 20×4 I2C LCD module).
-- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=150). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 142), (83, 142), (67, 158), (83, 158). Tower flange bolts down with 4× M3.
+- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=120). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 112), (83, 112), (67, 128), (83, 128). Tower flange bolts down with 4× M3.
 
 ### 5.4 LEFT (pentagon, removable)
 
@@ -137,15 +137,15 @@ Outline vertices (face-local Y horizontal-back from FRONT edge, Z vertical-up):
 (Y=0,   Z=0)     -- SW corner
 (Y=240, Z=0)     -- SE corner (BACK side)
 (Y=240, Z=300)   -- NE corner
-(Y=30,  Z=300)   -- top edge meets slope
-(Y=0,   Z=270)   -- slope meets FRONT edge
+(Y=72,  Z=300)   -- top edge meets slope
+(Y=0,   Z=228)   -- slope meets FRONT edge
 ```
 
 **Mount holes** (Ø3.5mm clearance for M3 screws into wooden corner posts):
 - Bottom-front: (Y=5, Z=8)
 - Bottom-back: (Y=235, Z=8)
 - Top-back: (Y=235, Z=292)
-- Top-front: (Y=5, Z=255)
+- Top-front: (Y=5, Z=213)
 
 Holes inset 5–8 mm from edges to land on the 10×10mm wooden posts.
 
@@ -223,7 +223,7 @@ LEFT and BACK use M3 screws into the wooden corner posts. No finger joints. Post
 
 ### 8.3 Slope facet attachment
 
-SLOPE is a quadrilateral 150 × 42.43 mm. It attaches at:
+SLOPE is a quadrilateral 150 × 101.82 mm. It attaches at:
 - Top edge: finger-joints into the FRONT edge of TOP-FLAT
 - Bottom edge: finger-joints into the TOP edge of FRONT
 - Left/Right edges: finger-joints into the angled top-front edges of LEFT and RIGHT pentagons
@@ -241,7 +241,7 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
   - `KERF = 0.1` mm (laser kerf compensation)
   - `JOINT_TOLERANCE = 0.15` mm
   - `PILLAR_W = 150`, `PILLAR_D = 240`, `PILLAR_H = 300`
-  - `SLOPE_PROJECTION = 30` (mm of slope projected on Y and Z)
+  - `SLOPE_PROJECTION = 72` (mm of slope projected on Y and Z)
 - Output: `freecad/laser_cut/exports/mica_gate_pillar.pdf`
 
 ### 9.2 PDF layout conventions
@@ -257,8 +257,8 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 ### 9.3 Nesting
 
 Pieces arranged on 1000 × 600 mm sheet.
-- Row 1: LEFT (240×300) + RIGHT (240×300) + FRONT (150×270) + BACK (150×300) — width 812, height 300
-- Row 2: TOP (150×210) + SLOPE (150×42.4) + BOTTOM (150×240) + ARM (150×15) — width 632, height 240
+- Row 1: LEFT (240×300) + RIGHT (240×300) + FRONT (150×228) + BACK (150×300) — width 812, height 300
+- Row 2: TOP (150×168) + SLOPE (150×101.8) + BOTTOM (150×240) + ARM (150×15) — width 632, height 240
 
 Gap between pieces ≥ 5 mm (for kerf + handling).
 
@@ -355,6 +355,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 11 | 2026-05-31 | Adapter 12V cable enters via BACK Ø10mm grommet | User picked BACK lower corner |
 | 12 | 2026-05-31 | PDF output single A2 page, red=cut / black=engrave | Standard laser shop convention |
 | 13 | 2026-05-31 | Slope facet 30mm × 30mm (was 60mm) | 60mm slope left too little TOP depth for LCD + camera mount |
+| 14 | 2026-05-31 | Slope facet enlarged to 72mm × 72mm (hyp 101.82mm) | Provides sufficient facet area (70×40mm RFID module fits on slope); TOP shortened to 168mm, FRONT to 228mm |
 
 ## 13. Open questions
 

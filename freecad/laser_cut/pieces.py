@@ -23,7 +23,7 @@ def _rect_outline(w: float, h: float) -> list[tuple[float, float]]:
 
 
 def build_front() -> Piece:
-    return Piece(name="FRONT", outline=_rect_outline(150.0, 270.0))
+    return Piece(name="FRONT", outline=_rect_outline(150.0, 228.0))
 
 
 def build_back() -> Piece:
@@ -55,38 +55,38 @@ def build_arm() -> Piece:
 
 
 def build_top() -> Piece:
-    outline = _rect_outline(150.0, 210.0)
+    outline = _rect_outline(150.0, 168.0)
     cuts: list[Shape] = []
     cuts.append(lcd_window(cx=75.0, cy=35.0, w=98.0, h=40.0, r=4.0))
     for x, y in [(28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5)]:
         cuts.append(circle(x, y, 1.6))
-    cuts.append(circle(75.0, 150.0, 4.0))  # camera cable Ø8
-    for x, y in [(67.0, 142.0), (83.0, 142.0), (67.0, 158.0), (83.0, 158.0)]:
+    cuts.append(circle(75.0, 120.0, 4.0))  # camera cable Ø8
+    for x, y in [(67.0, 112.0), (83.0, 112.0), (67.0, 128.0), (83.0, 128.0)]:
         cuts.append(circle(x, y, 1.6))
     return Piece(name="TOP", outline=outline, cuts=cuts)
 
 
 def build_slope() -> Piece:
-    slope_proj = 30.0
+    slope_proj = 72.0
     hypotenuse = math.sqrt(slope_proj ** 2 + slope_proj ** 2)
     outline = _rect_outline(150.0, hypotenuse)
-    engraves = [rfid_engrave_marker(cx=75.0, cy=hypotenuse / 2, w=50.0, h=30.0)]
+    engraves = [rfid_engrave_marker(cx=75.0, cy=hypotenuse / 2, w=60.0, h=35.0)]
     return Piece(name="SLOPE", outline=outline, engraves=engraves)
 
 
 def build_left() -> Piece:
-    outline = pentagon_outline(depth=240.0, height=300.0, slope=30.0)
+    outline = pentagon_outline(depth=240.0, height=300.0, slope=72.0)
     cuts = [
         circle(5.0, 8.0, 1.75),
         circle(235.0, 8.0, 1.75),
         circle(235.0, 292.0, 1.75),
-        circle(5.0, 255.0, 1.75),
+        circle(5.0, 213.0, 1.75),
     ]
     return Piece(name="LEFT", outline=outline, cuts=cuts)
 
 
 def build_right() -> Piece:
-    outline = pentagon_outline(depth=240.0, height=300.0, slope=30.0)
+    outline = pentagon_outline(depth=240.0, height=300.0, slope=72.0)
     cuts: list[Shape] = []
     cuts.extend(servo_cutout(cx=120.0, cy=150.0))
     cuts.extend(hc_sr04_holes(cx=120.0, cy=220.0))

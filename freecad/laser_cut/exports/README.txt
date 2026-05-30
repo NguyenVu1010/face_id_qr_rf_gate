@@ -17,12 +17,12 @@ NÉT CẮT vs NÉT KHẮC
 
 DANH SÁCH 8 CHI TIẾT
 --------------------
-1. FRONT     150 × 270 mm  (mặt trước)
+1. FRONT     150 × 228 mm  (mặt trước)
 2. BACK      150 × 300 mm  (mặt sau, có lỗ adapter Ø10mm)
 3. LEFT      240 × 300 mm  (ngũ giác, mặt trái)
 4. RIGHT     240 × 300 mm  (ngũ giác, mặt phải, có lỗ servo + cảm biến)
-5. TOP       150 × 210 mm  (mặt trên, có lỗ LCD 98×40 R4)
-6. SLOPE     150 × 42.4 mm (mặt vát 45°, có khắc đánh dấu RFID)
+5. TOP       150 × 168 mm  (mặt trên, có lỗ LCD 98×40 R4)
+6. SLOPE     150 × 101.8 mm (mặt vát 45°, có khắc đánh dấu RFID)
 7. BOTTOM    150 × 240 mm  (mặt đáy, có 5 khe thông gió)
 8. ARM       150 × 15  mm  (cần chắn)
 

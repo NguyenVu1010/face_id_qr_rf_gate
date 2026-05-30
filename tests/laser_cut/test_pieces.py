@@ -14,7 +14,7 @@ def test_front_dimensions():
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
     assert max(xs) == 150.0
-    assert max(ys) == 270.0
+    assert max(ys) == 228.0
 
 
 def test_back_has_cable_hole_and_six_mount_holes():
@@ -54,7 +54,7 @@ def test_slope_has_engrave_marker():
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
     assert max(xs) == 150.0
-    assert abs(max(ys) - 42.43) < 0.1
+    assert abs(max(ys) - 101.82) < 0.1
     assert len(p.engraves) == 1
     assert p.engraves[0].kind == "engrave"
 
