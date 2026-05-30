@@ -1,7 +1,5 @@
 """Geometry primitives for laser-cut acrylic pieces (all coords in mm)."""
 
-from dataclasses import dataclass
-
 MICA_T = 3.0
 KERF = 0.1
 JOINT_TOL = 0.15
@@ -19,7 +17,23 @@ def finger_edge(
     """Vertices along ONE edge, going left-to-right along X.
 
     Tabs stick in +Y when outward=True, in -Y (slots) when outward=False.
+
+    Raises ValueError if n_tabs doesn't match the count derived from length / tab_w.
     """
+    # Validate: the segment loop alternates tab/gap starting from start_with_tab,
+    # so total segments = ceil(length / tab_w), and tab count depends on start_with_tab.
+    n_segments = int((length + 1e-6) // tab_w)
+    if abs(n_segments * tab_w - length) > 1e-6:
+        raise ValueError(f"length={length} must be an integer multiple of tab_w={tab_w}")
+    if start_with_tab:
+        expected_tabs = (n_segments + 1) // 2
+    else:
+        expected_tabs = n_segments // 2
+    if n_tabs != expected_tabs:
+        raise ValueError(
+            f"n_tabs={n_tabs} mismatches derived count {expected_tabs} "
+            f"(length={length}, tab_w={tab_w}, start_with_tab={start_with_tab})"
+        )
     direction = +1 if outward else -1
     segments = []
     x = 0.0

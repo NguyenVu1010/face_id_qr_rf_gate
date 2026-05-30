@@ -1,3 +1,5 @@
+import pytest
+
 from freecad.laser_cut.geometry import finger_edge
 
 
@@ -20,5 +22,16 @@ def test_finger_edge_outward_two_tabs():
 
 def test_finger_edge_inward_slots():
     verts = finger_edge(length=60, n_tabs=2, tab_w=20, mica_t=3, start_with_tab=True, outward=False)
+    assert verts[0] == (0.0, 0.0)
+    assert verts[-1] == (60.0, 0.0)
+    assert len(verts) == 8
+    # Slots go into -Y direction
     assert (0.0, -3.0) in verts
     assert (20.0, -3.0) in verts
+    assert (40.0, -3.0) in verts
+    assert (60.0, -3.0) in verts
+
+
+def test_finger_edge_rejects_wrong_n_tabs():
+    with pytest.raises(ValueError, match="n_tabs"):
+        finger_edge(length=60, n_tabs=5, tab_w=20, mica_t=3, start_with_tab=True, outward=True)
