@@ -1,6 +1,6 @@
 import pytest
 
-from freecad.laser_cut.geometry import finger_edge
+from freecad.laser_cut.geometry import finger_edge, pentagon_outline, fillet_rect
 
 
 def test_finger_edge_outward_two_tabs():
@@ -35,3 +35,27 @@ def test_finger_edge_inward_slots():
 def test_finger_edge_rejects_wrong_n_tabs():
     with pytest.raises(ValueError, match="n_tabs"):
         finger_edge(length=60, n_tabs=5, tab_w=20, mica_t=3, start_with_tab=True, outward=True)
+
+
+def test_pentagon_outline_left_right_face():
+    # LEFT/RIGHT face: 120 deep × 400 tall, top-front 30x30 corner removed
+    pts = pentagon_outline(depth=120, height=400, slope=30)
+    assert pts == [
+        (0.0, 0.0),       # SW (front-bottom)
+        (120.0, 0.0),     # SE (back-bottom)
+        (120.0, 400.0),   # NE (back-top)
+        (30.0, 400.0),    # slope-top
+        (0.0, 370.0),     # slope-bottom (front-upper)
+    ]
+
+
+def test_fillet_rect_corner_count():
+    pts = fillet_rect(width=98, height=40, radius=4, segments=8)
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    assert min(xs) == 0.0
+    assert max(xs) == 98.0
+    assert min(ys) == 0.0
+    assert max(ys) == 40.0
+    # 4 corners × 8 segments + connecting points; allow ±4 for impl detail
+    assert 30 <= len(pts) <= 40

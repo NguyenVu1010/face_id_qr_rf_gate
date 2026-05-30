@@ -1,5 +1,7 @@
 """Geometry primitives for laser-cut acrylic pieces (all coords in mm)."""
 
+import math
+
 MICA_T = 3.0
 KERF = 0.1
 JOINT_TOL = 0.15
@@ -66,3 +68,43 @@ def finger_edge(
     if verts[-1] != (length, 0.0):
         verts.append((length, 0.0))
     return verts
+
+
+def pentagon_outline(depth: float, height: float, slope: float) -> list[tuple[float, float]]:
+    """LEFT/RIGHT face outline. SW=(0,0), SE=(depth,0), NE=(depth,height),
+    top edge to (slope, height), then slope down to (0, height-slope)."""
+    return [
+        (0.0, 0.0),
+        (depth, 0.0),
+        (depth, height),
+        (slope, height),
+        (0.0, height - slope),
+    ]
+
+
+def fillet_rect(width: float, height: float, radius: float, segments: int = 8) -> list[tuple[float, float]]:
+    """Rectangle [0,width] x [0,height] with all 4 corners rounded by radius."""
+    r = radius
+    pts: list[tuple[float, float]] = []
+    pts.append((r, 0.0))
+    pts.append((width - r, 0.0))
+    # SE corner
+    for i in range(1, segments + 1):
+        a = math.radians(270 + 90 * i / segments)
+        pts.append((width - r + r * math.cos(a), r + r * math.sin(a)))
+    pts.append((width, height - r))
+    # NE corner
+    for i in range(1, segments + 1):
+        a = math.radians(0 + 90 * i / segments)
+        pts.append((width - r + r * math.cos(a), height - r + r * math.sin(a)))
+    pts.append((r, height))
+    # NW corner
+    for i in range(1, segments + 1):
+        a = math.radians(90 + 90 * i / segments)
+        pts.append((r + r * math.cos(a), height - r + r * math.sin(a)))
+    pts.append((0.0, r))
+    # SW corner
+    for i in range(1, segments + 1):
+        a = math.radians(180 + 90 * i / segments)
+        pts.append((r + r * math.cos(a), r + r * math.sin(a)))
+    return pts
