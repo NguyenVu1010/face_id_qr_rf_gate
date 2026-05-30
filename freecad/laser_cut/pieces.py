@@ -51,18 +51,17 @@ def build_bottom() -> Piece:
 
 
 def build_arm() -> Piece:
-    outline = _rect_outline(195.0, 15.0)
+    outline = _rect_outline(115.0, 15.0)
     cuts = [
         circle(5.0, 7.5, 1.1),
         circle(13.0, 7.5, 1.1),
     ]
-    # 5 engraved stripes (paint red after cutting for red/white barrier look).
-    # Arm length = slot Z-height (200mm) - 5mm clearance = 195mm.
-    # Stripe centers at X=30/65/100/135/170, width 20mm + 15mm gaps; first
-    # stripe clears the M2 mount holes at X=5/13 by 7mm; last stripe leaves
-    # 15mm margin to arm tip.
+    # 3 engraved stripes (paint red after cutting for red/white barrier look).
+    # Arm length 115mm = slot Z-height 120mm − 5mm clearance. Stripe centers
+    # at X=35/65/95, width 20mm + 10mm gaps; first stripe clears M2 mount
+    # holes at X=5/13 by 12mm; last stripe leaves 10mm margin to arm tip.
     engraves = [rect(cx=x, cy=7.5, w=20.0, h=5.0, kind="engrave")
-                for x in (30.0, 65.0, 100.0, 135.0, 170.0)]
+                for x in (35.0, 65.0, 95.0)]
     return Piece(name="ARM", outline=outline, cuts=cuts, engraves=engraves)
 
 
@@ -121,5 +120,5 @@ def build_right() -> Piece:
     cuts: list[Shape] = []
     cuts.extend(hc_sr04_holes(cx=120.0, cy=40.0))            # 2 transducer Ø16, spacing 26 — lowered to Z=40
     cuts.extend(hc_sr04_pcb_mount(cx=120.0, cy=40.0))        # 4 M2 corner holes at PCB 45x20 corners
-    cuts.append(arm_slot(cx=120.0, cy=190.0, h=200.0))       # arm retraction slot Z=90-290 (200mm tall, 10mm margin from top, 42mm from HC-SR04)
+    cuts.append(arm_slot(cx=120.0, cy=150.0, h=120.0))       # arm retraction slot Z=90-210 (120mm tall, lowers open-arm tip ~80mm)
     return Piece(name="RIGHT", outline=outline, cuts=cuts)

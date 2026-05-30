@@ -24,7 +24,7 @@ DANH SÁCH 8 CHI TIẾT
 5. TOP       150 × 168 mm  (mặt trên, có lỗ LCD 98×40 R4)
 6. SLOPE     150 × 101.8 mm (mặt vát 45°, có khắc đánh dấu RFID)
 7. BOTTOM    150 × 240 mm  (mặt đáy, có 5 khe thông gió)
-8. ARM       195 × 15  mm  (cần chắn — có khắc 5 vạch sọc 20mm × 5mm — sau khi cắt sơn ĐỎ vào các vạch khắc để giả barrier sọc đỏ-trắng)
+8. ARM       115 × 15  mm  (cần chắn — có khắc 3 vạch sọc 20mm × 5mm — sau khi cắt sơn ĐỎ vào các vạch khắc để giả barrier sọc đỏ-trắng)
 
 DUNG SAI
 --------
