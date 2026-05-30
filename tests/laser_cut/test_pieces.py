@@ -5,6 +5,7 @@ from freecad.laser_cut.pieces import (
     build_bottom,
     build_arm,
 )
+from freecad.laser_cut.pieces import build_top, build_slope, build_left, build_right
 
 
 def test_front_dimensions():
@@ -37,3 +38,37 @@ def test_arm_dimensions_and_holes():
     assert max(xs) == 150.0
     assert max(ys) == 15.0
     assert len(p.cuts) == 2
+
+
+def test_top_has_lcd_and_camera_features():
+    p = build_top()
+    assert p.name == "TOP"
+    # 1 LCD cutout + 4 LCD mount + 4 camera mount + 1 camera cable = 10 cuts
+    assert len(p.cuts) == 10
+    assert len(p.engraves) == 0
+
+
+def test_slope_has_engrave_marker():
+    p = build_slope()
+    assert p.name == "SLOPE"
+    xs = [pt[0] for pt in p.outline]
+    ys = [pt[1] for pt in p.outline]
+    assert max(xs) == 150.0
+    assert abs(max(ys) - 42.43) < 0.1
+    assert len(p.engraves) == 1
+    assert p.engraves[0].kind == "engrave"
+
+
+def test_left_is_pentagon_with_mount_holes():
+    p = build_left()
+    assert p.name == "LEFT"
+    assert len(p.outline) == 5
+    assert len(p.cuts) == 4
+
+
+def test_right_has_servo_and_hc_sr04():
+    p = build_right()
+    assert p.name == "RIGHT"
+    assert len(p.outline) == 5
+    # servo: 1 shaft + 2 flange = 3; hc-sr04 transducers: 2; mount holes: 2 → 7
+    assert len(p.cuts) == 7
