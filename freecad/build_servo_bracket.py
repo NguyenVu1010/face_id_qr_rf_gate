@@ -26,7 +26,7 @@ BASE_W = 50.0    # X direction footprint
 BASE_D = 40.0    # Y direction footprint
 BASE_T = 3.0     # thickness of bracket base
 WALL_T = 3.0     # vertical wall thickness
-TARGET_Z = 150.0  # desired shaft Z height
+TARGET_Z = 100.0  # desired shaft Z height (pivot for the 150mm drop-arm)
 WALL_H = TARGET_Z - BASE_T  # vertical wall height to position servo at correct Z
 
 

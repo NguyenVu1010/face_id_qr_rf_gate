@@ -62,16 +62,16 @@ def hc_sr04_pcb_mount(cx: float, cy: float) -> list[Shape]:
     ]
 
 
-def arm_slot(cx: float, cy: float, w: float = 20.0, h: float = 160.0) -> Shape:
+def arm_slot(cx: float, cy: float, w: float = 20.0, h: float = 200.0) -> Shape:
     """Vertical slot for the drop-arm to retract through.
 
     cx/cy = center of slot. w (Y direction on the face) × h (Z direction on the face).
 
-    Height defaults to 160mm: that is the minimum that lets a 200mm arm with
-    15mm width and a pivot 30mm inset from the panel sweep cleanly from
-    horizontal (θ=0, arm cross-section spans Z=142.5–157.5) to nearly
-    vertical (θ→81°, arm cross-section reaches Z=300). Shorter slots clip
-    either the closed-position lower edge or the high-angle upper edge.
+    Height defaults to 200mm: covers the full sweep of a 150mm arm with
+    15mm width and a pivot 30mm inset from the panel at Z=100. Z range
+    span: 92.5 (arm cross-section lower edge at θ=0) up to 285 (arm upper
+    edge at θ=78.5° where arm tip retracts inside trụ). Caller positions
+    cy so slot doesn't reach panel top edge.
     """
     return rect(cx, cy, w, h, kind="cut")
 
