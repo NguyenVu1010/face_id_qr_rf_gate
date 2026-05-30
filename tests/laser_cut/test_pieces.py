@@ -44,8 +44,8 @@ def test_arm_dimensions_and_holes():
 def test_top_has_lcd_and_camera_features():
     p = build_top()
     assert p.name == "TOP"
-    # 1 LCD rect (square corners) + 4 LCD mount + 4 camera mount + 1 cable = 10 cuts
-    assert len(p.cuts) == 10
+    # 1 LCD rect + 4 LCD mount + 1 camera cable + 4 camera mount + 1 USB plug = 11 cuts
+    assert len(p.cuts) == 11
     # LCD cutout must be a plain rectangle (4 vertices), not a fillet
     lcd = p.cuts[0]
     assert len(lcd.points) == 4, "LCD cutout should be a 4-vertex rectangle"
@@ -67,7 +67,8 @@ def test_left_is_pentagon_with_mount_holes():
     p = build_left()
     assert p.name == "LEFT"
     assert len(p.outline) == 5
-    assert len(p.cuts) == 4
+    # 4 corner mount holes (panel→post) + 4 PCB standoff mount holes = 8
+    assert len(p.cuts) == 8
 
 
 def test_right_has_arm_slot_and_hc_sr04():

@@ -30,7 +30,9 @@ def build_front() -> Piece:
 def build_back() -> Piece:
     outline = _rect_outline(150.0, 300.0)
     cuts: list[Shape] = []
-    cuts.append(circle(15.0, 15.0, 5.0))  # Ø10mm adapter at (15, 15)
+    # Ø10mm adapter cable entry — aligned with J_PWR jack barrel which
+    # exits at trụ (Y≈221.5, Z≈110) when PCB is mounted on LEFT panel.
+    cuts.append(circle(10.0, 110.0, 5.0))
     for x, y in [
         (8.0, 8.0), (142.0, 8.0),
         (8.0, 292.0), (142.0, 292.0),
@@ -56,7 +58,7 @@ def build_arm() -> Piece:
     # Centers at X=35..185 with stripe width 20mm leave 5mm margins inside the
     # arm (avoids extending past arm length 200mm) and clear the two mount
     # holes at X=5/X=13.
-    engraves = [rect(cx=x, cy=7.5, w=20.0, h=10.0, kind="engrave")
+    engraves = [rect(cx=x, cy=7.5, w=20.0, h=5.0, kind="engrave")
                 for x in (35.0, 75.0, 115.0, 155.0, 185.0)]
     return Piece(name="ARM", outline=outline, cuts=cuts, engraves=engraves)
 
@@ -66,10 +68,15 @@ def build_top() -> Piece:
     cuts: list[Shape] = []
     cuts.append(rect(cx=75.0, cy=35.0, w=98.0, h=40.0))  # LCD window, square corners
     for x, y in [(28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5)]:
-        cuts.append(circle(x, y, 1.6))
-    cuts.append(circle(75.0, 120.0, 4.0))  # camera cable Ø8
-    for x, y in [(67.0, 112.0), (83.0, 112.0), (67.0, 128.0), (83.0, 128.0)]:
-        cuts.append(circle(x, y, 1.6))
+        cuts.append(circle(x, y, 1.6))                    # LCD module mount holes
+    # Camera tower: cable hole + 4 flange mounts. Shifted forward to Y=110 to
+    # leave 50mm gap for a USB-plug pass-through behind it.
+    cuts.append(circle(75.0, 110.0, 4.0))                 # camera cable Ø8mm
+    for x, y in [(67.0, 102.0), (83.0, 102.0), (67.0, 118.0), (83.0, 118.0)]:
+        cuts.append(circle(x, y, 1.6))                    # camera tower flange mounts
+    # USB-plug pass-through (14x6mm fits a USB-A male plug with clearance).
+    # Center 50mm behind camera cable hole, ~8mm margin to BACK edge of TOP.
+    cuts.append(rect(cx=75.0, cy=160.0, w=14.0, h=6.0))
     return Piece(name="TOP", outline=outline, cuts=cuts)
 
 
@@ -84,10 +91,19 @@ def build_slope() -> Piece:
 def build_left() -> Piece:
     outline = pentagon_outline(depth=240.0, height=300.0, slope=72.0)
     cuts = [
+        # 4 corner mount holes (panel → wooden corner posts)
         circle(5.0, 8.0, 1.75),
         circle(235.0, 8.0, 1.75),
         circle(235.0, 292.0, 1.75),
         circle(5.0, 213.0, 1.75),
+        # 4 PCB standoff mount holes — motherboard PCB (200x120mm) sits flat
+        # against inside of LEFT panel with long axis along trụ Y and short
+        # axis along trụ Z. Mount holes at PCB corners (5mm inset from PCB
+        # edges) at trụ (Y, Z) coords, Ø3.2mm clearance for M3 screws.
+        circle(25.0, 95.0, 1.6),
+        circle(215.0, 95.0, 1.6),
+        circle(25.0, 205.0, 1.6),
+        circle(215.0, 205.0, 1.6),
     ]
     return Piece(name="LEFT", outline=outline, cuts=cuts)
 
