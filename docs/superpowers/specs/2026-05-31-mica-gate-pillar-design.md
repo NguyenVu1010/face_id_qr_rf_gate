@@ -163,7 +163,7 @@ These match PCB-local mount points 5mm inset from the 200×120mm PCB corners.
 
 Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it has been moved inside the trụ on a 3D-printed bracket (see §6). Internal cutouts:
 
-- **Arm retraction slot:** 20 × 200 mm rectangle at (Y=120, Z=190). Spans Y 110–130 × Z 90–290. Allows the 150mm drop-arm to retract through the panel for the full sweep from θ=0° (closed horizontal) to θ=78.5° (arm tip retracted just past the panel into trụ interior). Slot top has 10mm margin from panel-top edge; slot bottom has 42mm clearance above the HC-SR04 PCB.
+- **Arm retraction slot:** 20 × 200 mm rectangle at (Y=120, Z=190). Spans Y 110–130 × Z 90–290. Drop-arm (195mm) sweeps through the panel from θ=0° (closed horizontal) to θ≈78.7° (where the arm's upper cross-section edge reaches the slot top Z=290). At θ=78.7° arm tip lands at (X=158, Z=291) — sits just outside the panel near trụ top, mostly vertical visually. Slot top has 10mm margin from panel-top edge; slot bottom has 42mm clearance above the HC-SR04 PCB.
 - **HC-SR04 transducer holes:** 2× Ø16mm at (Y=107, Z=40) and (Y=133, Z=40). Center-to-center **26mm** per HC-SR04 datasheet.
 - **HC-SR04 PCB corner mount holes:** 4× Ø2.2mm clearance (for M2 screws into the HC-SR04 board's own corner holes). Positions (Y, Z):
   - (Y=99.5, Z=32) — board top-left
@@ -185,10 +185,10 @@ Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it h
 
 - **Vent slots (optional):** 5× rectangular 30×3 mm slots, centered along the X axis, at Y = 40, 80, 120, 160, 200 — or skip if user prefers sealed bottom. Default: include slots for passive cooling of Pi.
 
-### 5.8 Drop-arm (150 × 15 × 3)
+### 5.8 Drop-arm (195 × 15 × 3)
 
 - **Mounting holes:** 2× Ø2.2mm at distance 5mm and 13mm from one short end (8mm spacing matches SG90 1-arm horn).
-- **Decoration:** 4 engraved stripes 20×5mm at X = 30, 60, 90, 120 (paint red after cutting for red/white barrier look). Stripes clear the 2 mount holes at X=5/13 and stay inside the 150mm arm length.
+- **Decoration:** 5 engraved stripes 20×5mm at X = 30, 65, 100, 135, 170 (paint red after cutting for red/white barrier look). Stripes clear the 2 mount holes at X=5/13 and stay inside the 195mm arm length (15mm margin from arm tip).
 
 ## 6. Internal mounting strategy
 
@@ -202,7 +202,7 @@ Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it h
 | RC522 RFID | SLOPE facet inside surface | 4× M3 standoffs 5mm tall glued to SLOPE inside with acrylic cement; RC522 PCB bolted to standoffs | RC522 antenna pointing outward through SLOPE. PCB parallel to slope plane. |
 | HC-SR04 module | RIGHT face inside surface | Module sits on inside surface of RIGHT panel; 2 transducer cylinders pass through the 2× Ø16mm holes; 4× M2 screws through M2 PCB corner holes from outside RIGHT into M2 nylon standoffs glued to inside | Transducers poke through the 2× Ø16mm holes at (Y=107, Z=40) and (Y=133, Z=40) |
 | SG90 servo | 3D-printed bracket (`freecad/exports/servo_bracket.stl`) bonded to BOTTOM face inside trụ | Bracket positions servo shaft at trụ (X=120, Y=120, Z=100) with shaft axis along Y. 2× M2.5 screws secure servo flange to bracket wall. Bracket base bonded to BOTTOM face inside with acrylic cement. (TARGET_Z = 100 in `freecad/build_servo_bracket.py`) | Servo body bounding box approx X=113–126, Y=120–143, Z=89–111 |
-| Drop-arm pivot | SG90 servo horn outside the servo body | 2× M2 screws through arm into horn arm | Pivot at trụ (X=120, Y=120, Z=100). Arm 150mm × 15mm × 3mm. Closed: arm horizontal +X, tip at (X=270, Z=100), extends through RIGHT-face slot. Open at θ=78.5°: arm tip at (X=150, Z=247) just inside trụ; at θ=90° (full vertical) arm at X=120, Z=100..250 entirely inside. |
+| Drop-arm pivot | SG90 servo horn outside the servo body | 2× M2 screws through arm into horn arm | Pivot at trụ (X=120, Y=120, Z=100). Arm **195mm** × 15mm × 3mm (= slot height - 5mm). Closed: arm horizontal +X, tip at (X=315, Z=100). Open at θ≈78.7° (slot top clips arm cross-section): tip at (X=158, Z=291), arm mostly vertical and sits just outside panel near trụ top. |
 | Camera tower | TOP-FLAT outside surface | 4× M3×10 through TOP from inside upward into tower flange | Cylindrical 3D-printed tower, Ø20mm × 120mm tall, USB cable runs inside cylinder |
 
 ## 7. Cable routing
@@ -274,7 +274,7 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 
 Pieces arranged on 1000 × 600 mm sheet.
 - Row 1: LEFT (240×300) + RIGHT (240×300) + FRONT (150×228) + BACK (150×300) — width 812, height 300
-- Row 2: TOP (150×168) + SLOPE (150×101.8) + BOTTOM (150×240) + ARM (150×15) — width 632, height 240
+- Row 2: TOP (150×168) + SLOPE (150×101.8) + BOTTOM (150×240) + ARM (195×15) — width 677, height 240
 
 Gap between pieces ≥ 5 mm (for kerf + handling).
 
@@ -392,7 +392,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 5. **HC-SR04 transducer hole spacing** — ~~Assumed 27mm center-to-center.~~ Set to **26mm** per datasheet. **Status: RESOLVED.**
 6. **Pi USB-C power input** — Existing PCB design feeds Pi via GPIO 5V from LM2596. This spec assumes the same path (no USB-C cable into trụ). If user later needs USB-C power, add a Ø6mm slot on BACK panel.
 7. **Drop-arm rest position when closed** — Spec says arm horizontal pointing -Y (forward of FRONT). Confirm this matches user's intent for physical demo, or whether arm should point +Y (backward) when closed.
-8. **Q8 RESOLVED: Arm shortened to 150mm; at full retract (θ=78.5°) and full vertical (θ=90°) the arm stays entirely within the trụ envelope. No longer protrudes above TOP face.**
+8. **Q8 RESOLVED: Arm 195mm (= slot height − 5mm) sweeps from horizontal to ~78.7°; tip at (X=158, Z=291) at max angle — just outside the panel near trụ top, visually almost vertical.**
 
 ## 14. Risks
 
@@ -403,7 +403,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 5mm mica still flexes if pushed laterally at 30cm height | Low | Wooden corner posts anchor structure; 5mm is rigid in hand-feel test |
 | RFID reads weakly through 5mm mica + standoff gap | Low | RC522 antenna designed for 1-5cm range; gap of 5mm + 5mm mica = 10mm, well within range |
 | Cable bundle binds when closing LEFT panel | Medium | Route cables to BACK side, away from LEFT panel; allow 20mm slack |
-| Servo can't lift drop-arm (150mm × 15mm × 3mm acrylic) under its own weight | Low | SG90 stall torque ~1.8 kg·cm; 150mm × 15mm × 3mm acrylic ≈ 6g, moment arm ~75mm → torque ~0.045 kg·cm — well within SG90's 1.8 kg·cm rating |
+| Servo can't lift drop-arm (195mm × 15mm × 3mm acrylic) under its own weight | Low | SG90 stall torque ~1.8 kg·cm; 195mm × 15mm × 3mm acrylic ≈ 8g, moment arm ~97mm → torque ~0.078 kg·cm — well within SG90's 1.8 kg·cm rating |
 | Glue cement attacks acrylic surface finish | Low | Cosmofen PMMA is designed for acrylic; apply only on joint edges, not faces |
 | 3D-printed camera tower wobbles | Medium | Tower base flange should be ≥50mm diameter for stability; consider 5mm wall thickness |
 | User's specific SG90 / RC522 / HC-SR04 part dimensions differ from spec | Medium | Per-component verification step before cutting (see open questions §13) |

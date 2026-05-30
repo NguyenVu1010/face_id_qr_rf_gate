@@ -35,10 +35,10 @@ def test_arm_dimensions_and_holes():
     assert p.name == "ARM"
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
-    assert max(xs) == 150.0
+    assert max(xs) == 195.0
     assert max(ys) == 15.0
     assert len(p.cuts) == 2
-    assert len(p.engraves) == 4
+    assert len(p.engraves) == 5
 
 
 def test_top_has_lcd_and_camera_features():

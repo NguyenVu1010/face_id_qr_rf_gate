@@ -51,16 +51,18 @@ def build_bottom() -> Piece:
 
 
 def build_arm() -> Piece:
-    outline = _rect_outline(150.0, 15.0)
+    outline = _rect_outline(195.0, 15.0)
     cuts = [
         circle(5.0, 7.5, 1.1),
         circle(13.0, 7.5, 1.1),
     ]
-    # 4 engraved stripes (paint red after cutting for red/white barrier look).
-    # Centers at X=30/60/90/120 with stripe width 20mm + 10mm gaps fit cleanly
-    # in 150mm arm length; clear of the two M2 mount holes at X=5 and X=13.
+    # 5 engraved stripes (paint red after cutting for red/white barrier look).
+    # Arm length = slot Z-height (200mm) - 5mm clearance = 195mm.
+    # Stripe centers at X=30/65/100/135/170, width 20mm + 15mm gaps; first
+    # stripe clears the M2 mount holes at X=5/13 by 7mm; last stripe leaves
+    # 15mm margin to arm tip.
     engraves = [rect(cx=x, cy=7.5, w=20.0, h=5.0, kind="engrave")
-                for x in (30.0, 60.0, 90.0, 120.0)]
+                for x in (30.0, 65.0, 100.0, 135.0, 170.0)]
     return Piece(name="ARM", outline=outline, cuts=cuts, engraves=engraves)
 
 
