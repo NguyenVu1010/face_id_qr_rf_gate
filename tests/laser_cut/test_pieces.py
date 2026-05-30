@@ -14,7 +14,7 @@ def test_front_dimensions():
     xs = [pt[0] for pt in p.outline]
     ys = [pt[1] for pt in p.outline]
     assert max(xs) == 150.0
-    assert max(ys) == 370.0
+    assert max(ys) == 270.0
 
 
 def test_back_has_cable_hole_and_six_mount_holes():
@@ -27,7 +27,7 @@ def test_back_has_cable_hole_and_six_mount_holes():
 def test_bottom_has_vent_slots():
     p = build_bottom()
     assert p.name == "BOTTOM"
-    assert len(p.cuts) == 3  # 3 vent slots
+    assert len(p.cuts) == 5  # 5 vent slots
 
 
 def test_arm_dimensions_and_holes():

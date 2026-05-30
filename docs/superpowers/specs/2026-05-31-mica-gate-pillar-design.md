@@ -35,48 +35,48 @@ Build a laser-cut clear acrylic enclosure shaped like a real check-in turnstile 
 
 - Origin: SW-bottom corner (when looking at FRONT face from outside)
 - **X axis:** 0 → 150 mm — width (LEFT face at X=0, RIGHT face at X=150)
-- **Y axis:** 0 → 120 mm — depth (FRONT face at Y=0, BACK face at Y=120)
-- **Z axis:** 0 → 400 mm — height (BOTTOM at Z=0, TOP at Z=400)
+- **Y axis:** 0 → 240 mm — depth (FRONT face at Y=0, BACK face at Y=240)
+- **Z axis:** 0 → 300 mm — height (BOTTOM at Z=0, TOP at Z=300)
 
 User stands at Y<0 facing +Y direction to read the FRONT face during check-in. After scanning, user walks past the pillar's RIGHT side in +X direction. The drop-arm extends from the RIGHT face to block this +X path.
 
 ### 3.2 Silhouette (side view, looking at LEFT face from outside)
 
 ```
-                Z=400 ┌──── TOP-FLAT (90mm Y-deep) ────┐
+                Z=300 ┌──── TOP-FLAT (210mm Y-deep) ───┐
                       │                                │
                       │                                │
                       ╱  SLOPE 45° (RFID zone)         │
-                Z=370 ╱   30mm × 30mm × 42.4mm hyp     │
+                Z=270 ╱   30mm × 30mm × 42.4mm hyp     │
                       │                                │
                       │                                │
                       │   FRONT vertical               │   BACK vertical
                       │                                │
                       │                                │
-                Z=0   └────── BOTTOM (120mm Y) ───────┘
-                      Y=0                              Y=120
+                Z=0   └────── BOTTOM (240mm Y) ───────┘
+                      Y=0                              Y=240
 ```
 
-LEFT and RIGHT faces are **pentagons**: rectangle 120×400mm with the top-front 30×30mm triangle corner removed (creating the 45° slope edge).
+LEFT and RIGHT faces are **pentagons**: rectangle 240×300mm with the top-front 30×30mm triangle corner removed (creating the 45° slope edge).
 
 ### 3.3 Face roster
 
 | Face | Plane | Outline | Removable | Cutouts |
 |---|---|---|---|---|
-| FRONT | Y=0 | 150 × 370 | No | None (optional engraving) |
-| SLOPE | 45° from Y=0,Z=370 to Y=30,Z=400 | 150 × 42.43 | No | RFID engrave marker |
-| TOP-FLAT | Z=400 | 150 × 90 (X × Y, Y range 30–120) | No | LCD + camera tower mount |
-| BACK | Y=120 | 150 × 400 | **Yes** | Adapter cable hole + 6× M3 |
-| LEFT | X=0 | Pentagon 120×400 (top-front corner clipped) | **Yes** | 4× M3 mount holes |
-| RIGHT | X=150 | Pentagon 120×400 (top-front corner clipped) | No | Servo + HC-SR04 |
-| BOTTOM | Z=0 | 150 × 120 | No | Optional vent slots |
+| FRONT | Y=0 | 150 × 270 | No | None (optional engraving) |
+| SLOPE | 45° from Y=0,Z=270 to Y=30,Z=300 | 150 × 42.43 | No | RFID engrave marker |
+| TOP-FLAT | Z=300 | 150 × 210 (X × Y, Y range 30–240) | No | LCD + camera tower mount |
+| BACK | Y=240 | 150 × 300 | **Yes** | Adapter cable hole + 6× M3 |
+| LEFT | X=0 | Pentagon 240×300 (top-front corner clipped) | **Yes** | 4× M3 mount holes |
+| RIGHT | X=150 | Pentagon 240×300 (top-front corner clipped) | No | Servo + HC-SR04 |
+| BOTTOM | Z=0 | 150 × 240 | No | Optional vent slots |
 
 ### 3.4 Internal frame
 
-Four vertical wooden corner posts (10×10mm pine wood × 380mm tall) at the four interior corners of the pillar. The wooden posts:
+Four vertical wooden corner posts (10×10mm pine wood × 280mm tall) at the four interior corners of the pillar. The wooden posts:
 - Anchor the 7 acrylic faces via finger joints (for fixed faces) or M3 self-tap screws into the wood (for removable faces).
-- Carry the load and stiffness — acrylic 3mm alone is too flexible for a 40cm-tall pillar.
-- Total 4 posts × 380mm = 1.52m of 10×10mm pine wood.
+- Carry the load and stiffness — acrylic 3mm alone is too flexible for a 30cm-tall pillar.
+- Total 4 posts × 280mm = 1.12m of 10×10mm pine wood.
 
 ## 4. Dimensions & materials
 
@@ -85,15 +85,15 @@ Four vertical wooden corner posts (10×10mm pine wood × 380mm tall) at the four
 | Axis | Outer dimension | Inner dimension (after walls) |
 |---|---|---|
 | X (width) | 150 mm | 144 mm (150 - 2×3mm walls) |
-| Y (depth) | 120 mm | 114 mm |
-| Z (height) | 400 mm | 397 mm (400 - 3mm BOTTOM) |
+| Y (depth) | 240 mm | 234 mm |
+| Z (height) | 300 mm | 297 mm (300 - 3mm BOTTOM) |
 
 ### 4.2 Material list
 
 | Item | Spec | Qty |
 |---|---|---|
 | Clear acrylic sheet | 3 mm thickness, transparent | ~0.30 m² (8 pieces) |
-| Pine wood batten | 10 × 10 mm cross-section | 1.6 m (4 posts × 380mm + offcuts) |
+| Pine wood batten | 10 × 10 mm cross-section | 1.2 m (4 posts × 280mm + offcuts) |
 | M3 × 12 Phillips screws | For BACK panel | 6 |
 | M3 × 12 Phillips screws | For LEFT panel | 4 |
 | M3 × 8 Phillips screws | For PCB to BACK standoffs | 4 |
@@ -107,13 +107,13 @@ Four vertical wooden corner posts (10×10mm pine wood × 380mm tall) at the four
 
 ### 4.3 Sheet nesting
 
-8 pieces fit on a single **800 × 600 mm** acrylic sheet, or on 2 standard 600 × 400 mm sheets. Total cut area ~0.25 m² + ~25% gap/kerf overhead.
+8 pieces fit on a single **1000 × 600 mm** acrylic sheet, or on 2 standard 600 × 400 mm sheets. Total cut area ~0.25 m² + ~25% gap/kerf overhead.
 
 ## 5. Per-face cutout coordinates
 
 All coordinates are face-local: origin at bottom-left corner of the face when viewing from outside, X horizontal-right, Y vertical-up.
 
-### 5.1 FRONT (150 × 370)
+### 5.1 FRONT (150 × 270)
 
 No through-cuts. Optional engrave at center: project name + version.
 
@@ -124,28 +124,28 @@ Face-local coords: X 0–150, V 0–42.43 (V = position along the sloped hypoten
 - **RFID engrave marker:** rectangle 50 × 30 mm, centered. Outline only (engrave depth 0.2mm, not through-cut). Position: X 50–100, V 6.2–36.2.
 - The RC522 RFID PCB mounts behind this marker on the inside surface. RF passes through 3mm acrylic with negligible loss.
 
-### 5.3 TOP-FLAT (150 × 90)
+### 5.3 TOP-FLAT (150 × 210)
 
 - **LCD viewing cutout:** 98 × 40 mm rectangle with 4mm corner fillets. Centered at (X=75, Y=35). Cut bounds: X 26–124, Y 15–55.
 - **LCD mounting holes:** 4× Ø3.2 mm clearance holes at (X, Y) = (28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5). Spacing 93 × 55 mm (matches standard 20×4 I2C LCD module).
-- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=77.5). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 69.5), (83, 69.5), (67, 85.5), (83, 85.5). Tower flange bolts down with 4× M3.
+- **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=150). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 142), (83, 142), (67, 158), (83, 158). Tower flange bolts down with 4× M3.
 
 ### 5.4 LEFT (pentagon, removable)
 
 Outline vertices (face-local Y horizontal-back from FRONT edge, Z vertical-up):
 ```
 (Y=0,   Z=0)     -- SW corner
-(Y=120, Z=0)     -- SE corner (BACK side)
-(Y=120, Z=400)   -- NE corner
-(Y=30,  Z=400)   -- top edge meets slope
-(Y=0,   Z=370)   -- slope meets FRONT edge
+(Y=240, Z=0)     -- SE corner (BACK side)
+(Y=240, Z=300)   -- NE corner
+(Y=30,  Z=300)   -- top edge meets slope
+(Y=0,   Z=270)   -- slope meets FRONT edge
 ```
 
 **Mount holes** (Ø3.5mm clearance for M3 screws into wooden corner posts):
 - Bottom-front: (Y=5, Z=8)
-- Bottom-back: (Y=115, Z=8)
-- Top-back: (Y=115, Z=392)
-- Top-front: (Y=5, Z=355)
+- Bottom-back: (Y=235, Z=8)
+- Top-back: (Y=235, Z=292)
+- Top-front: (Y=5, Z=255)
 
 Holes inset 5–8 mm from edges to land on the 10×10mm wooden posts.
 
@@ -153,22 +153,22 @@ Holes inset 5–8 mm from edges to land on the 10×10mm wooden posts.
 
 Same outline as LEFT (mirrored). Internal cutouts:
 
-- **Servo shaft hole:** Ø8 mm at (Y=60, Z=200).
-- **Servo flange mount holes:** 2× Ø2.7mm at (Y=46, Z=200) and (Y=74, Z=200). Spacing 28mm matches SG90 flange tabs. *Note: exact offset depends on the specific SG90 unit; verify against user's part before cutting (see §13).*
-- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=46.5, Z=300) and (Y=73.5, Z=300). Center-to-center 27mm (matches typical HC-SR04 board layout).
-- **HC-SR04 PCB mount holes:** 2× Ø3.2mm at (Y=20, Z=300) and (Y=100, Z=300). For zip-tie or 2× M3 screws holding PCB flat against inside of RIGHT face.
+- **Servo shaft hole:** Ø8 mm at (Y=120, Z=150).
+- **Servo flange mount holes:** 2× Ø2.7mm at (Y=106, Z=150) and (Y=134, Z=150). Spacing 28mm matches SG90 flange tabs. *Note: exact offset depends on the specific SG90 unit; verify against user's part before cutting (see §13).*
+- **HC-SR04 transducer holes:** 2× Ø16mm at (Y=106.5, Z=220) and (Y=133.5, Z=220). Center-to-center 27mm (matches typical HC-SR04 board layout).
+- **HC-SR04 PCB mount holes:** 2× Ø3.2mm at (Y=80, Z=220) and (Y=160, Z=220). For zip-tie or 2× M3 screws holding PCB flat against inside of RIGHT face.
 
-### 5.6 BACK (150 × 400, removable)
+### 5.6 BACK (150 × 300, removable)
 
 - **Adapter cable hole:** Ø10mm at (X=15, Z=15). Bottom-left corner area, rubber grommet press-fit.
 - **Mount holes:** 6× Ø3.5mm clearance for M3 screws into wooden corner posts:
   - Bottom edge: (X=8, Z=8), (X=142, Z=8)
-  - Top edge: (X=8, Z=392), (X=142, Z=392)
-  - Mid edges: (X=8, Z=200), (X=142, Z=200)
+  - Top edge: (X=8, Z=292), (X=142, Z=292)
+  - Mid edges: (X=8, Z=150), (X=142, Z=150)
 
-### 5.7 BOTTOM (150 × 120)
+### 5.7 BOTTOM (150 × 240)
 
-- **Vent slots (optional):** 4× rectangular 30×3 mm slots, centered along the X axis, at Y = 30, 60, 90 (3 slots) — or skip if user prefers sealed bottom. Default: include slots for passive cooling of Pi.
+- **Vent slots (optional):** 5× rectangular 30×3 mm slots, centered along the X axis, at Y = 40, 80, 120, 160, 200 — or skip if user prefers sealed bottom. Default: include slots for passive cooling of Pi.
 
 ### 5.8 Drop-arm (150 × 15 × 3)
 
@@ -240,13 +240,13 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
   - `MICA_THICKNESS = 3.0` mm
   - `KERF = 0.1` mm (laser kerf compensation)
   - `JOINT_TOLERANCE = 0.15` mm
-  - `PILLAR_W = 150`, `PILLAR_D = 120`, `PILLAR_H = 400`
+  - `PILLAR_W = 150`, `PILLAR_D = 240`, `PILLAR_H = 300`
   - `SLOPE_PROJECTION = 30` (mm of slope projected on Y and Z)
 - Output: `freecad/laser_cut/exports/mica_gate_pillar.pdf`
 
 ### 9.2 PDF layout conventions
 
-- **Page size:** 800 × 600 mm (1:1 scale with the laser sheet). The PDF is a layout reference; laser shops typically import the SVG directly into their CAM tool which reads geometry in absolute mm, ignoring page size.
+- **Page size:** 1000 × 600 mm (1:1 scale with the laser sheet). The PDF is a layout reference; laser shops typically import the SVG directly into their CAM tool which reads geometry in absolute mm, ignoring page size.
 - **Cut lines:** RGB(255, 0, 0), stroke width 0.001 mm (hairline) — most laser cutters interpret red as "cut"
 - **Engrave lines:** RGB(0, 0, 0), stroke width 0.1 mm — most cutters interpret black as "engrave"
 - **Etch fills (for RFID marker rectangle interior):** RGB(0, 0, 255), stroke width 0.05 mm
@@ -256,9 +256,9 @@ Python script `freecad/laser_cut/build_mica_pillar.py`:
 
 ### 9.3 Nesting
 
-Pieces arranged on 800 × 600 mm sheet. (Original 500 mm height was too small to nest both rows with 8mm gaps; row 2 ends at y≈536mm.)
-- Row 1: FRONT (150×370) + BACK (150×400) + LEFT (120×400) + RIGHT (120×400) — width 540, height 400
-- Row 2: TOP (150×90) + SLOPE (150×42.4) + BOTTOM (150×120) + ARM (150×15) — width 600, height 120
+Pieces arranged on 1000 × 600 mm sheet.
+- Row 1: LEFT (240×300) + RIGHT (240×300) + FRONT (150×270) + BACK (150×300) — width 812, height 300
+- Row 2: TOP (150×210) + SLOPE (150×42.4) + BOTTOM (150×240) + ARM (150×15) — width 632, height 240
 
 Gap between pieces ≥ 5 mm (for kerf + handling).
 

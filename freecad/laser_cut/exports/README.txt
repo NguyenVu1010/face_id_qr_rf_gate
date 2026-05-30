@@ -8,7 +8,7 @@ File:    mica_gate_pillar.pdf (or .svg)
 VẬT LIỆU
 --------
 Mica acrylic trong suốt, độ dày 3 mm.
-Khổ tấm: 800 × 600 mm (1 tấm đủ).
+Khổ tấm: 1000 × 600 mm (1 tấm đủ).
 
 NÉT CẮT vs NÉT KHẮC
 -------------------
@@ -17,13 +17,13 @@ NÉT CẮT vs NÉT KHẮC
 
 DANH SÁCH 8 CHI TIẾT
 --------------------
-1. FRONT     150 × 370 mm  (mặt trước)
-2. BACK      150 × 400 mm  (mặt sau, có lỗ adapter Ø10mm)
-3. LEFT      120 × 400 mm  (ngũ giác, mặt trái)
-4. RIGHT     120 × 400 mm  (ngũ giác, mặt phải, có lỗ servo + cảm biến)
-5. TOP       150 × 90  mm  (mặt trên, có lỗ LCD 98×40 R4)
+1. FRONT     150 × 270 mm  (mặt trước)
+2. BACK      150 × 300 mm  (mặt sau, có lỗ adapter Ø10mm)
+3. LEFT      240 × 300 mm  (ngũ giác, mặt trái)
+4. RIGHT     240 × 300 mm  (ngũ giác, mặt phải, có lỗ servo + cảm biến)
+5. TOP       150 × 210 mm  (mặt trên, có lỗ LCD 98×40 R4)
 6. SLOPE     150 × 42.4 mm (mặt vát 45°, có khắc đánh dấu RFID)
-7. BOTTOM    150 × 120 mm  (mặt đáy, có 3 khe thông gió)
+7. BOTTOM    150 × 240 mm  (mặt đáy, có 5 khe thông gió)
 8. ARM       150 × 15  mm  (cần chắn)
 
 DUNG SAI
