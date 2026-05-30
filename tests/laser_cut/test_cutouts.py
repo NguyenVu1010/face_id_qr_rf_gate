@@ -54,11 +54,11 @@ def test_rfid_engrave_marker_kind():
 
 
 def test_arm_slot_dimensions():
-    s = arm_slot(cx=120, cy=215, w=20, h=130)
+    s = arm_slot(cx=120, cy=220, w=20, h=160)
     assert s.kind == "cut"
     xs = [p[0] for p in s.points]
     ys = [p[1] for p in s.points]
     assert min(xs) == 110.0
     assert max(xs) == 130.0
-    assert min(ys) == 150.0
-    assert max(ys) == 280.0
+    assert min(ys) == 140.0
+    assert max(ys) == 300.0
