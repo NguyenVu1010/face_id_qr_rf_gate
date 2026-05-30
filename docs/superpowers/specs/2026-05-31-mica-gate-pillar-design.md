@@ -130,7 +130,7 @@ Face-local coords: X 0–150, V 0–101.82 (V = position along the sloped hypote
 - **LCD viewing cutout:** 98 × 40 mm rectangle with **square corners** (no fillets). Centered at (X=75, Y=35). Cut bounds: X 26–124, Y 15–55.
 - **LCD mounting holes:** 4× Ø3.2 mm clearance holes at (X, Y) = (28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5). Spacing 93 × 55 mm (matches standard 20×4 I2C LCD module).
 - **Camera tower mount:** Ø8mm cable hole centered at (X=75, Y=110). 4× Ø3.2mm clearance holes around it at (X, Y) = (67, 102), (83, 102), (67, 118), (83, 118). Tower flange bolts down with 4× M3. *(Camera cable hole shifted from Y=120 to Y=110 to leave room for USB pass-through.)*
-- **USB-plug pass-through:** 14 × 6 mm rectangle at center (X=75, Y=160). Fits a USB-A plug for routing the webcam cable from the camera tower down to the Pi USB port. Approximately 50mm behind the camera cable hole; ~8mm margin to BACK edge of TOP.
+- **USB-plug pass-through:** 20 × 12 mm rectangle at center (X=75, Y=160). Fits a USB-A male plug **including the plastic housing/strain-relief** (metal connector 12×4.5mm + typical housing 15-18×8-10mm + 2-4mm clearance). Approximately 50mm behind the camera cable hole; 2mm margin to BACK edge of TOP.
 
 ### 5.4 LEFT (pentagon, removable)
 
@@ -216,7 +216,7 @@ Same outline as LEFT (mirrored). **Servo is NOT mounted to this panel** — it h
 | Servo (3-wire) | 150 mm | J_SVO on PCB | SG90 on bracket (BOTTOM inside) | From PCB on LEFT panel → east along BOTTOM to servo bracket at (X=120, Y=120, Z=0) |
 | HC-SR04 (4-wire) | 180 mm | J_USR on PCB | HC-SR04 on RIGHT face | From PCB on LEFT panel → east to RIGHT face, up to Z=80 |
 | Buzzer (2-wire) | 150 mm | J_BUZ on PCB | Buzzer (mounted where?) | **TBD — see §13** |
-| USB webcam | 250 mm | Webcam in camera tower | Pi 4 USB port | Webcam at tower top → cable down inside cylinder → through TOP Ø8mm hole at (X=75, Y=110) → USB-A plug threaded through TOP 14×6mm USB pass-through at (X=75, Y=160) → plug into Pi USB port |
+| USB webcam | 250 mm | Webcam in camera tower | Pi 4 USB port | Webcam at tower top → cable down inside cylinder → through TOP Ø8mm hole at (X=75, Y=110) → USB-A plug (including housing) threaded through TOP 20×12mm USB pass-through at (X=75, Y=160) → plug into Pi USB port |
 
 All cables use Dupont female-female 40-pin sets (already in shopping list).
 
@@ -379,7 +379,7 @@ If test fails → adjust `JOINT_TOLERANCE` in generator script and re-cut test p
 | 18 | 2026-05-31 | LCD cutout uses square corners (rect, no fillet) per user request. | Some laser CAM tools handle filled rects more reliably than filleted paths; simpler output |
 | 19 | 2026-05-31 | PCB motherboard mounted on LEFT panel (not BACK) — PCB long axis along trụ Y, short axis along trụ Z; 4 mount holes added to LEFT panel. | Fixes load asymmetry; keeps BACK free for easy removal; BACK now only carries the adapter hole |
 | 20 | 2026-05-31 | BACK adapter cable hole repositioned from (X=15, Z=15) to (X=15, Z=110) to align with J_PWR barrel axis (PCB-on-LEFT geometry). | Cable jumper inside trụ drops from ~120mm to ~20mm; avoids awkward routing across the pillar base |
-| 21 | 2026-05-31 | TOP gains 14×6mm USB-plug pass-through at (X=75, Y=160), 50mm behind camera cable hole so the webcam USB-A connector can thread down to the Pi. | Keeps USB connection accessible without opening any panel |
+| 21 | 2026-05-31 | TOP gains 20×12mm USB-plug pass-through at (X=75, Y=160), 50mm behind camera cable hole so the webcam USB-A connector (including its plastic housing) can thread down to the Pi. | Keeps USB connection accessible without opening any panel |
 | 22 | 2026-05-31 | Mica thickness 3mm → 5mm | User requested switch for sturdier feel. Acrylic cost +70%, cut time slightly longer. BACK adapter hole X shifted 15→17 to keep J_PWR barrel-axis alignment. PCB face at trụ X=10 (was 8). |
 
 ## 13. Open questions

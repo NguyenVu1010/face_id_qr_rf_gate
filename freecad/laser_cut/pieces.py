@@ -76,9 +76,11 @@ def build_top() -> Piece:
     cuts.append(circle(75.0, 110.0, 4.0))                 # camera cable Ø8mm
     for x, y in [(67.0, 102.0), (83.0, 102.0), (67.0, 118.0), (83.0, 118.0)]:
         cuts.append(circle(x, y, 1.6))                    # camera tower flange mounts
-    # USB-plug pass-through (14x6mm fits a USB-A male plug with clearance).
-    # Center 50mm behind camera cable hole, ~8mm margin to BACK edge of TOP.
-    cuts.append(rect(cx=75.0, cy=160.0, w=14.0, h=6.0))
+    # USB-plug pass-through. 20×12mm fits a full USB-A male plug WITH its
+    # plastic housing/strain-relief (metal connector 12×4.5mm + typical
+    # housing 15-18×8-10mm + 2-4mm clearance). Center 50mm behind camera
+    # cable hole; 2mm margin to BACK edge of TOP.
+    cuts.append(rect(cx=75.0, cy=160.0, w=20.0, h=12.0))
     return Piece(name="TOP", outline=outline, cuts=cuts)
 
 
