@@ -4,8 +4,9 @@ import math
 from dataclasses import dataclass, field
 
 from freecad.laser_cut.cutouts import (
-    Shape, circle, rect, lcd_window,
-    servo_cutout, hc_sr04_holes, rfid_engrave_marker, arm_slot,
+    Shape, circle, rect,
+    servo_cutout, hc_sr04_holes, hc_sr04_pcb_mount,
+    rfid_engrave_marker, arm_slot,
 )
 from freecad.laser_cut.geometry import pentagon_outline
 
@@ -63,7 +64,7 @@ def build_arm() -> Piece:
 def build_top() -> Piece:
     outline = _rect_outline(150.0, 168.0)
     cuts: list[Shape] = []
-    cuts.append(lcd_window(cx=75.0, cy=35.0, w=98.0, h=40.0, r=4.0))
+    cuts.append(rect(cx=75.0, cy=35.0, w=98.0, h=40.0))  # LCD window, square corners
     for x, y in [(28.5, 7.5), (121.5, 7.5), (28.5, 62.5), (121.5, 62.5)]:
         cuts.append(circle(x, y, 1.6))
     cuts.append(circle(75.0, 120.0, 4.0))  # camera cable Ø8
@@ -94,8 +95,7 @@ def build_left() -> Piece:
 def build_right() -> Piece:
     outline = pentagon_outline(depth=240.0, height=300.0, slope=72.0)
     cuts: list[Shape] = []
-    cuts.extend(hc_sr04_holes(cx=120.0, cy=80.0))           # lowered from Z=220
-    cuts.append(circle(80.0, 80.0, 1.6))                     # HC-SR04 mount hole
-    cuts.append(circle(160.0, 80.0, 1.6))                    # HC-SR04 mount hole
+    cuts.extend(hc_sr04_holes(cx=120.0, cy=80.0))            # 2 transducer Ø16, spacing 26
+    cuts.extend(hc_sr04_pcb_mount(cx=120.0, cy=80.0))        # 4 M2 corner holes at PCB 45x20 corners
     cuts.append(arm_slot(cx=120.0, cy=215.0))                # arm retraction slot
     return Piece(name="RIGHT", outline=outline, cuts=cuts)

@@ -3,8 +3,6 @@
 from dataclasses import dataclass
 import math
 
-from freecad.laser_cut.geometry import fillet_rect
-
 
 @dataclass
 class Shape:
@@ -30,12 +28,6 @@ def rect(cx: float, cy: float, w: float, h: float, kind: str = "cut") -> Shape:
     ])
 
 
-def lcd_window(cx: float, cy: float, w: float, h: float, r: float) -> Shape:
-    local = fillet_rect(w, h, r)
-    shifted = [(cx - w / 2 + x, cy - h / 2 + y) for (x, y) in local]
-    return Shape(kind="cut", points=shifted)
-
-
 def servo_cutout(cx: float, cy: float, shaft_d: float = 8.0,
                  flange_spacing: float = 28.0, flange_hole_d: float = 2.7) -> list[Shape]:
     return [
@@ -45,11 +37,28 @@ def servo_cutout(cx: float, cy: float, shaft_d: float = 8.0,
     ]
 
 
-def hc_sr04_holes(cx: float, cy: float, spacing: float = 27.0,
+def hc_sr04_holes(cx: float, cy: float, spacing: float = 26.0,
                    radius: float = 8.0) -> list[Shape]:
+    """HC-SR04 transducer through-holes. Datasheet PCB is 45x20mm with two
+    Ø16mm transducer cylinders, center-to-center spacing 26mm.
+    """
     return [
         circle(cx - spacing / 2, cy, radius),
         circle(cx + spacing / 2, cy, radius),
+    ]
+
+
+def hc_sr04_pcb_mount(cx: float, cy: float) -> list[Shape]:
+    """4× Ø2.2mm M2-clearance holes at the corners of a 45x20mm HC-SR04 PCB.
+    cx/cy = center of the PCB on the panel (matches `hc_sr04_holes` cx/cy).
+    Hole positions follow board-local corners (2,2), (43,2), (2,18), (43,18),
+    i.e. 41mm × 16mm spacing.
+    """
+    return [
+        circle(cx - 20.5, cy - 8.0, 1.1),
+        circle(cx + 20.5, cy - 8.0, 1.1),
+        circle(cx - 20.5, cy + 8.0, 1.1),
+        circle(cx + 20.5, cy + 8.0, 1.1),
     ]
 
 
