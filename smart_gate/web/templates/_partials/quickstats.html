@@ -25,7 +25,11 @@
     <div class="stat-label">last grant</div>
   </div>
   <div class="stat">
-    <div class="stat-value mono">{{ (h.last_grant.ts[11:19] if h.last_grant and h.last_grant.ts else "—") }}</div>
+    <div class="stat-value mono">
+      {% if h.last_grant and h.last_grant.ts %}
+        <time class="ts-utc" datetime="{{ h.last_grant.ts }}">{{ h.last_grant.ts[11:19] }}</time>
+      {% else %}—{% endif %}
+    </div>
     <div class="stat-label">last grant ts</div>
   </div>
 </div>

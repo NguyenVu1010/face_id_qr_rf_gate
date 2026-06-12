@@ -1,6 +1,6 @@
 {% for r in rows %}
 <tr data-event-id="{{ r.id }}">
-  <td class="mono ts">{{ r.ts }}</td>
+  <td class="mono ts"><span class="ts-utc-full" data-utc="{{ r.ts }}">{{ r.ts }}</span></td>
   <td><span class="pill pill-{{ r.method }}">{{ r.method }}</span></td>
   <td>{{ r.user_name or "—" }}</td>
   <td class="cell-ok">

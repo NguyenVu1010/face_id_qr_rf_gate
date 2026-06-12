@@ -1,6 +1,6 @@
 {% for row in rows %}
 <li data-lvl="{{ row.lvl|lower }}">
-  <time>{{ row.ts[11:19] if row.ts else "—" }}</time>
+  <time class="ts-utc" datetime="{{ row.ts or '' }}">{{ row.ts[11:19] if row.ts else "—" }}</time>
   <span class="pill pill-{{ row.lvl|lower }}">{{ row.lvl }}</span>
   <span class="tag">{{ row.tag or "" }}</span>
   <span class="msg">{{ row.msg }}</span>

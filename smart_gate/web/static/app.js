@@ -1,5 +1,63 @@
 // Smart Gate — admin UI sprinkles.
 (function () {
+  // -------------------------------------------------- UTC → browser-local time
+  // SQLite stores events.ts / esp_log.ts as naive UTC strings (e.g.
+  // "2026-06-12 20:34:52"). Render them in the browser's local timezone so
+  // users in UTC+7 don't see times that look 7 hours stale.
+
+  // Returns "HH:MM:SS" in local time, or the input as-is on parse failure.
+  function utcToLocalTime(s) {
+    if (!s) return '';
+    var iso = String(s).replace(' ', 'T') + 'Z';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return s;
+    return d.toLocaleTimeString([], { hour12: false });
+  }
+
+  // Returns "YYYY-MM-DD HH:MM:SS" in local time, or the input as-is on parse
+  // failure. Uses sortable ISO-ish ordering (not locale date format).
+  function utcToLocalDateTime(s) {
+    if (!s) return '';
+    var iso = String(s).replace(' ', 'T') + 'Z';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return s;
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  // Walk a subtree and rewrite text content of elements that carry a raw
+  // UTC string. Two flavors:
+  //   <time class="ts-utc"      datetime="UTC string">…</time>  → HH:MM:SS
+  //   <... class="ts-utc-full"  data-utc="UTC string">…</...>   → YYYY-MM-DD HH:MM:SS
+  // The raw UTC string is preserved in the datetime / data-utc attribute so
+  // tooltips, screen readers, and downstream JS can still see the source value.
+  function applyLocalTime(root) {
+    var scope = root || document;
+    scope.querySelectorAll('.ts-utc').forEach(function (el) {
+      var utc = el.getAttribute('datetime') || el.getAttribute('data-utc');
+      if (!utc) return;
+      el.textContent = utcToLocalTime(utc);
+      if (!el.title) el.title = utc + ' UTC';
+    });
+    scope.querySelectorAll('.ts-utc-full').forEach(function (el) {
+      var utc = el.getAttribute('data-utc') || el.getAttribute('datetime');
+      if (!utc) return;
+      el.textContent = utcToLocalDateTime(utc);
+      if (!el.title) el.title = utc + ' UTC';
+    });
+  }
+
+  // Expose for inline use (e.g. peripherals page builds DOM in JS).
+  window.utcToLocalTime = utcToLocalTime;
+  window.utcToLocalDateTime = utcToLocalDateTime;
+  window.applyLocalTime = applyLocalTime;
+
+  document.addEventListener('DOMContentLoaded', function () { applyLocalTime(); });
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    applyLocalTime(e.detail && e.detail.target ? e.detail.target : document);
+  });
+
   // -------------------------------------------------- Toast on HTMX result
   const toastWrap = document.createElement('div');
   toastWrap.className = 'toast-wrap';
@@ -128,8 +186,10 @@
       const r = JSON.parse(e.data);
       const li = document.createElement('li');
       li.dataset.lvl = (r.lvl || 'info').toLowerCase();
+      const tsUtc = r.ts || '';
+      const tsLocal = tsUtc ? utcToLocalTime(tsUtc) : '—';
       li.innerHTML =
-        `<time>${(r.ts || '').slice(11, 19) || '—'}</time>` +
+        `<time class="ts-utc" datetime="${escape(tsUtc)}" title="${escape(tsUtc)} UTC">${escape(tsLocal)}</time>` +
         `<span class="${lvlPillClass(r.lvl)}">${escape(r.lvl || 'info')}</span>` +
         `<span class="tag">${escape(r.tag || '')}</span>` +
         `<span class="msg">${escape(r.msg)}</span>`;

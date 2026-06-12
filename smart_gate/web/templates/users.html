@@ -31,8 +31,11 @@
       <tr data-user="{{ name }}">
         <td class="mono">{{ id_ }}</td>
         <td>{{ name }}</td>
-        <td class="mono ts">{{ created }}</td>
-        <td class="mono ts">{{ last_seen or "—" }}</td>
+        <td class="mono ts"><span class="ts-utc-full" data-utc="{{ created }}">{{ created }}</span></td>
+        <td class="mono ts">
+          {% if last_seen %}<span class="ts-utc-full" data-utc="{{ last_seen }}">{{ last_seen }}</span>
+          {% else %}—{% endif %}
+        </td>
         <td class="mono">{{ n_enc }}</td>
         <td>
           {% if has_qr %}
