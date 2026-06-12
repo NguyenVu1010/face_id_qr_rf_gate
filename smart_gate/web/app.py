@@ -98,17 +98,22 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         granted = int(granted_raw) if granted_raw in ("0", "1") else None
         q = request.args.get("q") or None
 
-        # Period → ISO timestamp lower bound (server-side resolution)
+        # Period → ISO timestamp lower bound (server-side resolution).
+        # SQLite's events.ts default is datetime('now'), which is UTC.
+        # We must compare against UTC, not local time — otherwise the
+        # "today" filter is offset by the local TZ (7h in Asia/Ho_Chi_Minh)
+        # and silently drops events near the day boundary.
         since = None
         import datetime as _dt
         period = request.args.get("period")
         if period == "today":
-            since = _dt.datetime.now().replace(
+            since = _dt.datetime.now(_dt.timezone.utc).replace(
                 hour=0, minute=0, second=0, microsecond=0
             ).strftime("%Y-%m-%d %H:%M:%S")
         elif period in ("7d", "30d"):
             days = 7 if period == "7d" else 30
-            since = (_dt.datetime.now() - _dt.timedelta(days=days)
+            since = (_dt.datetime.now(_dt.timezone.utc)
+                     - _dt.timedelta(days=days)
                      ).strftime("%Y-%m-%d %H:%M:%S")
 
         rows = db.recent_events(limit=limit, after_id=after_id,
