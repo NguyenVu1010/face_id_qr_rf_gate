@@ -12,7 +12,6 @@ fps = 15
 [recognition]
 face_threshold = 0.25
 uncertain_band = [0.55, 0.65]
-auth_cooldown_s = 5
 stranger_cooldown_s = 30
 mediapipe_min_conf = 0.6
 face_samples_per_user = 5

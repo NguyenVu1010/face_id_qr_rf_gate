@@ -37,7 +37,7 @@ face_threshold = 0.5
     assert cfg.video.fps == 30
     assert cfg.video.width == 640                 # default preserved
     assert cfg.recognition.face_threshold == 0.5
-    assert cfg.recognition.auth_cooldown_s == 5   # default preserved
+    assert cfg.recognition.stranger_cooldown_s == 30   # default preserved
 
 
 def test_unknown_key_raises(tmp_path):

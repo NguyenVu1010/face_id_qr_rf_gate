@@ -24,7 +24,6 @@ def test_log_event_publishes_to_bus(tmp_data_dir):
     # Fake config object with the attributes _consume_bus reads.
     class _Cfg:
         class recognition:
-            auth_cooldown_s = 5.0
             stranger_cooldown_s = 30.0
     cfg = _Cfg()
 
