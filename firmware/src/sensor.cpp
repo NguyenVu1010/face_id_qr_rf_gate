@@ -27,7 +27,7 @@ void sensor_init() {
 void sensor_task(void* /*arg*/) {
   int below_count = 0;
   int above_count = 0;
-  bool in_passage = false;
+  bool in_passage = false;             // true between detect-edge and clear-edge
   uint32_t passage_started_ms = 0;
   int trigger_distance_cm = 0;
   uint32_t no_echo_ms = 0;
@@ -48,29 +48,39 @@ void sensor_task(void* /*arg*/) {
     no_echo_ms = 0;
 
     // Raw last sample for the LCD icon (refresh ~5 Hz, no debounce).
-    // FSM event below still uses the debounced edge.
+    // FSM events below use the debounced edges.
     s_obstacle_present = (cm > 0 && cm < SENSOR_TRIGGER_CM);
 
     if (cm < SENSOR_TRIGGER_CM) {
       below_count++;
       above_count = 0;
+      // Detect-edge: obstacle just appeared in the beam (debounced).
       if (!in_passage && below_count >= SENSOR_DEBOUNCE_COUNT) {
         in_passage = true;
         passage_started_ms = now;
         trigger_distance_cm = cm;
-      }
-    } else {
-      above_count++;
-      below_count = 0;
-      if (in_passage && above_count >= SENSOR_DEBOUNCE_COUNT) {
-        in_passage = false;
         event_t e = {};
         e.src = SRC_SENSOR;
         e.kind = EV_PASSAGE_DETECTED;
         e.i1 = trigger_distance_cm;
-        e.i2 = (int32_t)(now - passage_started_ms);
+        e.i2 = 0;                      // duration unknown at detect-edge
         if (xQueueSend(g_event_q, &e, 0) != pdTRUE) {
           LOGW("evt", "queue full, dropping passage");
+        }
+      }
+    } else {
+      above_count++;
+      below_count = 0;
+      // Clear-edge: obstacle left the beam (debounced).
+      if (in_passage && above_count >= SENSOR_DEBOUNCE_COUNT) {
+        in_passage = false;
+        event_t e = {};
+        e.src = SRC_SENSOR;
+        e.kind = EV_OBSTACLE_CLEARED;
+        e.i1 = trigger_distance_cm;
+        e.i2 = (int32_t)(now - passage_started_ms);
+        if (xQueueSend(g_event_q, &e, 0) != pdTRUE) {
+          LOGW("evt", "queue full, dropping clear");
         }
       }
     }

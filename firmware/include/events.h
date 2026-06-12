@@ -11,10 +11,12 @@ enum EventKind : uint8_t {
   // Producer events
   EV_RFID_SCAN,          // i1 = granted? (0/1); uid set; name set if granted
   EV_PASSAGE_DETECTED,   // i1 = distance_cm at trigger, i2 = duration_ms in beam
+  EV_OBSTACLE_CLEARED,   // sensor: obstacle was below-threshold, now above
   // Timer events (one-shot)
   EV_T_OPEN_REACHED, EV_T_PASSAGE_TIMEOUT, EV_T_WARN_GIVEUP, EV_T_CLOSE_REACHED,
   EV_T_LCD_RESTORE,     // one-shot timer fired: restore LCD to idle if FSM in S_IDLE
   EV_T_LCD_ICON_TICK,   // 200 ms periodic — refresh top-right LCD icons
+  EV_T_OBSTACLE_WARN_FIRED, // timer: obstacle persisted 5s; start warn buzzer
 };
 
 struct event_t {

@@ -13,6 +13,7 @@ extern TimerHandle_t g_close_reached_timer;
 extern TimerHandle_t g_heartbeat_timer;
 extern TimerHandle_t g_lcd_restore_timer;
 extern TimerHandle_t g_lcd_icon_timer;
+extern TimerHandle_t g_obstacle_warn_timer;
 
 void gate_fsm_init();
 void gate_fsm_task(void* arg);

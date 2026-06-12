@@ -18,6 +18,8 @@
 
 static GateState s_state = S_IDLE;
 static uint32_t s_passage_timeout_ms = DEFAULT_PASSAGE_TIMEOUT_MS;
+// True when buzzer warn pattern is sounding due to obstacle persisting >5s in S_OPEN_WAIT.
+static bool s_obstacle_warn_active = false;
 
 // Forward declarations for internal handlers used before definition:
 static void start_closing();
@@ -179,15 +181,52 @@ static void on_open_reached() {
 }
 
 static void on_passage(const event_t& e) {
-  if (s_state != S_OPEN_WAIT && s_state != S_TIMEOUT_WARN) return;
+  // Obstacle detected — stop the no-passage timeout family (someone is now in the beam).
   xTimerStop(g_passage_timeout_timer, 0);
   xTimerStop(g_warn_giveup_timer, 0);
-  buzzer_stop_warn_pattern();
+  // S_TIMEOUT_WARN: user finally arrived during the no-passage warn — close immediately
+  // as before (unchanged behavior).
+  if (s_state == S_TIMEOUT_WARN) {
+    buzzer_stop_warn_pattern();
+    emit_evt_passage(e.i1, e.i2);
+    start_closing();
+    return;
+  }
+  if (s_state != S_OPEN_WAIT) return;
+  // New behavior: don't close yet. Arm the 5s obstacle-persistent timer.
+  // EV_OBSTACLE_CLEARED handler closes the gate if obstacle clears first.
+  // Note: don't emit evt:person_passed here — EV_PASSAGE_DETECTED carries i2=0
+  // (duration unknown at detect-edge). Emit at clear-edge with full dwell ms.
+  xTimerChangePeriod(g_obstacle_warn_timer, pdMS_TO_TICKS(5000), 0);
+  xTimerStart(g_obstacle_warn_timer, 0);
+}
+
+static void on_obstacle_cleared(const event_t& e) {
+  if (s_state != S_OPEN_WAIT) return;
+  xTimerStop(g_obstacle_warn_timer, 0);
+  if (s_obstacle_warn_active) {
+    buzzer_stop_warn_pattern();
+    s_obstacle_warn_active = false;
+  }
+  // Emit person_passed with the full dwell duration (i2 = duration_ms in beam).
   emit_evt_passage(e.i1, e.i2);
   start_closing();
 }
 
+static void on_obstacle_warn_fired() {
+  if (s_state != S_OPEN_WAIT) return;
+  // Obstacle continuously present for 5s — start the warn pattern until it clears.
+  buzzer_start_warn_pattern();
+  s_obstacle_warn_active = true;
+  LOGW("warn", "obstacle blocked >5s, buzzer warning");
+}
+
 static void start_closing() {
+  // Defensive cleanup: mirror force_close() so any caller path that forgot to
+  // stop the obstacle-warn timer/buzzer can't leak warn state into S_CLOSING.
+  xTimerStop(g_obstacle_warn_timer, 0);
+  if (s_obstacle_warn_active) buzzer_stop_warn_pattern();
+  s_obstacle_warn_active = false;
   s_state = S_CLOSING;
   emit_evt_gate("closing");
   lcd_show_closing();
@@ -218,7 +257,9 @@ static void on_warn_giveup() {
 static void force_close(uint32_t cmd_id) {
   xTimerStop(g_passage_timeout_timer, 0);
   xTimerStop(g_warn_giveup_timer, 0);
+  xTimerStop(g_obstacle_warn_timer, 0);
   buzzer_stop_warn_pattern();
+  s_obstacle_warn_active = false;
   if (s_state != S_IDLE && s_state != S_CLOSING) {
     start_closing();
   }
@@ -299,10 +340,12 @@ static void handle_event(const event_t& e) {
   }
 
   if (e.kind == EV_PASSAGE_DETECTED) { on_passage(e); return; }
+  if (e.kind == EV_OBSTACLE_CLEARED) { on_obstacle_cleared(e); return; }
   if (e.kind == EV_T_OPEN_REACHED)   { on_open_reached(); return; }
   if (e.kind == EV_T_PASSAGE_TIMEOUT){ on_passage_timeout(); return; }
   if (e.kind == EV_T_WARN_GIVEUP)    { on_warn_giveup(); return; }
   if (e.kind == EV_T_CLOSE_REACHED)  { on_close_reached(); return; }
+  if (e.kind == EV_T_OBSTACLE_WARN_FIRED) { on_obstacle_warn_fired(); return; }
 }
 
 // === Timer callbacks ===
