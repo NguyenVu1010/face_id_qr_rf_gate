@@ -215,3 +215,20 @@ def test_count_events_today(tmp_data_dir):
     db.insert_event("face", None, True)
     db.insert_event("face", None, True)
     assert db.count_events_today() == 2
+
+
+def test_db_uses_wal_and_normal_sync(tmp_path):
+    """Pragmas must be applied right at connect() — before any migration —
+    so that the very first writes go through WAL + NORMAL sync and won't
+    instantly fail with SQLITE_BUSY under concurrent threads."""
+    db = Database(tmp_path / "test.db")
+    conn = db.connect()                                    # no migrate()
+    mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+    assert mode.lower() == "wal"
+    sync = conn.execute("PRAGMA synchronous").fetchone()[0]
+    # SQLite returns the integer; 1 = NORMAL
+    assert sync in (1, "NORMAL", "normal")
+    bt = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+    assert bt >= 5000
+    autock = conn.execute("PRAGMA wal_autocheckpoint").fetchone()[0]
+    assert autock == 1000

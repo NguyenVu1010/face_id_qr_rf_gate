@@ -27,6 +27,12 @@ class Database:
                 isolation_level=None,           # autocommit; we use explicit transactions
                 check_same_thread=False,
             )
+            # Pragmas applied at connect() time — before any migration runs —
+            # so very first writes already benefit from WAL + NORMAL sync and
+            # concurrent writers don't immediately SQLITE_BUSY.
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA wal_autocheckpoint=1000")
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("PRAGMA busy_timeout=5000")
             self._tls.conn = conn
