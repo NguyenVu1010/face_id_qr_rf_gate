@@ -29,13 +29,14 @@ def test_log_event_publishes_to_bus(tmp_data_dir):
 
     # Start the consumer thread. Current _consume_bus signature is
     # (bus, db, matcher, uart, trig_queue, cfg, shutdown, reload_event,
-    #  *, state=None, gate_tracker=None, esp_log_bus=None)
+    #  *, auto_enroll_state=None, gate_tracker=None, esp_log_bus=None,
+    #  peripherals=None)
     t = threading.Thread(
         target=_consume_bus,
         args=(in_q, db, MagicMock(), MagicMock(), out_trig, cfg,
               shutdown, reload_evt),
-        kwargs={"state": None, "gate_tracker": None,
-                "esp_log_bus": bus_log},
+        kwargs={"auto_enroll_state": None, "gate_tracker": None,
+                "esp_log_bus": bus_log, "peripherals": None},
         daemon=True,
     )
     t.start()
