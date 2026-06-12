@@ -558,3 +558,36 @@ def test_system_page_has_cards_and_log(setup):
         assert b'id="sse-status"' in r.data
         assert b'data-diag="ping"' in r.data
         assert b'data-diag="status"' in r.data
+
+
+# ---------------------------------------------------------------------------
+# Numeric query-param clamping (_int_param) — Task 2.7
+# Guards against SQLite ``LIMIT -1 = no limit`` exfiltrating the table.
+# ---------------------------------------------------------------------------
+def test_events_negative_limit_returns_400(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        resp = c.get("/events.json?limit=-1")
+        assert resp.status_code == 400
+
+
+def test_events_huge_limit_capped(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        resp = c.get("/events.json?limit=99999")
+        # Should NOT 500; should clamp internally to <= 500
+        assert resp.status_code == 200
+
+
+def test_events_non_numeric_limit_returns_400(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        resp = c.get("/events.json?limit=abc")
+        assert resp.status_code == 400
+
+
+def test_esp_log_negative_limit_returns_400(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        resp = c.get("/api/esp_log?limit=-1")
+        assert resp.status_code == 400

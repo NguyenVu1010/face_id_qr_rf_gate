@@ -31,6 +31,25 @@ _PLACEHOLDER_JPEG = (
 _USER_NAME_RE = re.compile(r"^user_\d+$")
 
 
+def _int_param(name: str, default: int, lo: int, hi: int) -> int:
+    """Parse `request.args[name]` as int with [lo, hi] bounds.
+
+    Returns HTTP 400 on non-numeric input *or* values below ``lo``
+    (negative limits are a known SQLite exfil vector: SQLite treats
+    ``LIMIT -1`` as "no limit" and would dump the entire table).
+    Values above ``hi`` are clamped down — honest clients asking for
+    a "big" page still get the max page rather than a confusing 400.
+    """
+    raw = request.args.get(name, default)
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        abort(400, f"bad {name}")
+    if v < lo:
+        abort(400, f"bad {name}")
+    return min(v, hi)
+
+
 def _emit_audit(esp_log_bus, lvl: str, tag: str, msg: str,
                 direction: str = "—") -> None:
     """Publish a synthetic audit log line to the live SSE stream.
@@ -88,11 +107,13 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/events.json")
     def events_json():
-        # Parse query params
-        after_id = int(request.args.get("after_id", 0))
+        # Parse query params. _int_param() returns 400 on garbage and
+        # clamps to a safe range — guards against `?limit=-1` which
+        # SQLite would otherwise treat as "no limit" and dump the table.
+        after_id = _int_param("after_id", 0, 0, 2**31 - 1)
         before_id_raw = request.args.get("before_id")
-        before_id = int(before_id_raw) if before_id_raw else None
-        limit = min(int(request.args.get("limit", 50)), 500)
+        before_id = _int_param("before_id", 0, 0, 2**31 - 1) if before_id_raw else None
+        limit = _int_param("limit", 50, 1, 500)
         methods = request.args.getlist("method") or None
         granted_raw = request.args.get("granted")
         granted = int(granted_raw) if granted_raw in ("0", "1") else None
@@ -388,8 +409,8 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/api/esp_log")
     def api_esp_log():
-        limit = min(int(request.args.get("limit", 100)), 500)
-        after_id = int(request.args.get("after_id", 0))
+        limit = _int_param("limit", 100, 1, 500)
+        after_id = _int_param("after_id", 0, 0, 2**31 - 1)
         rows = [_row_to_dict(r) for r in db.recent_esp_log(limit=limit,
                                                            after_id=after_id)]
         fmt = request.args.get("format", "html")
