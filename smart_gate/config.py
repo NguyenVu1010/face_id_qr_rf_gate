@@ -11,10 +11,6 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 log = logging.getLogger(__name__)
-# Force propagation in case a global setLoggerClass (e.g. ROS's launch.logging)
-# installed a Logger subclass that defaults propagate=False; we rely on root
-# handlers for output and capture.
-log.propagate = True
 
 # tomllib is stdlib in Python 3.11+. Fall back to the tomli package on 3.10 dev boxes.
 if sys.version_info >= (3, 11):

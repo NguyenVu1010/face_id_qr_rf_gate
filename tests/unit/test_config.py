@@ -1,8 +1,20 @@
+import logging
+import sys
+from pathlib import Path
+
 import pytest
+
 from smart_gate.config import Config, load_config
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore
 
 
 def test_defaults_applied(tmp_path):
+    # Verifies dataclass defaults (Config()) — NOT packaging/config.default.toml.
+    # The shipped TOML is covered by test_packaging_default_toml_values below.
     cfg_file = tmp_path / "c.toml"
     cfg_file.write_text("")
     cfg = load_config(cfg_file)
@@ -47,11 +59,22 @@ def test_link_default_port_is_serial0():
     from smart_gate.config import LinkCfg
     assert LinkCfg().port == "/dev/serial0"
 
+
 def test_load_config_warns_when_file_missing(tmp_path, caplog):
-    import logging
-    from smart_gate.config import load_config
+    # Defensive: if a system-installed Logger subclass (e.g. ROS launch.logging)
+    # disabled propagation, caplog won't see the record. Force it for the test.
+    logging.getLogger("smart_gate.config").propagate = True
     missing = tmp_path / "does-not-exist.toml"
     with caplog.at_level(logging.WARNING, logger="smart_gate.config"):
         cfg = load_config(missing)
     assert "not found" in caplog.text
     assert cfg.link.port == "/dev/serial0"
+
+
+def test_packaging_default_toml_values():
+    """Verifies the shipped config.default.toml — drift between dataclass and TOML
+    is a deployment bug (fresh installs would see the dataclass default, not TOML)."""
+    repo_root = Path(__file__).resolve().parents[2]
+    data = tomllib.loads((repo_root / "packaging" / "config.default.toml").read_text())
+    assert data["recognition"]["face_threshold"] == 0.25
+    assert data["link"]["port"] == "/dev/serial0"
