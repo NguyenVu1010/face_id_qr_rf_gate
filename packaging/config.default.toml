@@ -16,6 +16,10 @@ auth_cooldown_s = 5
 stranger_cooldown_s = 30
 mediapipe_min_conf = 0.6
 face_samples_per_user = 5
+face_cooldown_s = 5.0       # per-user cooldown between face-alone gate opens
+qr_cooldown_s = 5.0         # per-user cooldown between QR-alone gate opens
+autoenroll_ttl_s = 4.0      # window after RFID grant in which an unmatched face auto-enrolls
+autoenroll_enabled = true   # set false to disable the tap-card-then-look-at-camera enroll UX
 
 [link]
 # GPIO UART (Pi pin 8/10 → ESP32 GPIO 32/25). Was /dev/ttyUSB0 in earlier

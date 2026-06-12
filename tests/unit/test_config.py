@@ -78,3 +78,31 @@ def test_packaging_default_toml_values():
     data = tomllib.loads((repo_root / "packaging" / "config.default.toml").read_text())
     assert data["recognition"]["face_threshold"] == 0.25
     assert data["link"]["port"] == "/dev/serial0"
+
+
+def test_recognition_cooldown_defaults():
+    from smart_gate.config import RecognitionCfg
+    r = RecognitionCfg()
+    assert r.face_cooldown_s == 5.0
+    assert r.qr_cooldown_s == 5.0
+    assert r.autoenroll_ttl_s == 4.0
+    assert r.autoenroll_enabled is True
+
+
+def test_packaging_default_toml_has_cooldown_values():
+    """The shipped TOML should carry the new fields explicitly."""
+    from pathlib import Path
+    # Use same tomllib/tomli shim as the existing test_packaging_default_toml_values
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib   # type: ignore[no-redef]
+    repo_root = Path(__file__).resolve().parents[2]
+    data = tomllib.loads(
+        (repo_root / "packaging" / "config.default.toml").read_text()
+    )
+    rec = data["recognition"]
+    assert rec["face_cooldown_s"] == 5.0
+    assert rec["qr_cooldown_s"] == 5.0
+    assert rec["autoenroll_ttl_s"] == 4.0
+    assert rec["autoenroll_enabled"] is True

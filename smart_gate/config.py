@@ -42,6 +42,10 @@ class RecognitionCfg:
     stranger_cooldown_s: int = 30
     mediapipe_min_conf: float = 0.6
     face_samples_per_user: int = 5
+    face_cooldown_s: float = 5.0
+    qr_cooldown_s: float = 5.0
+    autoenroll_ttl_s: float = 4.0
+    autoenroll_enabled: bool = True
 
 
 @dataclass(frozen=True)
