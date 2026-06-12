@@ -18,7 +18,11 @@ from smart_gate.recognition.matcher import Matcher
 from smart_gate.recognition import detector as detector_mod
 from smart_gate.recognition.detector import AuthEvent, CheckInEvent
 from smart_gate.recognition.overlay import OverlayState
-from smart_gate.recognition.two_factor import TwoFactorState
+from smart_gate.recognition.auto_enroll_pair import (
+    AutoEnrollPairState,
+    EnrollCandidate,
+)
+from smart_gate.recognition.cooldown import UserCooldown
 from smart_gate.link.gate_state import GateTracker
 from smart_gate.link.peripheral_status import PeripheralTracker
 from smart_gate.video.fps_counter import FpsCounter
@@ -56,7 +60,14 @@ def main(argv=None) -> int:
 
     hub = FrameHub()
     overlay = OverlayState(stale_after_s=2.0)
-    two_factor = TwoFactorState(ttl_s=4.0)
+    # 1-of-3 channel cooldowns + RFID-only auto-enroll pairing.
+    # Each auth channel now fires its own CheckInEvent independently; the
+    # per-user cooldown suppresses duplicate fires while the same user
+    # stays in frame / keeps the card on the reader.
+    face_cooldown = UserCooldown(cfg.recognition.face_cooldown_s)
+    qr_cooldown = UserCooldown(cfg.recognition.qr_cooldown_s)
+    auto_enroll_state = AutoEnrollPairState(
+        ttl_s=cfg.recognition.autoenroll_ttl_s)
     gate_tracker = GateTracker()
     peripherals = PeripheralTracker()
     cap_fps = FpsCounter(window_s=5.0)
@@ -83,7 +94,10 @@ def main(argv=None) -> int:
                          daemon=True),
         threading.Thread(target=detector_mod.run_detector, name="detect",
                          args=(cfg, hub, matcher, bus, shutdown),
-                         kwargs={"overlay": overlay, "state": two_factor,
+                         kwargs={"overlay": overlay,
+                                 "face_cooldown": face_cooldown,
+                                 "qr_cooldown": qr_cooldown,
+                                 "auto_enroll_state": auto_enroll_state,
                                  "fps_counter": det_fps},
                          daemon=True),
         threading.Thread(target=run_recorder, name="rec",
@@ -92,7 +106,7 @@ def main(argv=None) -> int:
         threading.Thread(target=_consume_bus, name="bus-consumer",
                          args=(bus, db, matcher, uart, trig_queue, cfg, shutdown,
                                reload_event),
-                         kwargs={"state": two_factor,
+                         kwargs={"auto_enroll_state": auto_enroll_state,
                                  "gate_tracker": gate_tracker,
                                  "esp_log_bus": esp_log_bus,
                                  "peripherals": peripherals},
@@ -168,10 +182,13 @@ def _write_pidfile() -> None:
 def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  uart: UartClient, trig_queue: queue.Queue, cfg, shutdown,
                  reload_event: threading.Event,
-                 *, state: TwoFactorState | None = None,
+                 *, auto_enroll_state: AutoEnrollPairState | None = None,
                  gate_tracker: GateTracker | None = None,
                  esp_log_bus: EspLogBus | None = None,
                  peripherals: PeripheralTracker | None = None) -> None:
+    # Per-channel cooldowns live in the detector now (face_cooldown /
+    # qr_cooldown). last_grant is retained as an opaque handle for the
+    # checkin signature — _handle_checkin no longer reads it.
     last_grant: dict[int, float] = {}
     while not shutdown.is_set():
         if reload_event.is_set():
@@ -187,12 +204,15 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                 _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
                                 last_grant, reload_event, esp_log_bus)
             elif isinstance(evt, AuthEvent):
-                # Manual_open / manual_close only — bypasses 2FA.
+                # Manual_open / manual_close only — bypasses 1-of-3 routing.
                 _handle_manual_event(evt, db, uart, trig_queue, esp_log_bus)
             elif isinstance(evt, EspEvent):
-                _handle_esp_event(evt, db, matcher, state, trig_queue,
+                _handle_esp_event(evt, db, matcher, bus, trig_queue,
                                   uart, cfg, last_grant, reload_event,
-                                  gate_tracker, esp_log_bus, peripherals)
+                                  auto_enroll_state=auto_enroll_state,
+                                  gate_tracker=gate_tracker,
+                                  esp_log_bus=esp_log_bus,
+                                  peripherals=peripherals)
         except Exception:
             # An unhandled exception in a handler (DB write failure, schema
             # drift, etc.) used to kill this thread silently — daemon stayed
@@ -223,76 +243,86 @@ def _audit(esp_log_bus, lvl: str, tag: str, msg: str,
 
 def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
                     last_grant, reload_event, esp_log_bus=None):
-    """A face + credential pair was observed within TTL. Apply 2FA logic:
-    - face matched same user as credential → grant + cmd:open + log event
-    - face was unmatched → auto-enroll under credential's user, then grant
-    - face matched DIFFERENT user → reject (mismatch event, no cmd:open)
+    """1-of-3 channel router. Each method writes exactly one event row.
+
+    - face / qr → Pi sends cmd:open to ESP (ESP doesn't know about these).
+    - rfid     → ESP already opened the gate via its NVS allowlist shortcut.
+                 Pi only mirrors the event row; sending cmd:open again would
+                 race with the ESP's in-flight ack and double-log.
+
+    Per-channel cooldowns live upstream (detector's `face_cooldown` /
+    `qr_cooldown`; ESP allowlist for RFID). `last_grant` is unused here
+    today — kept in the signature for future cross-channel throttling.
     """
-    grant_uid = evt.grant_user_id
-    face_uid = evt.face_matched_user_id
-    src = evt.grant_source
-
-    # Mismatch: face matched user X, credential said Y, X != Y → security event
-    if face_uid is not None and face_uid != grant_uid:
-        face_name = matcher.user_name(face_uid) if hasattr(matcher, "user_name") else f"id={face_uid}"
-        grant_name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
-        db.insert_event(
-            "mismatch", None, False,
-            detail=f"face={face_name} credential={grant_name} src={src}",
-        )
-        log.warning("checkin mismatch: face=%s credential=%s via %s — gate stays closed",
-                    face_name, grant_name, src)
-        _audit(esp_log_bus, "warn", "mismatch",
-               f"face={face_name} ≠ {src}={grant_name} → gate stays closed",
-               direction="—")
+    del last_grant  # explicitly unused — see docstring
+    name = matcher.user_name(evt.user_id)
+    if name is None or name == f"id={evt.user_id}":
+        # Matcher returns "id=<n>" when the user_id isn't in its name map.
+        # That happens for unknown users — refuse to write an event row.
+        _audit(esp_log_bus, "warn", evt.method,
+               f"unknown user_id={evt.user_id}")
         return
 
-    # Cooldown FIRST — must precede auto-enroll, otherwise multiple frames
-    # within the cooldown window each insert a fresh face_encoding row
-    # before the matcher has had a chance to reload from the first insert.
-    now = time.monotonic()
-    prev = last_grant.get(grant_uid, -1e9)
-    if now - prev < cfg.recognition.auth_cooldown_s:
-        return
-    last_grant[grant_uid] = now
+    # Channel-specific detail field for the event row.
+    if evt.face_distance is not None:
+        detail = f"distance={evt.face_distance:.3f}"
+    elif evt.raw_uid is not None:
+        detail = f"uid={evt.raw_uid}"
+    elif evt.qr_token is not None:
+        detail = f"token={evt.qr_token}"
+    else:
+        detail = None
 
-    # Auto-enroll: face unmatched, credential valid. Bind embedding to user.
-    # Only happens once per check-in thanks to the cooldown gate above.
-    if face_uid is None and evt.face_embedding:
-        n_samples = db.connect().execute(
-            "SELECT COUNT(*) FROM face_encodings WHERE user_id=?", (grant_uid,)
-        ).fetchone()[0]
-        db.insert_face_encoding(grant_uid, evt.face_embedding, n_samples)
-        grant_name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
-        log.info("auto-enrolled face under user_id=%d via %s (now %d samples)",
-                 grant_uid, src, n_samples + 1)
-        _audit(esp_log_bus, "info", "enroll",
-               f"auto-bind face → {grant_name} via {src} (sample {n_samples + 1})",
-               direction="—")
-        if reload_event is not None:
-            reload_event.set()
+    ev_id = db.insert_event(evt.method, evt.user_id, True, detail=detail)
+    db.touch_last_seen(evt.user_id)
 
-    name = matcher.user_name(grant_uid) if hasattr(matcher, "user_name") else f"id={grant_uid}"
-    detail = f"distance={evt.face_distance:.3f}"
-    ev_id = db.insert_event(src, grant_uid, True, detail=detail)
-    db.touch_last_seen(grant_uid)
-    _audit(esp_log_bus, "info", "cmd",
-           f"open user={name} reason={src} (distance={evt.face_distance:.2f})",
-           direction="→")
-    try:
-        ack = uart.send_cmd("open", {"user": name, "reason": src}, timeout=2.0)
-        _audit(esp_log_bus, "info", "ack",
-               f"open OK ({ack})" if ack else "open ack",
-               direction="←")
-    except (LinkDown, LinkTimeout) as e:
-        log.warning("uart open failed: %s", e)
-        _audit(esp_log_bus, "err", "cmd",
-               f"open FAILED: {e} — peripheral unreachable",
-               direction="←")
+    # RFID already opened the gate on the ESP side — don't duplicate.
+    if evt.method != "rfid":
+        _audit(esp_log_bus, "info", "cmd",
+               f"open user={name} reason={evt.method}", direction="→")
+        try:
+            ack = uart.send_cmd("open", {"user": name, "reason": evt.method},
+                                timeout=2.0)
+            _audit(esp_log_bus, "info", "ack",
+                   f"open OK ({ack})" if ack else "open ack",
+                   direction="←")
+        except (LinkDown, LinkTimeout) as e:
+            log.warning("uart open failed: %s", e)
+            _audit(esp_log_bus, "err", "cmd",
+                   f"open FAILED: {e} — peripheral unreachable",
+                   direction="←")
+    else:
+        _audit(esp_log_bus, "info", "rfid",
+               f"granted user={name} (ESP already opened)", direction="←")
+
     try:
         trig_queue.put_nowait(RecordingTrigger(ev_id, evt.ts_mono))
     except queue.Full:
         log.warning("trigger_queue full, dropping clip for event %d", ev_id)
+
+
+def _trigger_auto_enroll(enroll: EnrollCandidate, db, matcher,
+                         reload_event, esp_log_bus=None) -> None:
+    """RFID-paired auto-enroll: insert a new face_encoding row for the
+    grant user and signal the matcher to reload."""
+    user_name = matcher.user_name(enroll.grant_user_id)
+    if user_name is None or user_name == f"id={enroll.grant_user_id}":
+        return
+    # sample_idx = current count so each insert gets a unique index.
+    n_samples = db.connect().execute(
+        "SELECT COUNT(*) FROM face_encodings WHERE user_id=?",
+        (enroll.grant_user_id,),
+    ).fetchone()[0]
+    db.insert_face_encoding(enroll.grant_user_id,
+                            enroll.embedding.astype("float32").tobytes(),
+                            n_samples)
+    log.info("auto-enrolled face under user_id=%d via rfid (now %d samples)",
+             enroll.grant_user_id, n_samples + 1)
+    _audit(esp_log_bus, "info", "enroll",
+           f"auto-bind face → {user_name} via rfid (sample {n_samples + 1})",
+           direction="—")
+    if reload_event is not None:
+        reload_event.set()
 
 
 def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue, esp_log_bus=None):
@@ -316,12 +346,13 @@ def _handle_manual_event(evt: AuthEvent, db, uart, trig_queue, esp_log_bus=None)
     db.insert_event(evt.method, None, True)
 
 
-def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
-                      uart, cfg, last_grant, reload_event,
+def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
+                      uart, cfg, last_grant, reload_event, *,
+                      auto_enroll_state: AutoEnrollPairState | None = None,
                       gate_tracker=None, esp_log_bus=None,
                       peripherals=None):
     """ESP32 events. evt:log → esp_log table + PeripheralTracker.
-    evt:rfid → 2FA pairing + mark RFID alive.
+    evt:rfid → enqueue CheckInEvent(method='rfid') + optional auto-enroll.
     evt:gate → update GateTracker + log timeout_warn.
     evt:heartbeat → mark link alive."""
     if evt.v == "log":
@@ -392,36 +423,36 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
         name = d.get("name")
         uid = db.get_user_id_by_name(name) if name else None
         granted = result == "granted"
+        raw_uid = str(d.get("uid") or "")
         if peripherals is not None:
             peripherals.mark_rfid_scan(granted, name)
-        if not granted or uid is None or state is None:
-            # Not granted, or unknown UID — no 2FA possible. We deliberately
-            # do NOT insert an event row for an isolated RFID-only swipe to
-            # avoid the spam the user reported.
-            if not granted:
-                raw_uid = str(d.get("uid") or "")
-                _audit(esp_log_bus, "warn", "rfid",
-                       f"denied uid={raw_uid[:8]}… name={name or '(unknown)'}",
-                       direction="←")
-                log.info("rfid denied: %s", d)
+        if not granted:
+            # Denied — do NOT write an event row (avoids spam from random
+            # cards near the reader). Audit only.
+            _audit(esp_log_bus, "warn", "rfid",
+                   f"denied uid={raw_uid[:8]}… name={name or '(unknown)'}",
+                   direction="←")
+            log.info("rfid denied: %s", d)
             return
-        # Pair with current face via two-factor state.
-        pair = state.set_grant_and_try_match(uid, "rfid")
-        if pair is not None:
-            # We're in bus consumer thread already — turn the pair into a
-            # CheckInEvent and dispatch it inline.
-            checkin = CheckInEvent(
-                face_matched_user_id=pair.face_matched_user_id,
-                face_embedding=(pair.face_embedding.astype("float32").tobytes()
-                                if pair.face_matched_user_id is None else None),
-                face_distance=pair.face_distance,
-                grant_user_id=pair.grant_user_id,
-                grant_source=pair.grant_source,
-            )
-            _handle_checkin(checkin, db, matcher, uart, trig_queue, cfg,
-                            last_grant, reload_event)
-        # If pair is None, the grant is held in `state` for up to ttl_s
-        # seconds awaiting a face — no event written yet, no gate open.
+        if uid is None:
+            # Granted by the ESP allowlist but unknown to the Pi DB — log
+            # and skip the mirror row + auto-enroll. (Shouldn't happen in
+            # normal operation; allowlist sync is server→ESP.)
+            _audit(esp_log_bus, "warn", "rfid",
+                   f"granted on ESP but unknown to Pi: name={name}",
+                   direction="←")
+            return
+        # ESP already opened the gate. Mirror it as a CheckInEvent on the
+        # bus so all DB writes and trigger handling go through one path.
+        bus.put(CheckInEvent(method="rfid", user_id=uid, raw_uid=raw_uid))
+        # Optionally seed RFID-triggered face auto-enroll.
+        if (auto_enroll_state is not None
+                and getattr(cfg.recognition, "autoenroll_enabled", True)):
+            enroll = auto_enroll_state.set_grant_and_wait_for_face(uid, "rfid")
+            if enroll is not None:
+                _trigger_auto_enroll(enroll, db, matcher,
+                                     reload_event, esp_log_bus)
+        return
 
 
 def _run_web(cfg, db, hub, uart, data_dir, shutdown,

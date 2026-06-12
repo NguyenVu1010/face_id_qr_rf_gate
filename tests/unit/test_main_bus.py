@@ -120,3 +120,103 @@ def test_checkin_event_method_qr_with_no_face_distance():
     e = CheckInEvent(method="qr", user_id=7)
     assert e.method == "qr"
     assert e.face_distance is None
+
+
+# ---------------------------------------------------------------------------
+# 1-of-3 _handle_checkin routing — face/qr send cmd:open, rfid does NOT.
+# ---------------------------------------------------------------------------
+
+
+def _checkin_fixtures():
+    """Build a default fixture set for _handle_checkin tests. The matcher's
+    user_name() returns 'alice' for any known user (any id != 999)."""
+    db = MagicMock()
+    db.insert_event.return_value = 7
+    matcher = MagicMock()
+    matcher.user_name = MagicMock(side_effect=lambda uid:
+                                  "alice" if uid != 999 else f"id={uid}")
+    uart = MagicMock()
+    uart.send_cmd.return_value = {"ok": True}
+    trig_queue = queue.Queue(maxsize=5)
+    cfg = MagicMock()
+    last_grant: dict = {}
+    reload_event = threading.Event()
+    esp_log_bus = MagicMock()
+    return db, matcher, uart, trig_queue, cfg, last_grant, reload_event, esp_log_bus
+
+
+def test_handle_checkin_face_method_writes_event_and_sends_cmd_open():
+    """method=face → db.insert_event(method='face', granted=True)
+    AND uart.send_cmd('open', ...)."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    evt = CheckInEvent(method="face", user_id=42, face_distance=0.18)
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus)
+
+    db.insert_event.assert_called_once()
+    args, kwargs = db.insert_event.call_args
+    # Signature is positional: (method, user_id, granted, detail=...)
+    assert (kwargs.get("method", args[0] if args else None)) == "face"
+    granted = kwargs.get("granted",
+                         args[2] if len(args) > 2 else None)
+    assert granted is True
+    uart.send_cmd.assert_called_once()
+    cmd_args, cmd_kwargs = uart.send_cmd.call_args
+    assert cmd_args[0] == "open"
+
+
+def test_handle_checkin_rfid_method_does_not_send_cmd_open():
+    """ESP already opened the gate — Pi must not duplicate."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    evt = CheckInEvent(method="rfid", user_id=42, raw_uid="A1B2C3D4")
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus)
+
+    db.insert_event.assert_called_once()
+    args, _ = db.insert_event.call_args
+    assert args[0] == "rfid"
+    uart.send_cmd.assert_not_called()
+
+
+def test_handle_checkin_qr_method_sends_cmd_open():
+    """method=qr → Pi sends cmd:open (ESP doesn't know about QR)."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    evt = CheckInEvent(method="qr", user_id=42, qr_token="TOKEN-XYZ")
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus)
+
+    db.insert_event.assert_called_once()
+    uart.send_cmd.assert_called_once()
+    cmd_args, _ = uart.send_cmd.call_args
+    assert cmd_args[0] == "open"
+
+
+def test_handle_checkin_unknown_user_does_not_write_event():
+    """matcher.user_name returns 'id=<uid>' for unknowns → bail out."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    evt = CheckInEvent(method="face", user_id=999, face_distance=0.18)
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus)
+
+    db.insert_event.assert_not_called()
+    uart.send_cmd.assert_not_called()
