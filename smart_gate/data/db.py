@@ -285,6 +285,20 @@ class Database:
         conn.commit()
         return cur.lastrowid
 
+    def insert_esp_log_many(self, rows) -> None:
+        """Batched INSERT for esp_log; rows is iterable of (lvl, tag, msg).
+
+        Used by EspLogWriter to coalesce up to 1 second of high-frequency
+        ESP log lines into a single fsync. Wrapped in transaction() so the
+        whole batch shares one COMMIT.
+        """
+        conn = self.connect()
+        with self.transaction():
+            conn.executemany(
+                "INSERT INTO esp_log(lvl, tag, msg) VALUES (?, ?, ?)",
+                rows,
+            )
+
     def recent_esp_log(self, limit: int = 100, after_id: int = 0) -> list[tuple]:
         conn = self.connect()
         return list(conn.execute(

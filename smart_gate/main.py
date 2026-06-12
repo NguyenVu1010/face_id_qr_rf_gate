@@ -14,6 +14,7 @@ from pathlib import Path
 
 from smart_gate.config import load_config
 from smart_gate.data.db import Database
+from smart_gate.data.esp_log_writer import EspLogWriter
 from smart_gate.recognition.matcher import Matcher
 from smart_gate.recognition import detector as detector_mod
 from smart_gate.recognition.detector import AuthEvent, CheckInEvent
@@ -73,6 +74,8 @@ def main(argv=None) -> int:
     cap_fps = FpsCounter(window_s=5.0)
     det_fps = FpsCounter(window_s=5.0)
     esp_log_bus = EspLogBus()
+    esp_log_writer = EspLogWriter(db)
+    esp_log_writer.start()
     ring = RingBuffer(fps=cfg.video.fps, pre_seconds=cfg.recorder.pre_seconds)
     bus: queue.Queue = queue.Queue()
     trig_queue: queue.Queue = queue.Queue(maxsize=5)
@@ -109,6 +112,7 @@ def main(argv=None) -> int:
                          kwargs={"auto_enroll_state": auto_enroll_state,
                                  "gate_tracker": gate_tracker,
                                  "esp_log_bus": esp_log_bus,
+                                 "esp_log_writer": esp_log_writer,
                                  "peripherals": peripherals},
                          daemon=True),
         threading.Thread(target=_run_web, name="flask",
@@ -134,6 +138,8 @@ def main(argv=None) -> int:
     for t in threads:
         t.join(timeout=15)
     uart.join(timeout=5)
+    # Flush any tail of pending ESP log rows before exit.
+    esp_log_writer.stop(timeout=2.0)
     log.info("smart_gate exited cleanly")
     return 0
 
@@ -185,6 +191,7 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                  *, auto_enroll_state: AutoEnrollPairState | None = None,
                  gate_tracker: GateTracker | None = None,
                  esp_log_bus: EspLogBus | None = None,
+                 esp_log_writer: EspLogWriter | None = None,
                  peripherals: PeripheralTracker | None = None) -> None:
     # Per-channel cooldowns live in the detector now (face_cooldown /
     # qr_cooldown). last_grant is retained as an opaque handle for the
@@ -213,6 +220,7 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
                                   auto_enroll_state=auto_enroll_state,
                                   gate_tracker=gate_tracker,
                                   esp_log_bus=esp_log_bus,
+                                  esp_log_writer=esp_log_writer,
                                   peripherals=peripherals)
         except Exception:
             # An unhandled exception in a handler (DB write failure, schema
@@ -362,6 +370,7 @@ def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
                       uart, cfg, last_grant, reload_event, *,
                       auto_enroll_state: AutoEnrollPairState | None = None,
                       gate_tracker=None, esp_log_bus=None,
+                      esp_log_writer: EspLogWriter | None = None,
                       peripherals=None):
     """ESP32 events. evt:log → esp_log table + PeripheralTracker.
     evt:rfid → enqueue CheckInEvent(method='rfid') + optional auto-enroll.
@@ -369,15 +378,25 @@ def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
     evt:heartbeat → mark link alive."""
     if evt.v == "log":
         d = evt.data or {}
-        log_id = db.insert_esp_log(d.get("lvl", "info"), d.get("tag"),
-                                   d.get("msg", ""))
+        lvl = d.get("lvl", "info")
+        tag = d.get("tag")
+        msg = d.get("msg", "")
+        # Hot path (up to 20 Hz): enqueue to batched writer instead of one
+        # synchronous INSERT+fsync per line. Fall back to the sync writer
+        # if no writer was wired (CLI tooling, tests, …).
+        if esp_log_writer is not None:
+            esp_log_writer.enqueue((lvl, tag, msg))
+        else:
+            db.insert_esp_log(lvl, tag, msg)
         if esp_log_bus is not None:
+            # The DB id is no longer known synchronously (batched). The SSE
+            # formatter handles the absent-id case by omitting the SSE
+            # 'id:' line — same path used for synthetic audit events.
             esp_log_bus.publish({
-                "id":  log_id,
                 "ts":  d.get("ts"),
-                "lvl": d.get("lvl", "info"),
-                "tag": d.get("tag"),
-                "msg": d.get("msg", ""),
+                "lvl": lvl,
+                "tag": tag,
+                "msg": msg,
             })
         if peripherals is not None:
             peripherals.update_from_log(
