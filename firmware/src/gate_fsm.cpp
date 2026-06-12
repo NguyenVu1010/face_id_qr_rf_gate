@@ -238,12 +238,19 @@ static void handle_event(const event_t& e) {
     default: break;
   }
 
+  if (e.kind == EV_T_LCD_RESTORE) {
+    if (s_state == S_IDLE) lcd_show_idle();
+    return;
+  }
+
   if (e.kind == EV_RFID_SCAN) {
     bool granted = (e.i1 == 1);
     emit_evt_rfid(e.uid, granted, granted ? e.name : "");
     if (!granted) {
       lcd_show_denied();
       buzzer_beep_err();
+      xTimerChangePeriod(g_lcd_restore_timer, pdMS_TO_TICKS(2500), 0);
+      xTimerStart(g_lcd_restore_timer, 0);
       return;
     }
     if (s_state == S_IDLE) {
@@ -309,7 +316,11 @@ void cb_heartbeat(TimerHandle_t) {
 
 void gate_fsm_init() {
   Preferences cfg;
-  cfg.begin(NVS_NS_CONFIG, true);
+  // readOnly=false so the namespace is created on first boot if missing — opening
+  // a non-existent namespace with readOnly=true logs an [E] nvs_open NOT_FOUND
+  // and returns default values for every getter (boot log noise; defaults are
+  // still applied below, but the spurious error message is misleading).
+  cfg.begin(NVS_NS_CONFIG, false);
   s_passage_timeout_ms = cfg.getUInt("pass_to_ms", DEFAULT_PASSAGE_TIMEOUT_MS);
   int od = cfg.getInt("open_deg", DEFAULT_SERVO_OPEN_DEG);
   int cd = cfg.getInt("close_deg", DEFAULT_SERVO_CLOSE_DEG);

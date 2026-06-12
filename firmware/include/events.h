@@ -13,6 +13,7 @@ enum EventKind : uint8_t {
   EV_PASSAGE_DETECTED,   // i1 = distance_cm at trigger, i2 = duration_ms in beam
   // Timer events (one-shot)
   EV_T_OPEN_REACHED, EV_T_PASSAGE_TIMEOUT, EV_T_WARN_GIVEUP, EV_T_CLOSE_REACHED,
+  EV_T_LCD_RESTORE,   // one-shot timer fired: restore LCD to idle if FSM in S_IDLE
 };
 
 struct event_t {
