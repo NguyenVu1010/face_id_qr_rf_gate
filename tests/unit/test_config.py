@@ -2,8 +2,6 @@ import logging
 import sys
 from pathlib import Path
 
-import pytest
-
 from smart_gate.config import Config, load_config
 
 if sys.version_info >= (3, 11):
@@ -40,14 +38,42 @@ face_threshold = 0.5
     assert cfg.recognition.stranger_cooldown_s == 30   # default preserved
 
 
-def test_unknown_key_raises(tmp_path):
-    cfg_file = tmp_path / "c.toml"
-    cfg_file.write_text("""
-[video]
-banana = 1
-""")
-    with pytest.raises(ValueError, match="unknown"):
-        load_config(cfg_file)
+def test_unknown_key_in_section_is_warned_not_raised(tmp_path, caplog):
+    import logging
+    from smart_gate.config import load_config
+    # Defensive: same propagation workaround as test_load_config_warns_when_file_missing.
+    logging.getLogger("smart_gate.config").propagate = True
+    p = tmp_path / "config.toml"
+    p.write_text(
+        '[recognition]\n'
+        'face_threshold = 0.3\n'
+        'auth_cooldown_s = 5     # legacy field, no longer in dataclass\n'
+        'consumption_cooldown_s = 7.0  # also legacy\n'
+    )
+    with caplog.at_level(logging.WARNING, logger="smart_gate.config"):
+        cfg = load_config(p)
+    assert cfg.recognition.face_threshold == 0.3
+    assert "auth_cooldown_s" in caplog.text
+    assert "consumption_cooldown_s" in caplog.text
+
+
+def test_unknown_section_is_warned_not_raised(tmp_path, caplog):
+    import logging
+    from smart_gate.config import load_config
+    # Defensive: same propagation workaround as test_load_config_warns_when_file_missing.
+    logging.getLogger("smart_gate.config").propagate = True
+    p = tmp_path / "config.toml"
+    p.write_text(
+        '[recognition]\n'
+        'face_threshold = 0.3\n'
+        '\n'
+        '[future_module]\n'
+        'foo = 1\n'
+    )
+    with caplog.at_level(logging.WARNING, logger="smart_gate.config"):
+        cfg = load_config(p)
+    assert cfg.recognition.face_threshold == 0.3
+    assert "future_module" in caplog.text
 
 
 def test_missing_file_uses_defaults(tmp_path):

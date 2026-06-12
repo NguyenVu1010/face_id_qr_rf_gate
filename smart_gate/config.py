@@ -1,7 +1,9 @@
 """Configuration loader.
 
 Loads TOML and merges into frozen dataclasses with defaults baked in.
-Unknown keys raise ValueError so typos surface immediately.
+Unknown keys/sections are logged at WARNING and ignored, so legacy
+`/etc/smart-gate/config.toml` files (e.g. carrying fields dropped in a
+later refactor) don't crash the daemon on upgrade.
 """
 from __future__ import annotations
 
@@ -98,9 +100,7 @@ def _merge_section(section_name: str, section_cls, raw: dict):
     valid = {f.name for f in fields(section_cls)}
     unknown = set(raw) - valid
     if unknown:
-        raise ValueError(
-            f"unknown key(s) in [{section_name}]: {sorted(unknown)}"
-        )
+        log.warning("ignoring unknown key(s) in [%s]: %s", section_name, sorted(unknown))
     coerced = {}
     for f in fields(section_cls):
         if f.name not in raw:
@@ -128,5 +128,5 @@ def load_config(path: str | Path) -> Config:
         sections[name] = _merge_section(name, factory, raw)
     unknown_sections = set(data) - set(section_classes)
     if unknown_sections:
-        raise ValueError(f"unknown section(s): {sorted(unknown_sections)}")
+        log.warning("ignoring unknown section(s) in config: %s", sorted(unknown_sections))
     return Config(**sections)
