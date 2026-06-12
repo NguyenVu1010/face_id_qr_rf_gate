@@ -21,6 +21,7 @@ bool outbound_send(const outbound_msg_t& m) {
 
 static char s_linebuf[UART_LINE_MAX];
 static size_t s_pos = 0;
+static bool s_discarding = false;
 
 static void translate_and_enqueue(JsonDocument& doc) {
   const char* type = doc["type"] | "";
@@ -103,6 +104,8 @@ void uart_link_init() {
   Serial1.begin(UART_BAUD, SERIAL_8N1, PIN_PI_UART_RX, PIN_PI_UART_TX);
   Serial1.setRxBufferSize(1024);
   Serial1.setTimeout(10);
+  s_pos = 0;
+  s_discarding = false;
 }
 
 void uart_link_task(void* /*arg*/) {
@@ -112,19 +115,31 @@ void uart_link_task(void* /*arg*/) {
       int b = Serial1.read();
       if (b < 0) break;
       char c = (char)b;
-      if (c == '\r') continue;
+
+      if (c == '\r') continue;   // strip CR (Windows CRLF)
+
       if (c == '\n') {
+        if (s_discarding) {
+          // Oversized line ends here — drop it, do NOT parse the corrupted tail.
+          s_pos = 0;
+          s_discarding = false;
+          continue;
+        }
         parse_line();
         s_pos = 0;
         continue;
       }
-      if (s_pos < UART_LINE_MAX - 1) {
-        s_linebuf[s_pos++] = c;
-      } else {
-        // overflow: reset; the rest of the line is forfeit
-        LOGW("uart", "line overflow, resetting");
+
+      if (s_discarding) continue;   // drop tail bytes silently until next '\n'
+
+      if (s_pos >= UART_LINE_MAX - 1) {
+        LOGW("uart", "line overflow, discarding until next \\n");
+        s_discarding = true;
         s_pos = 0;
+        continue;
       }
+
+      s_linebuf[s_pos++] = c;
     }
 
     // TX: drain outbound queue → Pi UART link.
