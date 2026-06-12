@@ -202,7 +202,8 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
         try:
             if isinstance(evt, CheckInEvent):
                 _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
-                                last_grant, reload_event, esp_log_bus)
+                                last_grant, reload_event, esp_log_bus,
+                                gate_tracker=gate_tracker)
             elif isinstance(evt, AuthEvent):
                 # Manual_open / manual_close only — bypasses 1-of-3 routing.
                 _handle_manual_event(evt, db, uart, trig_queue, esp_log_bus)
@@ -242,7 +243,8 @@ def _audit(esp_log_bus, lvl: str, tag: str, msg: str,
 
 
 def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
-                    last_grant, reload_event, esp_log_bus=None):
+                    last_grant, reload_event, esp_log_bus=None,
+                    gate_tracker: GateTracker | None = None):
     """1-of-3 channel router. Each method writes exactly one event row.
 
     - face / qr → Pi sends cmd:open to ESP (ESP doesn't know about these).
@@ -262,6 +264,12 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
         _audit(esp_log_bus, "warn", evt.method,
                f"unknown user_id={evt.user_id}")
         return
+
+    # Attribute the latest open to a name for the dashboard widget. Must
+    # happen before any potential exception path below so the field reflects
+    # the user even if downstream DB / UART work raises.
+    if gate_tracker is not None:
+        gate_tracker.set_last_user(name)
 
     # Channel-specific detail field for the event row.
     if evt.face_distance is not None:

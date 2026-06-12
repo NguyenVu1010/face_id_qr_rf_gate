@@ -69,3 +69,21 @@ def test_wait_for_state_target_case_insensitive():
     t = GateTracker()
     t.update("open")
     assert t.wait_for_state("OPEN", timeout=0.5) is True
+
+
+def test_set_last_user_does_not_change_state():
+    from smart_gate.link.gate_state import GateTracker
+    t = GateTracker()
+    t.update("opening")
+    t.set_last_user("alice")
+    snap = t.snapshot()
+    assert snap["state"] == "opening"
+    assert snap["last_user"] == "alice"
+
+
+def test_set_last_user_overrides_previous():
+    from smart_gate.link.gate_state import GateTracker
+    t = GateTracker()
+    t.set_last_user("alice")
+    t.set_last_user("bob")
+    assert t.snapshot()["last_user"] == "bob"

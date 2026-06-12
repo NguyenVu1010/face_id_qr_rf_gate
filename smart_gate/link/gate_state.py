@@ -41,6 +41,17 @@ class GateTracker:
             self._cond.notify_all()
         return prev
 
+    def set_last_user(self, user: str) -> None:
+        """Record the most recent authorized user without changing state.
+
+        Used by _handle_checkin to attribute the latest open to a name even
+        when the gate state hasn't changed yet (e.g., RFID where ESP opens
+        autonomously and the Pi only mirrors the state via evt:gate).
+        """
+        with self._cond:
+            self._last_user = user
+            # No state change → no notify (waiters only care about state).
+
     def wait_for_state(self, target: str, timeout: float = 3.0) -> bool:
         """Block up to `timeout` seconds for the gate to enter `target` state.
         Returns True if reached (or already in target), False on timeout.

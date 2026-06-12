@@ -220,3 +220,62 @@ def test_handle_checkin_unknown_user_does_not_write_event():
 
     db.insert_event.assert_not_called()
     uart.send_cmd.assert_not_called()
+
+
+def test_handle_checkin_sets_gate_tracker_last_user():
+    """After a successful auth, gate_tracker.last_user should reflect the
+    granted user — this drives the /api/gate/state.json dashboard widget."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+    from smart_gate.link.gate_state import GateTracker
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    tracker = GateTracker()
+    evt = CheckInEvent(method="face", user_id=42, face_distance=0.18)
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus,
+                             gate_tracker=tracker)
+
+    assert tracker.snapshot()["last_user"] == "alice"
+
+
+def test_handle_checkin_unknown_user_does_not_set_last_user():
+    """Unknown user → no event row AND no last_user update."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+    from smart_gate.link.gate_state import GateTracker
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    tracker = GateTracker()
+    tracker.set_last_user("previous")
+    evt = CheckInEvent(method="face", user_id=999, face_distance=0.18)
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus,
+                             gate_tracker=tracker)
+
+    # Unknown user must not overwrite the previous attribution.
+    assert tracker.snapshot()["last_user"] == "previous"
+
+
+def test_handle_checkin_rfid_method_sets_last_user():
+    """RFID also attributes the open via last_user even though the Pi did
+    not send cmd:open (ESP autonomously opened the gate)."""
+    from smart_gate import main as main_mod
+    from smart_gate.recognition.detector import CheckInEvent
+    from smart_gate.link.gate_state import GateTracker
+
+    (db, matcher, uart, trig_queue, cfg,
+     last_grant, reload_event, esp_log_bus) = _checkin_fixtures()
+    tracker = GateTracker()
+    evt = CheckInEvent(method="rfid", user_id=42, raw_uid="A1B2C3D4")
+
+    main_mod._handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                             last_grant, reload_event, esp_log_bus,
+                             gate_tracker=tracker)
+
+    assert tracker.snapshot()["last_user"] == "alice"
+    uart.send_cmd.assert_not_called()  # ESP already opened — no duplicate
