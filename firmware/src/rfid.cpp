@@ -10,6 +10,9 @@
 
 static MFRC522 s_rc522(PIN_RC522_CS, PIN_RC522_RST);
 
+static volatile bool     s_card_present = false;
+static volatile uint32_t s_card_last_ms = 0;
+
 static void uid_to_hex(const MFRC522::Uid& uid, char* out, size_t out_n) {
   size_t pos = 0;
   for (byte i = 0; i < uid.size && pos + 2 < out_n; ++i) {
@@ -27,7 +30,18 @@ void rfid_init() {
 void rfid_task(void* /*arg*/) {
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(RFID_POLL_INTERVAL_MS));
+
+    // Drop the icon flag if no card has been seen for >300 ms.
+    if (s_card_present && (millis() - s_card_last_ms) > 300) {
+      s_card_present = false;
+    }
+
     if (!s_rc522.PICC_IsNewCardPresent()) continue;
+
+    // Card detected this poll — refresh the icon hold window.
+    s_card_present = true;
+    s_card_last_ms = millis();
+
     if (!s_rc522.PICC_ReadCardSerial()) continue;
 
     char uid_hex[16];
@@ -51,3 +65,5 @@ void rfid_task(void* /*arg*/) {
     s_rc522.PCD_StopCrypto1();
   }
 }
+
+bool rfid_is_card_present() { return s_card_present; }

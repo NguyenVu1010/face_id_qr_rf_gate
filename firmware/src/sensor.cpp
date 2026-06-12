@@ -5,6 +5,8 @@
 #include "uart_link.h"
 #include <Arduino.h>
 
+static volatile bool s_obstacle_present = false;
+
 static int read_distance_cm() {
   digitalWrite(PIN_SR04_TRIG, LOW);
   delayMicroseconds(2);
@@ -45,6 +47,10 @@ void sensor_task(void* /*arg*/) {
     }
     no_echo_ms = 0;
 
+    // Raw last sample for the LCD icon (refresh ~5 Hz, no debounce).
+    // FSM event below still uses the debounced edge.
+    s_obstacle_present = (cm > 0 && cm < SENSOR_TRIGGER_CM);
+
     if (cm < SENSOR_TRIGGER_CM) {
       below_count++;
       above_count = 0;
@@ -70,3 +76,5 @@ void sensor_task(void* /*arg*/) {
     }
   }
 }
+
+bool sensor_is_obstacle() { return s_obstacle_present; }
