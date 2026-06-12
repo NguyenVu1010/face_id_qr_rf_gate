@@ -175,9 +175,17 @@
       return ['info', 'warn', 'error', 'debug'].includes(l)
         ? `pill pill-${l}` : 'pill pill-info';
     }
+    // 5-char escape: covers attribute injection too (we use this value
+    // inside datetime="..." and title="..." below, so " and ' matter).
     function escape(s) {
-      return String(s || '').replace(/[<>&]/g,
-        c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+      return String(s == null ? '' : s).replace(/[&<>"']/g,
+        c => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[c]));
     }
 
     const es = new EventSource('/api/esp_log/stream');

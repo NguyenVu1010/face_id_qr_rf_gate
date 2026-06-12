@@ -244,6 +244,21 @@
   });
 })();
 
+// --- Shared 5-char HTML escape helper (covers attribute injection too) ---
+// Defense-in-depth: even though only admins can hit /api/enroll, a name like
+// `<img src=x onerror=alert(1)>` must render as literal text in any browser.
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[c];
+  });
+}
+
 // --- Gate badge: parse JSON from /api/gate/state.json into the badge ---
 document.body.addEventListener('htmx:afterRequest', function(evt) {
   if (evt.detail.pathInfo.requestPath === '/api/gate/state.json') {
@@ -252,10 +267,11 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
       var wrap = document.getElementById('gate-badge-wrap');
       if (!wrap) return;
       var secs = Math.round(s.since_s || 0);
+      var state = s.state || 'idle';
       wrap.innerHTML =
-        '<span class="gate-badge" data-state="' + (s.state || 'idle') + '">' +
-        'gate: ' + (s.state || 'idle') + ' (' + secs + 's)' +
-        (s.last_user ? ' · ' + s.last_user : '') +
+        '<span class="gate-badge" data-state="' + escapeHtml(state) + '">' +
+        'gate: ' + escapeHtml(state) + ' (' + secs + 's)' +
+        (s.last_user ? ' · ' + escapeHtml(s.last_user) : '') +
         '</span>';
     } catch (e) { /* ignore parse errors */ }
     return;
@@ -269,18 +285,19 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
     var r = JSON.parse(evt.detail.xhr.responseText);
     if (r.ok) {
       var faceMsg = r.captured > 0
-        ? '(face đã capture ' + r.captured + ' samples)'
+        ? '(face đã capture ' + escapeHtml(r.captured) + ' samples)'
         : '(face sẽ tự bind khi user qu\u1edt QR/RFID)';
+      var qrUrl = escapeHtml(r.qr_url);
       box.innerHTML =
         '<article class="card" style="margin-top:var(--s-3);border-color:var(--ok);">' +
         '<div class="body">' +
-        '<strong style="color:var(--ok)">✓ Tạo ' + r.name + '</strong> ' +
-        '<span class="muted">(id=' + r.id + ')</span> ' + faceMsg + '<br>' +
-        '<a href="' + r.qr_url + '" target="_blank">' +
-        '<img src="' + r.qr_url + '" alt="QR" style="max-width:150px;margin-top:var(--s-2);border:1px solid var(--border);">' +
+        '<strong style="color:var(--ok)">✓ Tạo ' + escapeHtml(r.name) + '</strong> ' +
+        '<span class="muted">(id=' + escapeHtml(r.id) + ')</span> ' + faceMsg + '<br>' +
+        '<a href="' + qrUrl + '" target="_blank">' +
+        '<img src="' + qrUrl + '" alt="QR" style="max-width:150px;margin-top:var(--s-2);border:1px solid var(--border);">' +
         '</a>' +
         '<div style="margin-top:var(--s-2);">' +
-        '<a class="btn btn-secondary" href="' + r.qr_url + '?download=1" download>⬇ Tải QR PNG</a>' +
+        '<a class="btn btn-secondary" href="' + qrUrl + '?download=1" download>⬇ Tải QR PNG</a>' +
         '</div>' +
         '<p class="muted" style="margin-top:var(--s-3);font-size:var(--fs-sm);">' +
         'In QR ra giấy hoặc lưu vào điện thoại — lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → qu\u1edt QR → bbox chuyển xanh + ID.' +
@@ -290,11 +307,19 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
       box.innerHTML =
         '<article class="card" style="margin-top:var(--s-3);border-color:var(--danger);">' +
         '<div class="body"><strong style="color:var(--danger)">✗ ' +
-        (r.error || 'unknown') + '</strong></div></article>';
+        escapeHtml(r.error || 'unknown') + '</strong></div></article>';
     }
   } catch (e) {
-    box.innerHTML = '<article class="card"><div class="body">' +
-      evt.detail.xhr.responseText + '</div></article>';
+    // Raw responseText is whatever the server (or upstream proxy) returned —
+    // may be an HTML error page. Use textContent so it cannot inject.
+    box.textContent = '';
+    var card = document.createElement('article');
+    card.className = 'card';
+    var bodyDiv = document.createElement('div');
+    bodyDiv.className = 'body';
+    bodyDiv.textContent = evt.detail.xhr.responseText;
+    card.appendChild(bodyDiv);
+    box.appendChild(card);
   }
 });
 </script>
