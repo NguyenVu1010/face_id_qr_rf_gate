@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 _MIGRATIONS_DIR = Path(__file__).parent / "migrations"
@@ -52,6 +53,24 @@ class Database:
             conn.executescript(sql)
         conn.commit()
 
+    @contextmanager
+    def transaction(self):
+        """Explicit BEGIN IMMEDIATE … COMMIT/ROLLBACK around a write batch.
+
+        Used to collapse multi-statement check-in paths (event row +
+        last_seen update, or auto-enroll face_encoding insert) into a
+        single fsync. ROLLBACK on exception keeps the row group atomic.
+        """
+        conn = self.connect()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        else:
+            conn.execute("COMMIT")
+
     # ---- Users ----
 
     def insert_user(self, name: str, note: str | None = None) -> int:
@@ -85,7 +104,10 @@ class Database:
     def touch_last_seen(self, user_id: int) -> None:
         conn = self.connect()
         conn.execute("UPDATE users SET last_seen=datetime('now') WHERE id=?", (user_id,))
-        conn.commit()
+        # Inside an explicit transaction() block the outer COMMIT owns the
+        # fsync — skip per-call commit so the batch collapses into 1 fsync.
+        if not conn.in_transaction:
+            conn.commit()
 
     # ---- Face encodings ----
 
@@ -134,7 +156,10 @@ class Database:
             "INSERT INTO events(method, user_id, granted, detail) VALUES (?, ?, ?, ?)",
             (method, user_id, 1 if granted else 0, detail),
         )
-        conn.commit()
+        # Inside an explicit transaction() block the outer COMMIT owns the
+        # fsync — skip per-call commit so the batch collapses into 1 fsync.
+        if not conn.in_transaction:
+            conn.commit()
         return cur.lastrowid
 
     def update_event_clip(self, event_id: int, clip_path: str | None) -> None:

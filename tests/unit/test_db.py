@@ -217,6 +217,27 @@ def test_count_events_today(tmp_data_dir):
     assert db.count_events_today() == 2
 
 
+def test_transaction_commits_on_success(tmp_path):
+    from smart_gate.data.db import Database
+    db = Database(tmp_path / "t.db")
+    db.connect().execute("CREATE TABLE t (x INT)")
+    with db.transaction():
+        db.connect().execute("INSERT INTO t VALUES (1)")
+        db.connect().execute("INSERT INTO t VALUES (2)")
+    assert db.connect().execute("SELECT COUNT(*) FROM t").fetchone()[0] == 2
+
+
+def test_transaction_rolls_back_on_exception(tmp_path):
+    from smart_gate.data.db import Database
+    db = Database(tmp_path / "t.db")
+    db.connect().execute("CREATE TABLE t (x INT)")
+    with pytest.raises(RuntimeError):
+        with db.transaction():
+            db.connect().execute("INSERT INTO t VALUES (1)")
+            raise RuntimeError("boom")
+    assert db.connect().execute("SELECT COUNT(*) FROM t").fetchone()[0] == 0
+
+
 def test_db_uses_wal_and_normal_sync(tmp_path):
     """Pragmas must be applied right at connect() — before any migration —
     so that the very first writes go through WAL + NORMAL sync and won't

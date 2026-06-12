@@ -281,8 +281,12 @@ def _handle_checkin(evt: CheckInEvent, db, matcher, uart, trig_queue, cfg,
     else:
         detail = None
 
-    ev_id = db.insert_event(evt.method, evt.user_id, True, detail=detail)
-    db.touch_last_seen(evt.user_id)
+    # Wrap the event-row insert + last_seen update in one transaction so
+    # both writes share a single fsync instead of two (NORMAL sync still
+    # flushes WAL on each COMMIT).
+    with db.transaction():
+        ev_id = db.insert_event(evt.method, evt.user_id, True, detail=detail)
+        db.touch_last_seen(evt.user_id)
 
     # RFID already opened the gate on the ESP side — don't duplicate.
     if evt.method != "rfid":
