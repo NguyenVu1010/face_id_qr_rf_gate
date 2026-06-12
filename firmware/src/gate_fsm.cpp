@@ -171,7 +171,7 @@ static void on_open_reached() {
   if (s_state != S_OPENING) return;
   s_state = S_OPEN_WAIT;
   emit_evt_gate("open");
-  buzzer_beep_ok();
+  buzzer_beep_ok_async();
   xTimerChangePeriod(g_passage_timeout_timer, pdMS_TO_TICKS(s_passage_timeout_ms), 0);
   xTimerStart(g_passage_timeout_timer, 0);
 }
@@ -248,7 +248,7 @@ static void handle_event(const event_t& e) {
     emit_evt_rfid(e.uid, granted, granted ? e.name : "");
     if (!granted) {
       lcd_show_denied();
-      buzzer_beep_err();
+      buzzer_beep_err_async();
       xTimerChangePeriod(g_lcd_restore_timer, pdMS_TO_TICKS(2500), 0);
       xTimerStart(g_lcd_restore_timer, 0);
       return;
