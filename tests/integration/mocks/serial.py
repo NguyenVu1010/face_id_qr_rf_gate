@@ -14,7 +14,13 @@ class FakeSerial:
     """Behaviour:
     - write(b): appends to self.written (captured) and pushes ack lines if scripted.
     - readline(): pops a line from self._rx_queue or blocks up to timeout.
-    - inject(line): test code pushes a line that readline() will return.
+    - read_until(term, size): pops a chunk; honours `size=` by truncating
+      anything larger and returning the truncated prefix WITHOUT the
+      terminator (mirroring real pyserial behaviour when the cap is hit
+      before the terminator is seen).
+    - inject(line): test code pushes a line (auto-appends \\n) for readline.
+    - inject_raw(chunk): test code pushes a chunk verbatim — used to
+      simulate floating UART garbage with no \\n.
     - fail_next_write/fail_next_read: trigger SerialException.
     """
     def __init__(self, port, baud, timeout=1.0):
@@ -38,7 +44,7 @@ class FakeSerial:
             self.written.append(data)
         return len(data)
 
-    def readline(self) -> bytes:
+    def _read_one(self) -> bytes:
         if self._closed:
             raise SerialException("closed")
         # Poll for fail_next_read / closed even while waiting so tests can
@@ -56,10 +62,31 @@ class FakeSerial:
                 if deadline is not None and time.monotonic() >= deadline:
                     return b""
 
+    def readline(self) -> bytes:
+        return self._read_one()
+
+    def read_until(self, terminator: bytes = b"\n", size: int | None = None) -> bytes:
+        """Pop one queued chunk. If size is set and the chunk exceeds it,
+        return the first `size` bytes WITHOUT the terminator — matching
+        pyserial's behaviour when the byte cap is hit before the terminator.
+        If the chunk already contains the terminator within `size` bytes,
+        return up to and including the terminator.
+        """
+        chunk = self._read_one()
+        if size is not None and len(chunk) > size:
+            return chunk[:size]
+        return chunk
+
     def inject(self, line: bytes) -> None:
         if not line.endswith(b"\n"):
             line = line + b"\n"
         self._rx_queue.put(line)
+
+    def inject_raw(self, chunk: bytes) -> None:
+        """Push a chunk verbatim — no \\n appended. Use to simulate floating
+        UART garbage that has no line terminator.
+        """
+        self._rx_queue.put(chunk)
 
     def close(self) -> None:
         self._closed = True

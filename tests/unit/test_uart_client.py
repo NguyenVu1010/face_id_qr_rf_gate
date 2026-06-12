@@ -103,3 +103,66 @@ def test_reconnect_after_read_failure(fake_serial, event_bus):
     assert len(fake_serial) >= 2
     shutdown.set()
     client.join(timeout=2.0)
+
+
+def test_rx_loop_discards_oversized_non_terminated_line(
+    fake_serial, event_bus, caplog
+):
+    """A read_until that returns bytes WITHOUT a trailing \\n must be discarded,
+    not parsed as a partial line and not accumulated.
+
+    Simulates a floating ESP UART that streams non-\\n bytes at 115200 bps —
+    pyserial's read_until() would return up to size= bytes without a newline.
+    The rx loop must drop these and continue, not feed them into protocol.decode.
+    """
+    import logging as _logging
+    from smart_gate.link import protocol
+
+    # Attach our own handler to the uart_client logger so we capture warnings
+    # emitted from the rx THREAD — pytest's caplog only sees records routed
+    # through the root logger handler chain on the main thread, which is
+    # unreliable for thread-based code.
+    records: list[_logging.LogRecord] = []
+
+    class _ListHandler(_logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    target_logger = _logging.getLogger("smart_gate.link.uart_client")
+    handler = _ListHandler(level=_logging.WARNING)
+    target_logger.addHandler(handler)
+    try:
+        client, shutdown = _start_client(fake_serial, event_bus)
+        ser = fake_serial[-1]
+
+        # Inject a chunk that is over MAX_LINE and has NO trailing \n. The fake's
+        # inject_raw helper lets us bypass the auto-\n append used by inject().
+        payload = b"A" * (protocol.MAX_LINE * 2)
+        ser.inject_raw(payload)
+
+        # Inject a well-formed event after the oversized garbage to prove the rx
+        # loop keeps draining lines and is not stuck on the bad bytes.
+        ser.inject(b'{"type":"evt","v":"heartbeat","data":{}}')
+
+        # Give the rx loop time to read both injections.
+        deadline = time.monotonic() + 1.0
+        while time.monotonic() < deadline:
+            if any("non-terminated" in r.getMessage() for r in records):
+                break
+            time.sleep(0.02)
+
+        # Assertion 1: a warning log mentioning non-terminated bytes was emitted.
+        msgs = [r.getMessage() for r in records]
+        assert any("non-terminated" in m for m in msgs), (
+            f"expected 'non-terminated' warning, got: {msgs}"
+        )
+
+        # Assertion 2: the well-formed heartbeat that followed was still parsed,
+        # i.e. the link is alive (last_rx was updated by the heartbeat, not by
+        # the discarded garbage).
+        assert client.link_alive(), "rx loop should keep draining after discard"
+
+        shutdown.set()
+        client.join(timeout=2.0)
+    finally:
+        target_logger.removeHandler(handler)

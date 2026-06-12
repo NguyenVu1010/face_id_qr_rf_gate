@@ -175,7 +175,10 @@ class UartClient:
                         # _reconnect returns without _ser only on shutdown
                         return
                 try:
-                    line = self._ser.readline()
+                    # Cap the read at MAX_LINE+1 bytes so a misbehaving / floating
+                    # ESP UART that pumps non-\n bytes at 115200 bps cannot grow
+                    # an unbounded bytearray inside readline() (OOM kill).
+                    line = self._ser.read_until(b"\n", size=protocol.MAX_LINE + 1)
                 except SerialException as e:
                     log.warning("rx exception: %s", e)
                     with self._port_lock:
@@ -183,6 +186,12 @@ class UartClient:
                     self._connected.clear()
                     continue
                 if not line:
+                    continue
+                if not line.endswith(b"\n"):
+                    # read_until hit the byte cap before seeing \n — this is
+                    # garbage from a floating UART. Drop it instead of feeding
+                    # a partial line into the decoder.
+                    log.warning("rx: dropping %d non-terminated bytes", len(line))
                     continue
                 try:
                     msg = protocol.decode(line)

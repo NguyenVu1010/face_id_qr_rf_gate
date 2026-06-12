@@ -1,13 +1,17 @@
 """JSON Lines codec for the Pi <-> ESP32 UART link.
 
-One message = one line of UTF-8 JSON terminated by \\n. Max 512 bytes.
+One message = one line of UTF-8 JSON terminated by \\n.
 See docs/superpowers/specs/2026-05-21-smart-gate-architecture-design.md §4.
 """
 from __future__ import annotations
 
 import json
 
-MAX_LINE = 512
+# ESP UART_LINE_MAX is 512; doubled for margin so a misbehaving / floating
+# ESP UART pumping non-\n bytes cannot grow an unbounded bytearray inside
+# the Pi rx loop. encode() and decode() also enforce this limit, so any
+# real protocol message must fit.
+MAX_LINE = 1024
 
 VERBS_CMD = frozenset({
     "open", "close", "add_uid", "remove_uid", "list_uids",

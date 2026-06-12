@@ -25,7 +25,7 @@ def test_encode_nullary_no_data():
 
 
 def test_encode_too_long_raises():
-    big = "x" * 1000
+    big = "x" * (MAX_LINE + 100)
     with pytest.raises(ProtocolError, match="too long"):
         encode("cmd", "open", {"big": big}, msg_id=1)
 
@@ -49,7 +49,7 @@ def test_decode_empty_raises():
 
 
 def test_decode_too_long_raises():
-    long_line = b'{"type":"cmd","v":"open","data":"' + b"x" * 600 + b'"}\n'
+    long_line = b'{"type":"cmd","v":"open","data":"' + b"x" * (MAX_LINE + 100) + b'"}\n'
     with pytest.raises(ProtocolError, match="too long"):
         decode(long_line)
 
