@@ -266,6 +266,7 @@ static void handle_event(const event_t& e) {
       return;
     }
     if (s_state == S_IDLE) {
+      buzzer_beep_ok_async();   // immediate auth feedback
       if (e.name[0] != '\0') {
         lcd_show_name(e.name);
         int err = lcd_drv_last_i2c_err();
@@ -283,6 +284,7 @@ static void handle_event(const event_t& e) {
 
   if (e.kind == EV_CMD_OPEN) {
     if (s_state == S_IDLE) {
+      buzzer_beep_ok_async();   // immediate auth feedback (face/QR via Pi cmd:open)
       start_open();
       emit_ack_ok(e.cmd_id, "open");
     } else if (s_state == S_OPEN_WAIT) {
