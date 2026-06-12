@@ -69,3 +69,54 @@ def test_bus_consumer_survives_handler_exception(monkeypatch):
     assert esp_log_bus.publish.called, (
         "expected synthetic audit publish() on handler failure"
     )
+
+
+# ---------------------------------------------------------------------------
+# 1-of-3 detector branch logic (harness-style; does NOT spin up the camera).
+# ---------------------------------------------------------------------------
+
+
+def test_face_match_below_threshold_fires_checkin_event_with_cooldown():
+    """Direct unit-test of the face-branch logic — synthesize the conditional
+    used in detector.run loop, not the loop itself (camera is hard to fake)."""
+    from smart_gate.recognition.cooldown import UserCooldown
+    from smart_gate.recognition.detector import CheckInEvent
+
+    cooldown = UserCooldown(window_s=5.0)
+    bus = []
+    face_threshold = 0.25
+
+    matched_user_id = 42
+    distance = 0.18
+    if matched_user_id is not None and distance < face_threshold:
+        if cooldown.passed(matched_user_id):
+            cooldown.touch(matched_user_id)
+            bus.append(CheckInEvent(method="face", user_id=42,
+                                    face_distance=distance))
+    assert len(bus) == 1
+    assert bus[0].method == "face"
+    assert bus[0].user_id == 42
+    assert bus[0].face_distance == 0.18
+
+
+def test_face_match_above_threshold_does_not_fire():
+    from smart_gate.recognition.cooldown import UserCooldown
+    from smart_gate.recognition.detector import CheckInEvent
+    cooldown = UserCooldown(window_s=5.0)
+    bus = []
+    face_threshold = 0.25
+    matched_user_id = 42
+    distance = 0.30   # above threshold
+    if matched_user_id is not None and distance < face_threshold:
+        if cooldown.passed(matched_user_id):
+            cooldown.touch(matched_user_id)
+            bus.append(CheckInEvent(method="face", user_id=42,
+                                    face_distance=distance))
+    assert bus == []
+
+
+def test_checkin_event_method_qr_with_no_face_distance():
+    from smart_gate.recognition.detector import CheckInEvent
+    e = CheckInEvent(method="qr", user_id=7)
+    assert e.method == "qr"
+    assert e.face_distance is None

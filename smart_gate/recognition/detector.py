@@ -1,4 +1,4 @@
-"""Detector thread: per-frame face encode + QR decode -> AuthEvent on bus.
+"""Detector thread: per-frame face encode + QR decode -> CheckInEvent on bus.
 
 Face detection backends (priority order):
 1. MediaPipe (`mp.solutions.face_detection.FaceDetection`) — fastest (~1 ms/frame
@@ -16,7 +16,8 @@ import logging
 import threading
 import time
 
-import numpy as np
+from smart_gate.recognition.auto_enroll_pair import AutoEnrollPairState
+from smart_gate.recognition.cooldown import UserCooldown
 
 log = logging.getLogger(__name__)
 
@@ -34,25 +35,35 @@ class AuthEvent:
     ts_mono: float = dataclasses.field(default_factory=time.monotonic)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class CheckInEvent:
-    """Two-factor check-in: detector saw a face AND a credential within TTL.
-    The bus consumer turns this into a DB event row and a cmd:open."""
-    face_matched_user_id: int | None       # None ⇒ auto-enroll embedding under grant_user_id
-    face_embedding: bytes | None           # for auto-enroll; numpy serialised
-    face_distance: float
-    grant_user_id: int
-    grant_source: str                      # 'qr' or 'rfid'
+    """1-of-3 check-in event. Each auth channel (face / qr / rfid) fires its
+    own CheckInEvent independently; per-user cooldowns prevent repeated
+    firing while the same user stays in frame / keeps the card on the reader.
+    """
+    method: str                            # 'face' | 'qr' | 'rfid'
+    user_id: int
+    face_distance: float | None = None     # face only
+    raw_uid: str | None = None             # rfid only
+    qr_token: str | None = None            # qr only
     ts_mono: float = dataclasses.field(default_factory=time.monotonic)
 
 
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
-                 *, deps=None, overlay=None, state=None,
+                 *, deps=None, overlay=None,
+                 face_cooldown: UserCooldown | None = None,
+                 qr_cooldown: UserCooldown | None = None,
+                 auto_enroll_state: AutoEnrollPairState | None = None,
                  fps_counter=None) -> None:
     """Detector loop. `deps` is an optional dict for test injection:
         {"cv2":..., "mp_face":<obj|None>, "face_recognition":..., "pyzbar":...}
     When `mp_face` is None (or absent), HOG via `face_recognition.face_locations`
     is used instead.
+
+    `face_cooldown` and `qr_cooldown` are `UserCooldown` instances that
+    suppress duplicate CheckInEvents for the same user within a window.
+    `auto_enroll_state` is an `AutoEnrollPairState`; the detector pokes it
+    on every face frame so RFID-triggered auto-enroll can latch.
     """
     if deps is None:
         import cv2 as _cv2
@@ -80,14 +91,20 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
         if bgr is None:
             continue
         try:
-            _process_frame(bgr, cfg, matcher, event_bus, deps, overlay, state)
+            _process_frame(bgr, cfg, matcher, event_bus, deps,
+                           overlay=overlay,
+                           face_cooldown=face_cooldown,
+                           qr_cooldown=qr_cooldown,
+                           auto_enroll_state=auto_enroll_state)
             if fps_counter is not None:
                 fps_counter.tick()
         except Exception as e:
             log.exception("detector frame failed: %s", e)
 
 
-def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, state=None):
+def _process_frame(bgr, cfg, matcher, bus, deps, *, overlay=None,
+                   face_cooldown=None, qr_cooldown=None,
+                   auto_enroll_state=None):
     cv2 = deps["cv2"]
     pyzbar = deps["pyzbar"]
     fr = deps["face_recognition"]
@@ -100,7 +117,6 @@ def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, state=None):
     else:
         bbox, encs = _detect_and_encode_hog(rgb, fr)
 
-    pair_from_face = None
     if not encs:
         if overlay is not None:
             overlay.clear()
@@ -120,17 +136,29 @@ def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, state=None):
                 lbl = (f"unknown ({distance:.2f})"
                        if distance != float("inf") else "unknown")
                 overlay.set(bbox, lbl, color=(0, 0, 255))
-        # Update two-factor state with this face. If a credential grant was
-        # already pending in TTL, we'll get a CheckInPair back.
-        if state is not None:
-            pair_from_face = state.set_face_and_try_match(
+
+        # 1-of-3 face channel: fire directly on a match, gated by cooldown.
+        matched_user_id = user_id if is_match else None
+        if matched_user_id is not None and distance < cfg.recognition.face_threshold:
+            if face_cooldown is None or face_cooldown.passed(matched_user_id):
+                if face_cooldown is not None:
+                    face_cooldown.touch(matched_user_id)
+                bus.put(CheckInEvent(
+                    method="face",
+                    user_id=matched_user_id,
+                    face_distance=float(distance),
+                ))
+
+        # Auto-enroll signal — fires only if a fresh RFID grant is pending.
+        if auto_enroll_state is not None:
+            auto_enroll_state.set_face_seen(
                 embedding=probe,
-                matched_user_id=user_id if is_match else None,
-                distance=float(distance) if distance != float("inf") else 1e9,
+                matched_user_id=matched_user_id,
+                distance=(float(distance)
+                          if distance != float("inf") else 1e9),
             )
 
     # --- QR ---
-    pair_from_qr = None
     for sym in pyzbar.decode(bgr):
         try:
             token = sym.data.decode("utf-8", errors="replace")
@@ -139,22 +167,18 @@ def _process_frame(bgr, cfg, matcher, bus, deps, overlay=None, state=None):
         qr_user_id = matcher.lookup_qr(token)
         if qr_user_id is None:
             continue
-        if state is not None:
-            pair_from_qr = state.set_grant_and_try_match(qr_user_id, "qr")
-        # Only first valid QR per frame counts
+        if qr_user_id is not None:
+            if qr_cooldown is None or qr_cooldown.passed(qr_user_id):
+                if qr_cooldown is not None:
+                    qr_cooldown.touch(qr_user_id)
+                bus.put(CheckInEvent(
+                    method="qr",
+                    user_id=qr_user_id,
+                    qr_token=token,
+                ))
+        # Intentionally no auto-enroll call for QR.
+        # Only first valid QR per frame counts.
         break
-
-    # Emit at most one CheckInEvent per frame.
-    pair = pair_from_face or pair_from_qr
-    if pair is not None:
-        bus.put(CheckInEvent(
-            face_matched_user_id=pair.face_matched_user_id,
-            face_embedding=(pair.face_embedding.astype("float32").tobytes()
-                            if pair.face_matched_user_id is None else None),
-            face_distance=pair.face_distance,
-            grant_user_id=pair.grant_user_id,
-            grant_source=pair.grant_source,
-        ))
 
 
 def _detect_and_encode_mediapipe(rgb, mp_face, fr):
