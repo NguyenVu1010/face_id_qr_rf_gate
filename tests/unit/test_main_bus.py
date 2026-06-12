@@ -261,6 +261,31 @@ def test_handle_checkin_unknown_user_does_not_set_last_user():
     assert tracker.snapshot()["last_user"] == "previous"
 
 
+def test_cap_rfid_fields_truncates_long_inputs():
+    from smart_gate.main import _cap_rfid_fields
+    d = {"uid": "F" * 100, "name": "X" * 200, "granted": False}
+    name, uid = _cap_rfid_fields(d)
+    assert len(name) == 32
+    assert len(uid) == 24
+    assert name == "X" * 32
+    assert uid == "F" * 24
+
+
+def test_cap_rfid_fields_handles_missing_fields():
+    from smart_gate.main import _cap_rfid_fields
+    name, uid = _cap_rfid_fields({})
+    assert name == ""
+    assert uid == ""
+
+
+def test_cap_rfid_fields_handles_none_values():
+    from smart_gate.main import _cap_rfid_fields
+    d = {"name": None, "uid": None}
+    name, uid = _cap_rfid_fields(d)
+    assert name == ""
+    assert uid == ""
+
+
 def test_handle_checkin_rfid_method_sets_last_user():
     """RFID also attributes the open via last_user even though the Pi did
     not send cmd:open (ESP autonomously opened the gate)."""

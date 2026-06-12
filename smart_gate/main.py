@@ -40,6 +40,18 @@ log = logging.getLogger("smart_gate.main")
 _current_shutdown: threading.Event | None = None
 
 
+def _cap_rfid_fields(d: dict) -> tuple[str, str]:
+    """Truncate ESP-supplied name/uid to firmware-buffer-sized limits.
+
+    Firmware uses e.name[32] and e.uid[24]; a misbehaving ESP could in
+    principle send much longer strings. Bound them at the protocol
+    boundary so log lines, SQL binds, and dashboard renders are all safe.
+    """
+    name = (d.get("name") or "")[:32]
+    uid  = (d.get("uid")  or "")[:24]
+    return name, uid
+
+
 def main(argv=None) -> int:
     global _current_shutdown
     p = argparse.ArgumentParser(prog="smart_gate")
@@ -451,10 +463,12 @@ def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
     if evt.v == "rfid":
         d = evt.data or {}
         result = d.get("result")
-        name = d.get("name")
+        # Defensive bound: cap ESP-supplied strings at firmware buffer sizes
+        # (e.name[32], e.uid[24]) BEFORE they reach log lines / SQL binds /
+        # dashboard renders. A misbehaving ESP must not be able to OOM the Pi.
+        name, raw_uid = _cap_rfid_fields(d)
         uid = db.get_user_id_by_name(name) if name else None
         granted = result == "granted"
-        raw_uid = str(d.get("uid") or "")
         if peripherals is not None:
             peripherals.mark_rfid_scan(granted, name)
         if not granted:
