@@ -182,16 +182,30 @@ def _consume_bus(bus: queue.Queue, db: Database, matcher: Matcher,
             evt = bus.get(timeout=0.5)
         except queue.Empty:
             continue
-        if isinstance(evt, CheckInEvent):
-            _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
-                            last_grant, reload_event, esp_log_bus)
-        elif isinstance(evt, AuthEvent):
-            # Manual_open / manual_close only — bypasses 2FA.
-            _handle_manual_event(evt, db, uart, trig_queue, esp_log_bus)
-        elif isinstance(evt, EspEvent):
-            _handle_esp_event(evt, db, matcher, state, trig_queue,
-                              uart, cfg, last_grant, reload_event,
-                              gate_tracker, esp_log_bus, peripherals)
+        try:
+            if isinstance(evt, CheckInEvent):
+                _handle_checkin(evt, db, matcher, uart, trig_queue, cfg,
+                                last_grant, reload_event, esp_log_bus)
+            elif isinstance(evt, AuthEvent):
+                # Manual_open / manual_close only — bypasses 2FA.
+                _handle_manual_event(evt, db, uart, trig_queue, esp_log_bus)
+            elif isinstance(evt, EspEvent):
+                _handle_esp_event(evt, db, matcher, state, trig_queue,
+                                  uart, cfg, last_grant, reload_event,
+                                  gate_tracker, esp_log_bus, peripherals)
+        except Exception:
+            # An unhandled exception in a handler (DB write failure, schema
+            # drift, etc.) used to kill this thread silently — daemon stayed
+            # "running" but processed no events. Log it, emit a synthetic
+            # audit so the operator sees it on the dashboard, back off, and
+            # keep going.
+            log.exception("bus consumer iter failed; continuing")
+            try:
+                _audit(esp_log_bus, "error", "internal",
+                       "bus consumer exception — see app.log")
+            except Exception:
+                pass
+            time.sleep(0.5)
 
 
 def _audit(esp_log_bus, lvl: str, tag: str, msg: str,
