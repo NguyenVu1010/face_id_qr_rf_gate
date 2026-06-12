@@ -436,12 +436,24 @@ def _run_web(cfg, db, hub, uart, data_dir, shutdown,
                      esp_log_bus=esp_log_bus,
                      peripherals=peripherals)
     from werkzeug.serving import make_server
-    srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
+    try:
+        srv = make_server(cfg.web.host, cfg.web.port, app, threaded=True)
+    except (OSError, SystemExit) as e:
+        # werkzeug catches EADDRINUSE internally and calls sys.exit(1),
+        # so we must catch SystemExit as well as bare OSError.
+        log.critical("web bind failed on %s:%d: %s - shutting down",
+                     cfg.web.host, cfg.web.port, e)
+        shutdown.set()
+        return
     def watcher():
         shutdown.wait()
         srv.shutdown()
     threading.Thread(target=watcher, daemon=True).start()
-    srv.serve_forever()
+    try:
+        srv.serve_forever()
+    except OSError as e:
+        log.critical("web serve failed: %s - shutting down", e)
+        shutdown.set()
 
 
 def _cleanup_loop(cfg, db, data_dir, shutdown):
