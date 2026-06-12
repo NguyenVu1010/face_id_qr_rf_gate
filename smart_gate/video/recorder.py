@@ -10,7 +10,7 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -103,7 +103,11 @@ def cleanup_pass(data_dir: str | Path, db, max_age_days: int,
     when total clip storage > max_total_gb. Event rows are preserved.
     """
     data_dir = Path(data_dir)
-    cutoff_ts = (datetime.now() - timedelta(days=max_age_days)).strftime(
+    # events.ts is stored as UTC (SQLite datetime('now') default), so the
+    # cutoff must also be UTC — otherwise on Asia/Ho_Chi_Minh (UTC+7) the
+    # local datetime.now() is 7h ahead of the row timestamps and
+    # cleanup deletes clips up to 7h younger than max_age_days.
+    cutoff_ts = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 

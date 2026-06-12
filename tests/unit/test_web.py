@@ -266,6 +266,70 @@ def test_events_json_period_today(setup):
     assert len(rows) == 1
 
 
+def test_events_json_period_today_uses_utc_boundary(tmp_data_dir, monkeypatch):
+    """Deterministic TZ-boundary regression test.
+
+    Freezes wall clock at 2026-06-10 17:00 UTC (= 2026-06-11 00:00 +07).
+    Inserts an event with ts = 2026-06-10 16:00 UTC (= 23:00 +07 on the prior
+    local day, but still inside today's UTC window).
+
+    With the UTC fix:
+      since = 2026-06-10 00:00 UTC  →  16:00 UTC row is included.
+    With the pre-fix bug (naive datetime.now() on Asia/Ho_Chi_Minh):
+      since = 2026-06-11 00:00 (local clock interpreted as UTC string)
+            → 16:00 UTC row would be excluded → test fails.
+
+    Uses monkeypatch since freezegun is not in test deps.
+    """
+    import datetime as _dt
+    from unittest.mock import MagicMock
+    from smart_gate.web import app as web_app
+
+    fixed_now = _dt.datetime(2026, 6, 10, 17, 0, 0, tzinfo=_dt.timezone.utc)
+    # Simulate Asia/Ho_Chi_Minh (UTC+7) as the local zone. The whole point of
+    # this test is that on UTC+7 the naive `.now()` returns a local time that
+    # is 7h ahead of UTC, which the broken code then treats as if it were UTC.
+    local_tz = _dt.timezone(_dt.timedelta(hours=7))
+
+    class FakeDateTime(_dt.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is not None:
+                return fixed_now.astimezone(tz)
+            # Naive `.now()` returns LOCAL wall-clock with tzinfo stripped —
+            # this is what reproduces the production bug.
+            return fixed_now.astimezone(local_tz).replace(tzinfo=None)
+
+    # The events_json view does `import datetime as _dt` locally, so we need
+    # to patch the real datetime module's class (or pre-import the module
+    # and patch its attribute). The view's `_dt.datetime` resolves through
+    # the shared `datetime` module, so patching there is the cleanest hook.
+    monkeypatch.setattr("datetime.datetime", FakeDateTime)
+
+    db = Database(tmp_data_dir / "tz.db")
+    db.migrate()
+    # Insert via direct SQL so we can set ts explicitly (UTC).
+    db.insert_user("tz_boundary")
+    uid = db.get_user_id_by_name("tz_boundary")
+    db.connect().execute(
+        "INSERT INTO events (ts, method, user_id, granted) "
+        "VALUES (?, ?, ?, ?)",
+        ("2026-06-10 16:00:00", "test", uid, 1),
+    )
+    db.connect().commit()
+
+    hub = MagicMock(); hub.wait_jpeg.return_value = PLACEHOLDER
+    uart = MagicMock(); uart.link_alive.return_value = True
+    app = web_app.create_app(db=db, hub=hub, uart=uart, data_dir=tmp_data_dir)
+    app.testing = True
+    with app.test_client() as c:
+        resp = c.get("/events.json?period=today")
+        assert resp.status_code == 200
+        rows = resp.get_json()
+    assert any(r["user_name"] == "tz_boundary" for r in rows), \
+        "UTC event at 16:00 should be inside today's UTC window from 17:00 UTC"
+
+
 def test_healthz_html_statusbar(setup):
     app, *_ = setup
     with app.test_client() as c:
