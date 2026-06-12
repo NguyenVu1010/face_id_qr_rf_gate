@@ -161,6 +161,22 @@ def test_tx_registers_pending_before_write(fake_serial, event_bus):
     client.join(timeout=2.0)
 
 
+def test_uart_client_next_id_seeded_from_time(monkeypatch):
+    """The cmd id counter must start at int(time.time()) so it stays
+    monotonic across Pi restarts within the same ESP boot session,
+    not from 1 (which would be rejected as replay after the first
+    Pi reboot).
+    """
+    import smart_gate.link.uart_client as mod
+    monkeypatch.setattr(mod.time, "time", lambda: 1_700_000_000.0)
+    # Bypass __init__ so we don't have to construct queues / events /
+    # the whole serial machinery just to exercise the id seed.
+    c = UartClient.__new__(UartClient)
+    c._init_id_counter()
+    assert next(c._next_id) == 1_700_000_000
+    assert next(c._next_id) == 1_700_000_001
+
+
 def test_rx_loop_discards_oversized_non_terminated_line(
     fake_serial, event_bus, caplog
 ):

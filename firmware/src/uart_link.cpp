@@ -23,6 +23,29 @@ static char s_linebuf[UART_LINE_MAX];
 static size_t s_pos = 0;
 static bool s_discarding = false;
 
+// Per-boot-session replay guard. Any cmd with id <= s_last_cmd_id is
+// rejected as a replay. Reset to 0 in uart_link_init() so a soft reboot
+// starts fresh. Pi seeds its counter from int(time.time()) so IDs are
+// monotonic across Pi restarts within the same ESP session.
+static uint32_t s_last_cmd_id = 0;
+
+// Emit a minimal ack with err so a Pi waiting on send_cmd() wakes
+// immediately instead of timing out. Mirrors emit_ack_err() in
+// gate_fsm.cpp but is duplicated here because that helper is file-static.
+static void emit_replay_ack_err(uint32_t id, const char* verb) {
+  if (id == 0) return;
+  JsonDocument doc;
+  doc["type"] = "ack";
+  doc["id"]   = id;
+  doc["v"]    = verb;
+  doc["data"]["ok"]  = false;
+  doc["data"]["err"] = "replay";
+  outbound_msg_t out;
+  size_t w = serializeJson(doc, out.json, sizeof out.json);
+  if (w == 0 || w >= sizeof out.json) { LOGE("ack", "serialize fail"); return; }
+  outbound_send(out);
+}
+
 static void translate_and_enqueue(JsonDocument& doc) {
   const char* type = doc["type"] | "";
   if (strcmp(type, "cmd") != 0) {
@@ -30,7 +53,29 @@ static void translate_and_enqueue(JsonDocument& doc) {
     return;
   }
   const char* v = doc["v"] | "";
-  uint32_t cmd_id = (uint32_t)(doc["id"] | 0);
+
+  // Strict id parsing + per-session replay guard. Reject missing /
+  // non-numeric id, id == 0, and any id <= last seen. This closes the
+  // trivial "record a cmd:open line over /dev/serial0 and replay it"
+  // window. A determined attacker with full bus access can still inject
+  // (id++) — that would need HMAC, which is out of scope here.
+  JsonVariant id_v = doc["id"];
+  if (!id_v.is<uint32_t>() && !id_v.is<int>()) {
+    LOGW("uart", "cmd missing/invalid id");
+    return;
+  }
+  uint32_t cmd_id = id_v.as<uint32_t>();
+  if (cmd_id == 0) {
+    LOGW("uart", "cmd id=0 rejected");
+    return;
+  }
+  if (cmd_id <= s_last_cmd_id) {
+    LOGW("uart", "cmd id %u replay (last=%u)",
+         (unsigned)cmd_id, (unsigned)s_last_cmd_id);
+    emit_replay_ack_err(cmd_id, v);
+    return;
+  }
+  s_last_cmd_id = cmd_id;
 
   event_t e = {};
   e.src = SRC_UART;
@@ -106,6 +151,7 @@ void uart_link_init() {
   Serial1.setTimeout(10);
   s_pos = 0;
   s_discarding = false;
+  s_last_cmd_id = 0;  // fresh replay counter on (soft) reboot
 }
 
 void uart_link_task(void* /*arg*/) {

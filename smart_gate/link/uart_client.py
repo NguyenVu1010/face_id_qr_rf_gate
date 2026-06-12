@@ -76,12 +76,26 @@ class UartClient:
         self._ser = None
         self._port_lock = threading.Lock()
         self._tx_queue: queue.Queue = queue.Queue()
-        self._next_id = itertools.count(1)
+        self._init_id_counter()
         self._pending: dict[int, tuple[threading.Event, dict]] = {}
         self._pending_lock = threading.Lock()
         self._last_rx = 0.0
         self._connected = threading.Event()
         self._threads: list[threading.Thread] = []
+
+    def _init_id_counter(self) -> None:
+        """Seed _next_id from int(time.time()) so cmd ids are monotonic
+        across Pi restarts within the same ESP boot session.
+
+        The ESP firmware tracks the last cmd id it has seen (s_last_cmd_id)
+        and rejects any id <= that as a replay. If the Pi restarted from
+        itertools.count(1) every boot, the first few commands after a Pi
+        restart would always be rejected. Seeding from wall-clock unix
+        seconds gives us a strictly-growing counter (assuming the clock
+        doesn't jump backwards) without needing any persistent state on
+        the Pi side.
+        """
+        self._next_id = itertools.count(int(time.time()))
 
     def start(self) -> None:
         for target, name in [
