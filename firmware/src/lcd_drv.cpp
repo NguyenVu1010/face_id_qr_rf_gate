@@ -18,6 +18,14 @@ static void write_row(int row, const char* text) {
 }
 
 void lcd_init() {
+  // LiquidCrystal_I2C::init() internally calls Wire.begin() with no args, which
+  // emits a "[W] Wire.cpp begin(): Bus already started in Master Mode" warning
+  // because we initialise the bus explicitly here first with our pin assignment.
+  // The warning is harmless — the library's second begin() is a no-op once
+  // i2cIsInit() returns true. Avoiding the warning via Wire.setPins() instead
+  // of Wire.begin() caused intermittent boot crashes during LCD command init
+  // (s_lcd.begin internals) on this arduino-esp32 2.0.x build, so we keep the
+  // explicit begin and tolerate the cosmetic warning.
   Wire.begin(PIN_LCD_SDA, PIN_LCD_SCL);
   s_lcd.init();
   s_lcd.backlight();

@@ -91,6 +91,15 @@ static void parse_line() {
 // architecture spec §4.1 / decision #26.
 
 void uart_link_init() {
+  // NOTE: arduino-esp32 2.0.x (espressif32@^6.0) reports
+  //   [E] HardwareSerial setRxBufferSize: RX Buffer can't be resized when
+  //       Serial is already running. Set it before calling begin().
+  // when setRxBufferSize() is called AFTER begin(). However, calling it BEFORE
+  // begin() on this version triggers a boot lock-up shortly after I2C init
+  // (verified 2026-06-03: chip resets just past the "Bus already started in
+  // Master Mode" log). Keeping the call after begin() — the [E] is cosmetic
+  // and the RX buffer stays at the 256-byte default, which is sufficient for
+  // our line-based JSON commands (< 200 bytes typical).
   Serial1.begin(UART_BAUD, SERIAL_8N1, PIN_PI_UART_RX, PIN_PI_UART_TX);
   Serial1.setRxBufferSize(1024);
   Serial1.setTimeout(10);
