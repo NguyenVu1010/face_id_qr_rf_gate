@@ -385,6 +385,10 @@ def _handle_esp_event(evt: EspEvent, db, matcher, state, trig_queue,
             # do NOT insert an event row for an isolated RFID-only swipe to
             # avoid the spam the user reported.
             if not granted:
+                raw_uid = str(d.get("uid") or "")
+                _audit(esp_log_bus, "warn", "rfid",
+                       f"denied uid={raw_uid[:8]}… name={name or '(unknown)'}",
+                       direction="←")
                 log.info("rfid denied: %s", d)
             return
         # Pair with current face via two-factor state.
