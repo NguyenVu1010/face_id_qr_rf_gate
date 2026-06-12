@@ -7,6 +7,8 @@
 #include "lcd_drv.h"
 #include "buzzer_drv.h"
 #include "allowlist.h"
+#include "sensor.h"
+#include "rfid.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <esp_system.h>
@@ -240,6 +242,11 @@ static void handle_event(const event_t& e) {
 
   if (e.kind == EV_T_LCD_RESTORE) {
     if (s_state == S_IDLE) lcd_show_idle();
+    return;
+  }
+
+  if (e.kind == EV_T_LCD_ICON_TICK) {
+    lcd_update_icons(sensor_is_obstacle(), rfid_is_card_present());
     return;
   }
 

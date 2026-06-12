@@ -30,10 +30,16 @@ TimerHandle_t g_warn_giveup_timer     = nullptr;
 TimerHandle_t g_close_reached_timer   = nullptr;
 TimerHandle_t g_heartbeat_timer       = nullptr;
 TimerHandle_t g_lcd_restore_timer     = nullptr;
+TimerHandle_t g_lcd_icon_timer        = nullptr;
 
 static void cb_lcd_restore(TimerHandle_t) {
   event_t e{}; e.kind = EV_T_LCD_RESTORE;
   xQueueSend(g_event_q, &e, 0);   // best-effort; drop on full queue
+}
+
+static void cb_lcd_icon(TimerHandle_t) {
+  event_t e{}; e.kind = EV_T_LCD_ICON_TICK;
+  xQueueSend(g_event_q, &e, 0);
 }
 
 static const char* reset_reason_string() {
@@ -97,6 +103,7 @@ void setup() {
   g_close_reached_timer   = xTimerCreate("closeR",pdMS_TO_TICKS(DEFAULT_CLOSE_REACHED_MS),  pdFALSE, nullptr, cb_close_reached);
   g_heartbeat_timer       = xTimerCreate("hb",    pdMS_TO_TICKS(HEARTBEAT_INTERVAL_MS),     pdTRUE,  nullptr, cb_heartbeat);
   g_lcd_restore_timer     = xTimerCreate("lcdRst",pdMS_TO_TICKS(2500),                      pdFALSE, nullptr, cb_lcd_restore);
+  g_lcd_icon_timer        = xTimerCreate("lcdIcon",pdMS_TO_TICKS(200),                      pdTRUE,  nullptr, cb_lcd_icon);  // pdTRUE = periodic
 
   // 7. FSM init (loads NVS config, applies servo angles)
   gate_fsm_init();
@@ -114,6 +121,7 @@ void setup() {
 
   // 10. Start heartbeat
   xTimerStart(g_heartbeat_timer, 0);
+  xTimerStart(g_lcd_icon_timer, 0);
 
   // 11. Boot event
   emit_boot_event();
