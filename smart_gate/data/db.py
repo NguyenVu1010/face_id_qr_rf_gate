@@ -5,6 +5,7 @@ Migrations applied at startup; idempotent.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -12,10 +13,13 @@ from pathlib import Path
 
 _MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
+log = logging.getLogger(__name__)
+
 
 class Database:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, migrations_dir: str | Path | None = None):
         self._path = Path(path)
+        self._migrations_dir = Path(migrations_dir) if migrations_dir else _MIGRATIONS_DIR
         self._tls = threading.local()
 
     def connect(self) -> sqlite3.Connection:
@@ -46,12 +50,53 @@ class Database:
             self._tls.conn = None
 
     def migrate(self) -> None:
+        """Apply pending migrations in lexicographic order, skipping any
+        whose numeric prefix is <= the current schema_version in _meta.
+
+        Tracks the highest-applied prefix in _meta.schema_version. Files
+        without a numeric prefix are ignored. executescript() implicitly
+        wraps each .sql in its own transaction; the version bump that
+        follows runs in autocommit and reflects a fully-applied file.
+        """
         conn = self.connect()
-        files = sorted(_MIGRATIONS_DIR.glob("[0-9]*.sql"))
+        # _meta may not exist yet (fresh DB) — every migration file is
+        # expected to either create it or rely on a prior one having done
+        # so. Treat its absence as schema_version = 0.
+        has_meta = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='_meta'"
+        ).fetchone() is not None
+        current = 0
+        if has_meta:
+            row = conn.execute(
+                "SELECT value FROM _meta WHERE key='schema_version'"
+            ).fetchone()
+            if row:
+                current = int(row[0])
+
+        files = sorted(self._migrations_dir.glob("[0-9]*.sql"))
         for sql_file in files:
-            sql = sql_file.read_text()
-            conn.executescript(sql)
-        conn.commit()
+            try:
+                num = int(sql_file.stem.split("_")[0])
+            except ValueError:
+                continue   # ignore non-numeric prefixes
+            if num <= current:
+                continue
+            # executescript() issues an implicit COMMIT, so it can't be
+            # nested inside self.transaction(). Each .sql file owns its
+            # own atomicity; we just bump _meta after it succeeds.
+            conn.executescript(sql_file.read_text())
+            # Safety net: 0001 should create _meta, but make sure so the
+            # version bump below doesn't crash on an unconventional file.
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS _meta "
+                "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO _meta(key, value) "
+                "VALUES ('schema_version', ?)",
+                (str(num),),
+            )
+            log.info("db: migrated to version %d via %s", num, sql_file.name)
 
     @contextmanager
     def transaction(self):

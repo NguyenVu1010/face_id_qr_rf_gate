@@ -238,6 +238,28 @@ def test_transaction_rolls_back_on_exception(tmp_path):
     assert db.connect().execute("SELECT COUNT(*) FROM t").fetchone()[0] == 0
 
 
+def test_migrate_skips_already_applied(tmp_path):
+    """Second migrate() must not re-run already-applied .sql files."""
+    from smart_gate.data.db import Database
+    migrations = tmp_path / "migrations"
+    migrations.mkdir()
+    (migrations / "0001_init.sql").write_text(
+        "CREATE TABLE _meta (key TEXT PRIMARY KEY, value TEXT);\n"
+        "CREATE TABLE foo (id INTEGER);\n"
+    )
+    (migrations / "0002_add.sql").write_text(
+        "CREATE TABLE bar (id INTEGER);\n"
+    )
+    db = Database(tmp_path / "test.db", migrations_dir=migrations)
+    db.migrate()
+    db.migrate()   # second call MUST NOT raise "table bar already exists"
+    conn = db.connect()
+    row = conn.execute(
+        "SELECT value FROM _meta WHERE key='schema_version'"
+    ).fetchone()
+    assert int(row[0]) == 2
+
+
 def test_db_uses_wal_and_normal_sync(tmp_path):
     """Pragmas must be applied right at connect() — before any migration —
     so that the very first writes go through WAL + NORMAL sync and won't
