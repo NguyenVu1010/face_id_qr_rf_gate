@@ -52,6 +52,13 @@ static void write_row(int row, const char* text, int width) {
   }
   buf[width] = '\0';
   s_lcd.print(buf);
+
+  // Probe bus health after write — single addressing transaction. Captures
+  // whether the LCD still ACKs its address after the write burst. Does not
+  // directly report write success, but a NACK here indicates a stuck bus or
+  // missing device (Task 3.14 will add a proper pre-write probe + recovery).
+  Wire.beginTransmission(LCD_I2C_ADDR);
+  s_last_i2c_err = Wire.endTransmission();
 }
 
 static void write_row(int row, const char* text) {
@@ -128,8 +135,10 @@ void lcd_update_icons(bool obstacle_present, bool card_present) {
   s_lcd.setCursor(19, 0);
   s_lcd.write(card_present ? (uint8_t)1 : ' ');
 
-  // capture transmission status for the I²C diagnostic log (Task 1.10)
-  s_last_i2c_err = 0;   // refined in Task 3.14 with real probe
+  // Probe bus health after icon writes — same single-transaction probe as
+  // write_row, for consistency across all LCD write paths (Task 1.10).
+  Wire.beginTransmission(LCD_I2C_ADDR);
+  s_last_i2c_err = Wire.endTransmission();
 }
 
 int lcd_drv_last_i2c_err() { return s_last_i2c_err; }

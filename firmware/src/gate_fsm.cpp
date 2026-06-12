@@ -255,13 +255,23 @@ static void handle_event(const event_t& e) {
     emit_evt_rfid(e.uid, granted, granted ? e.name : "");
     if (!granted) {
       lcd_show_denied();
+      {
+        int err = lcd_drv_last_i2c_err();
+        if (err == 0) LOGI("i2c", "swipe uid=%s lcd_write ok", e.uid);
+        else          LOGW("i2c", "swipe uid=%s lcd_write err=%d", e.uid, err);
+      }
       buzzer_beep_err_async();
       xTimerChangePeriod(g_lcd_restore_timer, pdMS_TO_TICKS(2500), 0);
       xTimerStart(g_lcd_restore_timer, 0);
       return;
     }
     if (s_state == S_IDLE) {
-      if (e.name[0] != '\0') lcd_show_name(e.name);
+      if (e.name[0] != '\0') {
+        lcd_show_name(e.name);
+        int err = lcd_drv_last_i2c_err();
+        if (err == 0) LOGI("i2c", "swipe uid=%s lcd_write ok", e.uid);
+        else          LOGW("i2c", "swipe uid=%s lcd_write err=%d", e.uid, err);
+      }
       start_open();
     } else if (s_state == S_OPEN_WAIT) {
       xTimerStop(g_passage_timeout_timer, 0);
