@@ -105,6 +105,62 @@ def test_reconnect_after_read_failure(fake_serial, event_bus):
     client.join(timeout=2.0)
 
 
+def test_tx_registers_pending_before_write(fake_serial, event_bus):
+    """An ACK that arrives immediately after write() must find _pending
+    already populated, otherwise _dispatch silently drops it and send_cmd
+    blocks for the full timeout.
+
+    ESP ACK round-trip is sub-millisecond at 115200 bps. To deterministically
+    expose the race, the FakeSerial's write() injects the ACK BEFORE
+    returning — so the rx thread can dispatch the ack while the tx thread is
+    still inside ser.write(). If _pending is only registered AFTER write,
+    the ack lookup fails and send_cmd raises LinkTimeout.
+    """
+    client, shutdown = _start_client(fake_serial, event_bus)
+    ser = fake_serial[-1]
+
+    # Monkeypatch the fake's write() so it injects the ack BEFORE returning.
+    # This guarantees the rx thread sees the ack while tx is still in the
+    # critical section, regardless of any post-write registration code.
+    original_write = ser.write
+
+    def write_then_inject(data: bytes) -> int:
+        n = original_write(data)
+        # Decode the just-written line to build a matching ack.
+        try:
+            obj = json.loads(data.rstrip(b"\n"))
+        except Exception:
+            return n
+        ack = json.dumps({
+            "id": obj["id"], "type": "ack", "v": obj["v"],
+            "data": {"ok": True},
+        }).encode()
+        ser.inject(ack)
+        # Give the rx thread a chance to dispatch the ack right now, while
+        # we're still "inside" write() from the tx thread's perspective.
+        time.sleep(0.05)
+        return n
+
+    ser.write = write_then_inject
+
+    t0 = time.monotonic()
+    data = client.send_cmd("open", {"user": "alice", "reason": "face"},
+                           timeout=2.0)
+    elapsed = time.monotonic() - t0
+
+    assert data == {"ok": True}, (
+        f"send_cmd returned {data!r}; ack was dropped due to "
+        "register-after-write race"
+    )
+    assert elapsed < 1.5, (
+        f"send_cmd took {elapsed:.2f}s — expected sub-second; this means "
+        "the ack was dropped and we blocked on the full timeout"
+    )
+
+    shutdown.set()
+    client.join(timeout=2.0)
+
+
 def test_rx_loop_discards_oversized_non_terminated_line(
     fake_serial, event_bus, caplog
 ):

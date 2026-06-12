@@ -215,7 +215,16 @@ class UartClient:
                     return
 
     def _tx_loop(self) -> None:
-        """Same defense-in-depth as _rx_loop: never let an exception kill it."""
+        """Same defense-in-depth as _rx_loop: never let an exception kill it.
+
+        IMPORTANT: _pending must be registered BEFORE ser.write(). ESP ACK
+        round-trip is sub-millisecond at 115200 bps, so the rx thread can
+        dispatch the ack before the tx thread returns from write() — if
+        _pending isn't already populated, _dispatch silently drops the ack
+        and send_cmd blocks for the full timeout even though the gate
+        physically opened. On write failure, pop the entry and signal the
+        holder so the caller wakes immediately with LinkDown.
+        """
         while not self._shutdown.is_set():
             try:
                 try:
@@ -225,9 +234,15 @@ class UartClient:
                 if item is _SENTINEL:
                     return
                 msg_id, payload, ack_event, holder = item
+                # Register pending BEFORE the write so a near-instant ACK
+                # from the ESP cannot race the rx thread's _dispatch lookup.
+                with self._pending_lock:
+                    self._pending[msg_id] = (ack_event, holder)
                 with self._port_lock:
                     ser = self._ser
                     if ser is None:
+                        with self._pending_lock:
+                            self._pending.pop(msg_id, None)
                         holder["err"] = LinkDown()
                         ack_event.set()
                         continue
@@ -237,11 +252,11 @@ class UartClient:
                         log.warning("tx exception: %s", e)
                         self._ser = None
                         self._connected.clear()
+                        with self._pending_lock:
+                            self._pending.pop(msg_id, None)
                         holder["err"] = LinkDown()
                         ack_event.set()
                         continue
-                with self._pending_lock:
-                    self._pending[msg_id] = (ack_event, holder)
             except Exception as e:
                 log.exception("tx_loop unexpected exception (continuing): %s", e)
                 if self._shutdown.wait(1.0):
