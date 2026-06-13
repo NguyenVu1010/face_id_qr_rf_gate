@@ -410,14 +410,16 @@
 
     try {
       if (mode === 'new') {
-        // Step 1: ask the server to allocate a fresh user_NNN + QR. Body
-        // {face_capture:false} matches what the "+ Tạo user mới" footer
-        // button sends; /api/enroll defaults face_capture=False so an empty
-        // POST would also work, but the explicit flag documents intent.
+        // Step 1: allocate user_NNN + QR + capture 3 face samples from the
+        // live stream. face_capture=true is essential — admin almost always
+        // has the new user standing in front of the camera when binding a
+        // card, and without face capture the new user would only be
+        // recognizable via RFID/QR (no face-alone open).
+        flashToast('Đang capture mặt — đứng yên ~2s', 'info');
         var enrollResp = await fetch('/api/enroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ face_capture: false }),
+          body: JSON.stringify({ face_capture: true, samples: 3 }),
         });
         if (!enrollResp.ok) {
           var et = await enrollResp.text();
@@ -429,6 +431,9 @@
         if (!targetName) {
           flashToast('✗ enroll trả về thiếu name', 'err');
           return;
+        }
+        if (typeof enrollData.captured === 'number' && enrollData.captured === 0) {
+          flashToast('⚠ Tạo ' + targetName + ' nhưng KHÔNG bắt được mặt — chỉ RFID/QR mới mở được', 'warn');
         }
       } else {
         targetName = userSel.value;
