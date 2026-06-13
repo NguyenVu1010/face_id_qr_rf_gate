@@ -304,3 +304,87 @@ def test_handle_checkin_rfid_method_sets_last_user():
 
     assert tracker.snapshot()["last_user"] == "alice"
     uart.send_cmd.assert_not_called()  # ESP already opened — no duplicate
+
+
+# ---------------------------------------------------------------------------
+# evt:gate state=unknown — ESP brown-out / panic / watchdog recovery.
+# Pairs with firmware Task 3.10 — see commit 8dd51ca.
+# ---------------------------------------------------------------------------
+
+
+def test_gate_state_unknown_writes_event_and_audits():
+    """evt:gate state=unknown reset_reason=brownout → audit + insert system row.
+
+    Firmware enters a 5s 'hold at 90° neutral' recovery window after a risky
+    reboot (brown-out / panic / watchdog) when the gate was mid-cycle. Pi
+    must surface this on the live-log AND record a permanent row in /events
+    history so the operator can investigate after-the-fact.
+    """
+    from smart_gate import main as main_mod
+    from smart_gate.link.uart_client import EspEvent
+    from smart_gate.link.gate_state import GateTracker
+
+    db = MagicMock()
+    esp_log_bus = MagicMock()
+    gate_tracker = GateTracker()
+    peripherals = MagicMock()
+
+    evt = EspEvent(v="gate",
+                   data={"state": "unknown", "reset_reason": "brownout"})
+
+    main_mod._handle_esp_event(
+        evt, db, MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(), MagicMock(), {}, threading.Event(),
+        gate_tracker=gate_tracker, esp_log_bus=esp_log_bus,
+        peripherals=peripherals,
+    )
+
+    # 1) A 'system' event row exists in /events history with the reset reason.
+    db.insert_event.assert_called_once()
+    args, kwargs = db.insert_event.call_args
+    method = kwargs.get("method", args[0] if args else None)
+    granted = kwargs.get("granted",
+                         args[2] if len(args) > 2 else None)
+    detail = kwargs.get("detail",
+                        args[3] if len(args) > 3 else None)
+    assert method in ("system", "recovery", "esp_recovery", "boot"), (
+        f"expected a system-style method label, got {method!r}"
+    )
+    assert granted is False
+    assert "brownout" in (detail or ""), (
+        f"expected 'brownout' in detail, got {detail!r}"
+    )
+
+    # 2) A synthetic audit line went out on the live-log SSE stream.
+    esp_log_bus.publish.assert_called()
+    pub_payload = esp_log_bus.publish.call_args.args[0]
+    assert pub_payload["lvl"] == "error"
+
+    # 3) Gate tracker was NOT corrupted into a real state by 'unknown' —
+    #    it remains at idle (which is what GateTracker's _KNOWN_STATES
+    #    fallback would do too, but we want to skip the call entirely).
+    assert gate_tracker.snapshot()["state"] == "idle"
+
+
+def test_gate_state_unknown_resilient_to_db_failure():
+    """If db.insert_event raises, the audit STILL fires and no exception
+    propagates — operator must see the warning even if persistence fails."""
+    from smart_gate import main as main_mod
+    from smart_gate.link.uart_client import EspEvent
+
+    db = MagicMock()
+    db.insert_event.side_effect = RuntimeError("disk full")
+    esp_log_bus = MagicMock()
+
+    evt = EspEvent(v="gate",
+                   data={"state": "unknown", "reset_reason": "panic"})
+
+    # Should NOT raise.
+    main_mod._handle_esp_event(
+        evt, db, MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(), MagicMock(), {}, threading.Event(),
+        gate_tracker=None, esp_log_bus=esp_log_bus,
+        peripherals=None,
+    )
+
+    esp_log_bus.publish.assert_called()

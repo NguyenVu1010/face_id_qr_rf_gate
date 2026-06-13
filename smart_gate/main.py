@@ -419,9 +419,32 @@ def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
     if evt.v == "heartbeat" and peripherals is not None:
         peripherals.mark_heartbeat()
         # fallthrough: nothing else to do for heartbeat
-    if evt.v == "gate" and gate_tracker is not None:
+    if evt.v == "gate":
         d = evt.data or {}
         new_state = d.get("state", "")
+        # Brown-out / panic / watchdog recovery (firmware Task 3.10):
+        # ESP boots, finds last_state was mid-cycle (OPENING/OPEN/CLOSING/
+        # TIMEOUT_WARN) and holds servo at 90° neutral for 5 s instead of
+        # snapping closed. Surface this loudly: dashboard banner + permanent
+        # row in /events history so the operator can audit afterwards.
+        # Handle even when gate_tracker is None (CLI tooling, tests).
+        if new_state == "unknown":
+            reason = d.get("reset_reason", "?")
+            _audit(esp_log_bus, "error", "boot",
+                   f"ESP recovered from {reason} — gate state unknown, "
+                   f"verify passage clear",
+                   direction="←")
+            try:
+                db.insert_event("system", None, False,
+                                detail=f"esp_recovery_{reason}")
+            except Exception:
+                log.exception("failed to insert recovery event")
+            # Do NOT feed gate_tracker.update("unknown") — _KNOWN_STATES
+            # fallback would silently coerce to "idle", masking the
+            # mid-cycle reboot from anyone watching tracker state.
+            return
+        if gate_tracker is None:
+            return
         prev = gate_tracker.update(new_state)
         # Feed PeripheralTracker: opening/open/closing/closed = servo moved.
         if peripherals is not None:
