@@ -87,7 +87,7 @@ def _list_uids_for_user(uart, name: str) -> list[str]:
         ack = uart.send_cmd("list_uids", {}, timeout=2.0)
     except (LinkDown, LinkTimeout):
         return []
-    except Exception:
+    except Exception:  # noqa: BLE001 — defensive catch-all
         log.exception("list_uids: unexpected error")
         return []
     data = ack.get("data") if isinstance(ack, dict) else None
@@ -403,6 +403,22 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         _emit_audit(esp_log_bus, "info", "ack",
                     f"add_uid OK uid={uid} ack={ack}", direction="←")
         return jsonify({"ok": True, "uid": uid, "name": name, "ack": ack})
+
+    @app.route("/api/users/<name>/rfid.json", methods=["GET"])
+    def api_list_rfid(name: str):
+        """List RFID UIDs bound to a given user in the ESP allowlist.
+
+        Returns 200 with {"uids": [...]} even on LinkDown — the UI can't
+        distinguish "no cards" from "no link" anyway, so the simplest
+        consistent contract is "always 200, list may be empty."
+        """
+        if not re.match(r"^[A-Za-z0-9_\-]+$", name):
+            return jsonify({"error": "invalid name"}), 400
+        user_id = db.get_user_id_by_name(name)
+        if user_id is None:
+            return jsonify({"error": f"user not found: {name}"}), 404
+        uids = _list_uids_for_user(uart, name)
+        return jsonify({"uids": uids})
 
     @app.route("/api/users/<name>/rfid/<uid>", methods=["DELETE"])
     def api_remove_rfid(name: str, uid: str):
