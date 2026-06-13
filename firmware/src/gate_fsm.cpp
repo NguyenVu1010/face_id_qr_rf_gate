@@ -170,11 +170,16 @@ static void start_open() {
   s_state = S_OPENING;
   emit_evt_gate("opening");
   lcd_show_opening();
-  servo_open();
+  servo_command_async(servo_open_deg(), SERVO_EXPECTED_TRAVEL_MS);
   xTimerStart(g_open_reached_timer, 0);
+  // Stall watchdog — 2× expected travel. Cancelled in on_open_reached().
+  xTimerChangePeriod(g_servo_stall_timer,
+                     pdMS_TO_TICKS(SERVO_EXPECTED_TRAVEL_MS * 2), 0);
+  xTimerStart(g_servo_stall_timer, 0);
 }
 
 static void on_open_reached() {
+  xTimerStop(g_servo_stall_timer, 0);
   if (s_state != S_OPENING) return;
   s_state = S_OPEN_WAIT;
   s_open_wait_entered_ms = millis();
@@ -244,11 +249,16 @@ static void start_closing() {
   s_state = S_CLOSING;
   emit_evt_gate("closing");
   lcd_show_closing();
-  servo_close();
+  servo_command_async(servo_close_deg(), SERVO_EXPECTED_TRAVEL_MS);
   xTimerStart(g_close_reached_timer, 0);
+  // Stall watchdog — 2× expected travel. Cancelled in on_close_reached().
+  xTimerChangePeriod(g_servo_stall_timer,
+                     pdMS_TO_TICKS(SERVO_EXPECTED_TRAVEL_MS * 2), 0);
+  xTimerStart(g_servo_stall_timer, 0);
 }
 
 static void on_close_reached() {
+  xTimerStop(g_servo_stall_timer, 0);
   if (s_state != S_CLOSING) return;
   enter_idle();
 }
@@ -272,6 +282,10 @@ static void force_close(uint32_t cmd_id) {
   xTimerStop(g_passage_timeout_timer, 0);
   xTimerStop(g_warn_giveup_timer, 0);
   xTimerStop(g_obstacle_warn_timer, 0);
+  // Stop the existing stall timer BEFORE start_closing() arms a fresh one —
+  // otherwise the stale timer could fire during the force-close sequence and
+  // trigger a recursive force_close().
+  xTimerStop(g_servo_stall_timer, 0);
   buzzer_stop_warn_pattern();
   s_obstacle_warn_active = false;
   if (s_state != S_IDLE && s_state != S_CLOSING) {
@@ -360,6 +374,12 @@ static void handle_event(const event_t& e) {
   if (e.kind == EV_T_WARN_GIVEUP)    { on_warn_giveup(); return; }
   if (e.kind == EV_T_CLOSE_REACHED)  { on_close_reached(); return; }
   if (e.kind == EV_T_OBSTACLE_WARN_FIRED) { on_obstacle_warn_fired(); return; }
+
+  if (e.kind == EV_T_SERVO_STALL) {
+    LOGW("servo", "servo_stall no reached event");
+    force_close(0);
+    return;
+  }
 }
 
 // === Timer callbacks ===

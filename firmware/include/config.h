@@ -36,6 +36,16 @@
 // === Servo angles ===
 #define DEFAULT_SERVO_OPEN_DEG     100
 #define DEFAULT_SERVO_CLOSE_DEG    10
+// Physical safe range for SG90 horn vs enclosure — protects against a bad
+// cmd:config (e.g. servo_open_deg=180) driving the horn into the wall and
+// stalling the motor at ~700 mA until brown-out.
+#define SERVO_MIN_PHYS_DEG         5
+#define SERVO_MAX_PHYS_DEG         110
+// Expected servo travel time end-to-end. Used both for the async detach timer
+// margin and as the base period for the stall watchdog (2× this value).
+// Kept aligned with DEFAULT_OPEN_REACHED_MS / DEFAULT_CLOSE_REACHED_MS so the
+// reached-event and stall windows stay consistent.
+#define SERVO_EXPECTED_TRAVEL_MS   DEFAULT_OPEN_REACHED_MS
 
 // === LCD ===
 #define LCD_I2C_ADDR              0x27

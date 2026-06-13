@@ -17,6 +17,7 @@ enum EventKind : uint8_t {
   EV_T_LCD_RESTORE,     // one-shot timer fired: restore LCD to idle if FSM in S_IDLE
   EV_T_LCD_ICON_TICK,   // 200 ms periodic — refresh top-right LCD icons
   EV_T_OBSTACLE_WARN_FIRED, // timer: obstacle persisted 5s; start warn buzzer
+  EV_T_SERVO_STALL,         // timer: servo neither reached OPEN nor CLOSED within 2× expected travel
 };
 
 struct event_t {

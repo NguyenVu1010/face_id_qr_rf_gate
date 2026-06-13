@@ -32,6 +32,7 @@ TimerHandle_t g_heartbeat_timer       = nullptr;
 TimerHandle_t g_lcd_restore_timer     = nullptr;
 TimerHandle_t g_lcd_icon_timer        = nullptr;
 TimerHandle_t g_obstacle_warn_timer   = nullptr;
+TimerHandle_t g_servo_stall_timer     = nullptr;
 
 static void cb_lcd_restore(TimerHandle_t) {
   event_t e{}; e.kind = EV_T_LCD_RESTORE;
@@ -45,6 +46,11 @@ static void cb_lcd_icon(TimerHandle_t) {
 
 static void cb_obstacle_warn(TimerHandle_t) {
   event_t e{}; e.kind = EV_T_OBSTACLE_WARN_FIRED;
+  xQueueSend(g_event_q, &e, 0);
+}
+
+static void cb_servo_stall(TimerHandle_t) {
+  event_t e{}; e.kind = EV_T_SERVO_STALL;
   xQueueSend(g_event_q, &e, 0);
 }
 
@@ -111,6 +117,9 @@ void setup() {
   g_lcd_restore_timer     = xTimerCreate("lcdRst",pdMS_TO_TICKS(2500),                      pdFALSE, nullptr, cb_lcd_restore);
   g_lcd_icon_timer        = xTimerCreate("lcdIcon",pdMS_TO_TICKS(200),                      pdTRUE,  nullptr, cb_lcd_icon);  // pdTRUE = periodic
   g_obstacle_warn_timer   = xTimerCreate("obsWarn",pdMS_TO_TICKS(5000),                     pdFALSE, nullptr, cb_obstacle_warn);
+  // Stall watchdog period is rewritten on each arm (2× expected travel); the
+  // 2000 ms here is a safe placeholder for the create-time period.
+  g_servo_stall_timer     = xTimerCreate("svStl", pdMS_TO_TICKS(2000),                      pdFALSE, nullptr, cb_servo_stall);
 
   // 7. FSM init (loads NVS config, applies servo angles)
   gate_fsm_init();
