@@ -49,6 +49,25 @@ def test_users_page(setup):
         assert b"alice" in r.data
 
 
+def test_api_users_list_returns_id_name_pairs(setup):
+    """/api/users.json powers the dashboard RFID-bind dropdown."""
+    app, db, *_ = setup
+    db.insert_user("bob")
+    with app.test_client() as c:
+        r = c.get("/api/users.json")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert isinstance(data, list)
+        names = [u["name"] for u in data]
+        assert "alice" in names
+        assert "bob" in names
+        for u in data:
+            assert "id" in u and isinstance(u["id"], int)
+            assert "name" in u and isinstance(u["name"], str)
+            # Only id+name should leak — no created_at / counts / etc.
+            assert set(u.keys()) == {"id", "name"}
+
+
 def test_events_json(setup):
     app, *_ = setup
     with app.test_client() as c:

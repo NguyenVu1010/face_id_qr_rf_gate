@@ -267,6 +267,18 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
                             "peripheral tracker not configured"})
         return jsonify({"items": peripherals.snapshot()})
 
+    @app.route("/api/users.json")
+    def api_users_list():
+        """Return [{id, name}, ...] for the dashboard bind-modal dropdown.
+
+        Backed by `db.list_users()` (same source as the /users page). Only the
+        id+name pair is exposed — counts and timestamps are not needed for the
+        dropdown and would only widen the payload.
+        """
+        rows = db.list_users()
+        # list_users yields tuples (id, name, created_at, last_seen, n_enc, n_qr)
+        return jsonify([{"id": r[0], "name": r[1]} for r in rows])
+
     @app.route("/api/users/<name>", methods=["DELETE", "POST"])
     def user_delete(name: str):
         """Delete a user. Cascades face_encodings + qr_tokens via FK.

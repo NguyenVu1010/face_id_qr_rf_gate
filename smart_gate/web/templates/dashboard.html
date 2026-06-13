@@ -141,6 +141,43 @@
   <span id="dashlog-sse-status" class="toast-stack-status">connecting…</span>
 </div>
 
+<!-- RFID bind popup: opens when SSE log shows `denied uid=<hex>`. Operator
+     picks a user from the dropdown → ADD calls POST /api/users/<name>/rfid
+     (Task 2.5.A endpoint). 30s auto-close. -->
+<dialog id="rfid-bind-modal" class="rfid-bind-modal">
+  <form id="rfid-bind-form" method="dialog">
+    <h3>Thẻ RFID mới</h3>
+    <p class="muted">Phát hiện thẻ chưa enroll. Bind cho user nào?</p>
+    <p>UID: <code id="rfid-bind-uid" class="mono"></code></p>
+    <label>
+      <span>User:</span>
+      <select id="rfid-bind-user" required>
+        <option value="" disabled selected>— chọn user —</option>
+      </select>
+    </label>
+    <div class="rfid-bind-actions">
+      <button type="button" id="rfid-bind-reject" class="btn btn-secondary">Reject</button>
+      <button type="submit" id="rfid-bind-add" class="btn btn-accent">ADD</button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+.rfid-bind-modal {
+  padding: 0; border: none; border-radius: 8px;
+  background: var(--card-bg, #1f2937); color: var(--text, #e5e7eb);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  max-width: 420px;
+}
+.rfid-bind-modal::backdrop { background: rgba(0,0,0,0.55); }
+.rfid-bind-modal form { padding: 24px; display: grid; gap: 14px; }
+.rfid-bind-modal h3 { margin: 0; }
+.rfid-bind-modal code { font-size: 18px; padding: 4px 8px;
+                       background: rgba(255,255,255,0.06); border-radius: 4px; }
+.rfid-bind-modal select { padding: 6px 8px; min-width: 180px; }
+.rfid-bind-actions { display: flex; gap: 10px; justify-content: flex-end; }
+</style>
+
 <script>
 // --- Toast stack: render SSE events from /api/esp_log/stream as floating
 // toasts at bottom-right. Each lives 4–6s depending on level, slides in
@@ -216,14 +253,136 @@
     var es = new EventSource('/api/esp_log/stream');
     es.addEventListener('open',  function() { setStatus('live'); });
     es.addEventListener('error', function() { setStatus('disconnected'); });
-    es.addEventListener('log', function(ev) {
-      try { pushToast(JSON.parse(ev.data)); } catch (e) {}
-    });
-    es.onmessage = function(ev) {
-      try { pushToast(JSON.parse(ev.data)); } catch (e) {}
-    };
+    function handleEvent(ev) {
+      var item;
+      try { item = JSON.parse(ev.data); } catch (e) { return; }
+      pushToast(item);
+      // RFID bind popup: when ESP denies a swipe (unknown UID), the daemon
+      // emits `denied uid=<hex> name=…` at warn. Pop the bind modal so the
+      // operator can enroll the card on the spot. The popup itself lives in
+      // a separate IIFE further down and exposes window.smartGateBindPrompt.
+      if (item.tag === 'rfid' && (item.lvl === 'warn' || item.lvl === 'error')) {
+        var m = (item.msg || '').match(/denied uid=([0-9A-Fa-f]{4,24})/);
+        if (m && window.smartGateBindPrompt) {
+          window.smartGateBindPrompt(m[1]);
+        }
+      }
+    }
+    es.addEventListener('log', handleEvent);
+    es.onmessage = handleEvent;
   }
   open();
+})();
+
+// --- RFID bind popup: opens via window.smartGateBindPrompt(uid) when an
+// unenrolled card is swiped. Loads /api/users.json into the dropdown; ADD
+// posts to /api/users/<name>/rfid (Task 2.5.A); Reject just dismisses.
+// 30s auto-close so an abandoned modal doesn't trap subsequent swipes.
+(function () {
+  var bindShowing = false;
+  var bindTimeoutId = null;
+  var modal   = document.getElementById('rfid-bind-modal');
+  var uidEl   = document.getElementById('rfid-bind-uid');
+  var userSel = document.getElementById('rfid-bind-user');
+  var form    = document.getElementById('rfid-bind-form');
+  var rejectBtn = document.getElementById('rfid-bind-reject');
+  if (!modal || !form || !uidEl || !userSel || !rejectBtn) return;
+
+  // Local toast shim — the dashboard's pushToast() is scoped inside another
+  // IIFE, and app.js's toast() expects HTMX attributes. Both inaccessible
+  // from here. Render a one-off toast directly into #toast-stack instead.
+  function flashToast(msg, lvl) {
+    var stack = document.getElementById('toast-stack');
+    if (!stack) return;
+    var cls = lvl === 'err' || lvl === 'error' ? 'toast-err'
+            : lvl === 'warn' ? 'toast-warn' : 'toast-info';
+    var el = document.createElement('div');
+    el.className = 'toast ' + cls;
+    el.innerHTML =
+      '<span class="toast-dir">·</span>' +
+      '<span class="toast-tag">bind</span>' +
+      '<span class="toast-msg"></span>';
+    el.querySelector('.toast-msg').textContent = msg;
+    stack.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('show'); });
+    setTimeout(function () {
+      el.classList.add('leave');
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 300);
+    }, 4000);
+  }
+
+  async function loadUsers() {
+    userSel.innerHTML =
+      '<option value="" disabled selected>— chọn user —</option>';
+    try {
+      var r = await fetch('/api/users.json');
+      if (!r.ok) return;
+      var users = await r.json();
+      users.forEach(function (u) {
+        var opt = document.createElement('option');
+        opt.value = u.name;
+        opt.textContent = u.name;
+        userSel.appendChild(opt);
+      });
+    } catch (e) { /* silent — dropdown stays at placeholder */ }
+  }
+
+  async function showBindFor(uid) {
+    // Already-open modal wins; ignore re-triggers for any UID. This prevents
+    // a stack of swipes from blowing through several enrollments accidentally.
+    if (bindShowing) return;
+    bindShowing = true;
+    uidEl.textContent = uid;
+    await loadUsers();
+    if (typeof modal.showModal === 'function') modal.showModal();
+    bindTimeoutId = setTimeout(function () {
+      if (modal.open) modal.close();
+    }, 30000);
+  }
+
+  function closeBind() {
+    if (modal.open) modal.close();
+    bindShowing = false;
+    if (bindTimeoutId) { clearTimeout(bindTimeoutId); bindTimeoutId = null; }
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var uid  = uidEl.textContent;
+    var name = userSel.value;
+    if (!name) return;
+    try {
+      var r = await fetch(
+        '/api/users/' + encodeURIComponent(name) + '/rfid',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: uid }),
+        });
+      if (r.ok) {
+        flashToast('✓ ' + uid + ' → ' + name, 'info');
+      } else {
+        var text = await r.text();
+        flashToast('✗ ' + text.slice(0, 100), 'err');
+      }
+    } catch (err) {
+      flashToast('✗ network error', 'err');
+    }
+    closeBind();
+  });
+
+  // The dialog's own close (Escape key, backdrop) clears the flag too.
+  modal.addEventListener('close', function () {
+    bindShowing = false;
+    if (bindTimeoutId) { clearTimeout(bindTimeoutId); bindTimeoutId = null; }
+  });
+
+  rejectBtn.addEventListener('click', function () { closeBind(); });
+
+  // Hook consumed by the SSE log handler above.
+  window.smartGateBindPrompt = showBindFor;
 })();
 
 // --- Recent events panel: dismiss button ---

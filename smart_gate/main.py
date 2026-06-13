@@ -504,7 +504,7 @@ def _handle_esp_event(evt: EspEvent, db, matcher, bus, trig_queue,
             # Denied — do NOT write an event row (avoids spam from random
             # cards near the reader). Audit only.
             _audit(esp_log_bus, "warn", "rfid",
-                   f"denied uid={raw_uid[:8]}… name={name or '(unknown)'}",
+                   f"denied uid={raw_uid} name={name or '(unknown)'}",
                    direction="←")
             log.info("rfid denied: %s", d)
             return
