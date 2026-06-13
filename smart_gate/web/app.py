@@ -73,6 +73,34 @@ def _emit_audit(esp_log_bus, lvl: str, tag: str, msg: str,
     })
 
 
+def _list_uids_for_user(uart, name: str) -> list[str]:
+    """Return UIDs in the ESP allowlist bound to `name`.
+
+    Single call to `cmd:list_uids` returning [{uid, name}, ...]; filter
+    Python-side. LinkDown/LinkTimeout/malformed payloads all return [],
+    so callers can treat "no ESP data" as "no UIDs" without bespoke
+    error handling at each call site.
+    """
+    if uart is None:
+        return []
+    try:
+        ack = uart.send_cmd("list_uids", {}, timeout=2.0)
+    except (LinkDown, LinkTimeout):
+        return []
+    except Exception:
+        log.exception("list_uids: unexpected error")
+        return []
+    data = ack.get("data") if isinstance(ack, dict) else None
+    if not isinstance(data, dict):
+        return []
+    entries = data.get("uids")
+    if not isinstance(entries, list):
+        return []
+    return [e["uid"] for e in entries
+            if isinstance(e, dict) and e.get("name") == name
+            and isinstance(e.get("uid"), str)]
+
+
 def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None,
                matcher=None, overlay=None, reload_event=None,
                gate_tracker=None, cv2_module=None,
