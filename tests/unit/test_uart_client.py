@@ -180,12 +180,14 @@ def test_uart_client_next_id_seeded_from_time(monkeypatch):
 def test_rx_loop_discards_oversized_non_terminated_line(
     fake_serial, event_bus, caplog
 ):
-    """A read_until that returns bytes WITHOUT a trailing \\n must be discarded,
-    not parsed as a partial line and not accumulated.
+    """A read_until that returns bytes WITHOUT a trailing \\n and which fills
+    the rx buffer past MAX_LINE must be discarded — never accumulated forever
+    and never fed into protocol.decode as a partial line.
 
     Simulates a floating ESP UART that streams non-\\n bytes at 115200 bps —
     pyserial's read_until() would return up to size= bytes without a newline.
-    The rx loop must drop these and continue, not feed them into protocol.decode.
+    The rx loop accumulates partial reads, but once the buffer hits the
+    MAX_LINE+1 cap with no terminator, it must drop and continue.
     """
     import logging as _logging
     from smart_gate.link import protocol
@@ -233,6 +235,66 @@ def test_rx_loop_discards_oversized_non_terminated_line(
         # i.e. the link is alive (last_rx was updated by the heartbeat, not by
         # the discarded garbage).
         assert client.link_alive(), "rx loop should keep draining after discard"
+
+        shutdown.set()
+        client.join(timeout=2.0)
+    finally:
+        target_logger.removeHandler(handler)
+
+
+def test_rx_loop_accumulates_partial_reads_into_one_line(fake_serial, event_bus):
+    """A line that arrives across 2+ read_until calls must still parse cleanly.
+
+    This is the Task 2.5 regression case: pyserial's read_until at 115200 baud
+    can return a partial line if the byte stream lags (timeout mid-frame). The
+    rx loop must accumulate bytes across calls and emit one valid event, not
+    drop the leading chunk and then try to parse the trailing fragment.
+    """
+    import logging as _logging
+
+    # Capture any "non-terminated" warnings so we can assert NONE were emitted
+    # for a valid line that just happened to arrive in two chunks.
+    records: list[_logging.LogRecord] = []
+
+    class _ListHandler(_logging.Handler):
+        def emit(self, record):
+            records.append(record)
+
+    target_logger = _logging.getLogger("smart_gate.link.uart_client")
+    handler = _ListHandler(level=_logging.WARNING)
+    target_logger.addHandler(handler)
+    try:
+        client, shutdown = _start_client(fake_serial, event_bus)
+        ser = fake_serial[-1]
+
+        # Simulate pyserial returning the line in 2 chunks:
+        #   chunk 1: prefix without \n
+        #   chunk 2: rest with trailing \n
+        ser.inject_raw(b'{"type":"evt","v":"heartbea')
+        ser.inject_raw(b't","data":{"uptime_s":42}}\n')
+
+        # Give the rx loop time to accumulate both chunks and dispatch.
+        deadline = time.monotonic() + 1.0
+        items = []
+        while time.monotonic() < deadline:
+            try:
+                items.append(event_bus.get(timeout=0.05))
+                break
+            except queue.Empty:
+                continue
+
+        # The single event must have been emitted from the merged chunks.
+        assert any(getattr(i, "v", None) == "heartbeat"
+                   and i.data == {"uptime_s": 42} for i in items), (
+            f"expected 1 heartbeat event from merged partial reads; got {items}"
+        )
+
+        # No "non-terminated" or "dropping" warning should have fired — a
+        # valid line split across reads is not garbage.
+        msgs = [r.getMessage() for r in records]
+        assert not any("non-terminated" in m or "dropping" in m for m in msgs), (
+            f"partial-read accumulation must not warn/drop; got: {msgs}"
+        )
 
         shutdown.set()
         client.join(timeout=2.0)

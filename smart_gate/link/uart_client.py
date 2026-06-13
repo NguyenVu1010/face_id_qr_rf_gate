@@ -82,6 +82,9 @@ class UartClient:
         self._last_rx = 0.0
         self._connected = threading.Event()
         self._threads: list[threading.Thread] = []
+        # Accumulates bytes across read_until calls — pyserial may return
+        # partial reads on slow byte streams at 115200 baud. See _rx_loop.
+        self._rx_buf = b""
 
     def _init_id_counter(self) -> None:
         """Seed _next_id from int(time.time()) so cmd ids are monotonic
@@ -188,25 +191,40 @@ class UartClient:
                     if self._ser is None:
                         # _reconnect returns without _ser only on shutdown
                         return
+                # Accumulate bytes across calls — pyserial may return partial
+                # reads on slow byte streams at 115200 bps (a single line can
+                # be split across multiple read_until returns). Drop only when
+                # the buffer exceeds MAX_LINE without seeing a terminator
+                # (the real overflow case from a floating UART).
+                remaining = protocol.MAX_LINE + 1 - len(self._rx_buf)
+                if remaining <= 0:
+                    log.warning("rx: dropping %d non-terminated bytes (oversize)",
+                                len(self._rx_buf))
+                    self._rx_buf = b""
+                    continue
                 try:
-                    # Cap the read at MAX_LINE+1 bytes so a misbehaving / floating
-                    # ESP UART that pumps non-\n bytes at 115200 bps cannot grow
-                    # an unbounded bytearray inside readline() (OOM kill).
-                    line = self._ser.read_until(b"\n", size=protocol.MAX_LINE + 1)
+                    # Cap the read at MAX_LINE+1 - len(buf) bytes so a misbehaving
+                    # / floating ESP UART that pumps non-\n bytes at 115200 bps
+                    # cannot grow an unbounded bytearray (OOM kill).
+                    chunk = self._ser.read_until(b"\n", size=remaining)
                 except SerialException as e:
                     log.warning("rx exception: %s", e)
                     with self._port_lock:
                         self._ser = None
                     self._connected.clear()
                     continue
-                if not line:
+                if not chunk:
+                    continue   # serial timeout, no new bytes
+                self._rx_buf += chunk
+                if not self._rx_buf.endswith(b"\n"):
+                    if len(self._rx_buf) >= protocol.MAX_LINE + 1:
+                        log.warning("rx: dropping %d non-terminated bytes (oversize)",
+                                    len(self._rx_buf))
+                        self._rx_buf = b""
+                    # else: still accumulating — keep buffer, try next iteration
                     continue
-                if not line.endswith(b"\n"):
-                    # read_until hit the byte cap before seeing \n — this is
-                    # garbage from a floating UART. Drop it instead of feeding
-                    # a partial line into the decoder.
-                    log.warning("rx: dropping %d non-terminated bytes", len(line))
-                    continue
+                line = self._rx_buf
+                self._rx_buf = b""
                 try:
                     msg = protocol.decode(line)
                 except protocol.ProtocolError as e:
