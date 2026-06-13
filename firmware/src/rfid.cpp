@@ -36,13 +36,19 @@ void rfid_init() {
   s_rc522.PCD_Init();
   delay(50);
   uint8_t ver = s_rc522.PCD_ReadRegister(MFRC522::VersionReg);
-  if (ver != 0x91 && ver != 0x92) {
-    LOGE("rfid", "init failed version=0x%02x", ver);
+  // MFRC522 clones report various values (FM17522=0x88, others 0x12/0x18 etc.).
+  // Only 0x00 (MISO stuck low) and 0xFF (floating) indicate dead SPI.
+  if (ver == 0x00 || ver == 0xFF) {
+    LOGE("rfid", "init failed: SPI dead, version=0x%02x", ver);
     s_rfid_ok = false;
     return;
   }
   s_rfid_ok = true;
-  LOGI("rfid", "init ok version=0x%02x", ver);
+  if (ver == 0x91 || ver == 0x92) {
+    LOGI("rfid", "init ok version=0x%02x (NXP)", ver);
+  } else {
+    LOGI("rfid", "init ok version=0x%02x (clone, accepted)", ver);
+  }
 }
 
 void rfid_task(void* /*arg*/) {
@@ -63,8 +69,13 @@ void rfid_task(void* /*arg*/) {
         s_rc522.PCD_Init();
         delay(50);
         uint8_t ver = s_rc522.PCD_ReadRegister(MFRC522::VersionReg);
-        if (ver == 0x91 || ver == 0x92) {
-          LOGI("rfid", "recovered version=0x%02x", ver);
+        // Accept any value other than dead-SPI markers (0x00 / 0xFF).
+        if (ver != 0x00 && ver != 0xFF) {
+          if (ver == 0x91 || ver == 0x92) {
+            LOGI("rfid", "recovered version=0x%02x (NXP)", ver);
+          } else {
+            LOGI("rfid", "recovered version=0x%02x (clone, accepted)", ver);
+          }
           s_rfid_ok = true;
         } else if (millis() - s_last_fault_emit_ms > 300000) {
           s_last_fault_emit_ms = millis();
@@ -78,7 +89,9 @@ void rfid_task(void* /*arg*/) {
     if (millis() - s_last_probe_ms > 60000) {
       s_last_probe_ms = millis();
       uint8_t ver = s_rc522.PCD_ReadRegister(MFRC522::VersionReg);
-      if (ver != 0x91 && ver != 0x92) {
+      // Drift = SPI went dead (0x00 / 0xFF). Other values are still a
+      // responding chip (NXP or clone) — keep going.
+      if (ver == 0x00 || ver == 0xFF) {
         LOGW("rfid", "drift version=0x%02x, will recover next cycle", ver);
         s_rfid_ok = false;
         continue;
