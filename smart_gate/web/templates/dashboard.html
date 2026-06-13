@@ -468,7 +468,7 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
     if (r.ok) {
       var faceMsg = r.captured > 0
         ? '(face đã capture ' + escapeHtml(r.captured) + ' samples)'
-        : '(face sẽ tự bind khi user qu\u1edt QR/RFID)';
+        : '(face sẽ tự bind khi user quẹt QR/RFID)';
       var qrUrl = escapeHtml(r.qr_url);
       box.innerHTML =
         '<article class="card" style="margin-top:var(--s-3);border-color:var(--ok);">' +
@@ -482,7 +482,7 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
         '<a class="btn btn-secondary" href="' + qrUrl + '?download=1" download>⬇ Tải QR PNG</a>' +
         '</div>' +
         '<p class="muted" style="margin-top:var(--s-3);font-size:var(--fs-sm);">' +
-        'In QR ra giấy hoặc lưu vào điện thoại — lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → qu\u1edt QR → bbox chuyển xanh + ID.' +
+        'In QR ra giấy hoặc lưu vào điện thoại — lần đầu cầm QR lên trước cam sẽ thấy bbox đỏ → quẹt QR → bbox chuyển xanh + ID.' +
         '</p>' +
         '</div></article>';
     } else {
