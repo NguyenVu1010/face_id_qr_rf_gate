@@ -8,6 +8,14 @@
 <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
+{% if asset_warnings %}
+<div class="asset-warning-banner" role="alert">
+  &#9888; WEB ASSETS DEGRADED &mdash; missing or placeholder:
+  <code>{{ asset_warnings | join(', ') }}</code>.
+  Dashboard buttons will not work. Re-deploy these files to
+  <code>smart_gate/web/static/</code> and restart the service.
+</div>
+{% endif %}
 <header class="topbar">
   <a class="brand" href="/"><span class="mark">◆</span> smart_gate</a>
   <nav class="nav">
