@@ -312,3 +312,22 @@ dialog.dialog::backdrop { background: rgba(15,23,42,0.4); backdrop-filter: blur(
   padding: 1px 6px;
   border-radius: 3px;
 }
+.uid-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.uid-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.uid-chip code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.uid-chip-x {
+  background: none; border: none; color: #ef4444;
+  font-size: 16px; line-height: 1; cursor: pointer;
+  padding: 0 2px;
+}
+.uid-chip-x:hover { color: #b91c1c; }

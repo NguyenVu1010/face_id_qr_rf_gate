@@ -52,6 +52,9 @@
           {% endif %}
         </td>
         <td>
+          <div class="uid-chips" data-user="{{ name }}">
+            <span class="uid-chips-loading muted">đang tải UIDs…</span>
+          </div>
           <form class="rfid-form"
                 onsubmit="return addRfid(event, '{{ name }}', {{ id_ }})"
                 style="display:flex;gap:var(--s-2);align-items:center;flex-wrap:wrap;">
@@ -156,5 +159,54 @@ document.body.addEventListener('htmx:beforeSwap', function(evt) {
     }
   }
 });
+
+// Lazy-load UID chips per user row on first visible.
+function loadUidChips(el) {
+  if (el.dataset.loaded === '1') return;
+  el.dataset.loaded = '1';
+  const name = el.dataset.user;
+  fetch('/api/users/' + encodeURIComponent(name) + '/rfid.json')
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      const uids = (j && j.uids) || [];
+      el.innerHTML = '';
+      if (uids.length === 0) {
+        el.innerHTML = '<span class="muted">chưa có thẻ</span>';
+        return;
+      }
+      uids.forEach(function (uid) {
+        const chip = document.createElement('span');
+        chip.className = 'uid-chip';
+        chip.innerHTML = '<code>' +
+          uid.replace(/[<>&"]/g, function (c) {
+            return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];
+          }) +
+          '</code> <button type="button" class="uid-chip-x" ' +
+          'title="xóa UID này">&times;</button>';
+        chip.querySelector('.uid-chip-x').addEventListener('click',
+          function () { removeUid(name, uid, chip); });
+        el.appendChild(chip);
+      });
+    })
+    .catch(function () {
+      el.innerHTML = '<span class="muted">lỗi tải UIDs</span>';
+    });
+}
+
+function removeUid(name, uid, chipEl) {
+  if (!confirm('Xóa UID ' + uid + ' khỏi ' + name + '?')) return;
+  fetch('/api/users/' + encodeURIComponent(name)
+        + '/rfid/' + encodeURIComponent(uid),
+        { method: 'DELETE' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      chipEl.remove();
+    })
+    .catch(function (e) {
+      alert('Xóa UID thất bại: ' + e.message);
+    });
+}
+
+document.querySelectorAll('.uid-chips').forEach(loadUidChips);
 </script>
 {% endblock %}
