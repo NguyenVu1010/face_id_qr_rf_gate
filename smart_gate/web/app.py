@@ -323,20 +323,73 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
 
     @app.route("/api/users/<name>", methods=["DELETE", "POST"])
     def user_delete(name: str):
-        """Delete a user. Cascades face_encodings + qr_tokens via FK.
-        Removes the QR PNG. Triggers matcher reload.
+        """Delete a user. Cascades face_encodings + qr_tokens via FK,
+        removes the QR PNG, triggers matcher reload, AND best-effort
+        removes any RFID UIDs from the ESP allowlist so a deleted user's
+        card can't keep opening the gate.
 
-        Accepts either DELETE method or POST (forms-friendly, hx-post). For POST,
-        only acts if request has `?action=delete` to avoid accidental hits.
+        Body keys in 200 response:
+          ok: bool
+          name: str
+          removed_uids: list[str]    — uids successfully flushed from ESP
+          failed_uids:  list[str]    — uids whose remove_uid command failed
+          link_down:    bool         — true if list_uids couldn't talk to ESP
         """
         if request.method == "POST" and request.args.get("action") != "delete":
             return jsonify({"error": "use DELETE or POST?action=delete"}), 405
         if not re.match(r"^[A-Za-z0-9_\-]+$", name):
             return jsonify({"error": "invalid name"}), 400
+
+        # 1. Best-effort ESP cascade. Order matters: do this BEFORE SQLite
+        # delete so even a partial failure leaves no SQLite row pointing
+        # at a still-allowlisted UID. We re-implement the list_uids call
+        # inline (instead of using _list_uids_for_user) because we need to
+        # distinguish LinkDown from empty-list to surface link_down: true
+        # in the response — threading that signal through the helper would
+        # muddle its contract.
+        removed_uids: list[str] = []
+        failed_uids:  list[str] = []
+        link_down = False
+        uids_to_remove: list[str] = []
+        if uart is not None:
+            try:
+                ack = uart.send_cmd("list_uids", {}, timeout=2.0)
+                entries = (ack.get("data") or {}).get("uids") or []
+                uids_to_remove = [
+                    e["uid"] for e in entries
+                    if isinstance(e, dict)
+                    and e.get("name") == name
+                    and isinstance(e.get("uid"), str)
+                ]
+            except (LinkDown, LinkTimeout):
+                link_down = True
+                _emit_audit(esp_log_bus, "warn", "rfid",
+                            f"delete user={name}: ESP link down, "
+                            f"allowlist NOT flushed",
+                            direction="←")
+            except Exception:  # noqa: BLE001 — defensive catch-all
+                log.exception("list_uids during delete user=%s", name)
+                link_down = True
+
+        for uid in uids_to_remove:
+            try:
+                uart.send_cmd("remove_uid", {"uid": uid}, timeout=2.0)
+                removed_uids.append(uid)
+            except (LinkDown, LinkTimeout) as e:
+                failed_uids.append(uid)
+                log.warning("remove_uid failed for uid=%s: %s", uid, e)
+                _emit_audit(esp_log_bus, "warn", "rfid",
+                            f"remove_uid FAILED uid={uid} "
+                            f"during delete user={name}",
+                            direction="←")
+            except Exception:  # noqa: BLE001 — defensive catch-all
+                failed_uids.append(uid)
+                log.exception("remove_uid unexpected error uid=%s", uid)
+
+        # 2. SQLite cascade + QR PNG + matcher reload (existing flow).
         existed = db.delete_user(name)
         if not existed:
             return jsonify({"error": f"user {name} not found"}), 404
-        # Best-effort QR cleanup
         qr_path = qr_dir / f"{name}.png"
         try:
             qr_path.unlink()
@@ -346,8 +399,15 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             reload_event.set()
         elif matcher is not None:
             matcher.reload(db)
-        log.info("deleted user %s (cascade encodings/tokens + qr png)", name)
-        return jsonify({"ok": True, "name": name})
+        log.info("deleted user %s (cascade encodings/tokens + qr png + "
+                 "%d ESP UIDs)", name, len(removed_uids))
+        return jsonify({
+            "ok": True,
+            "name": name,
+            "removed_uids": removed_uids,
+            "failed_uids": failed_uids,
+            "link_down": link_down,
+        })
 
     @app.route("/api/users/<name>/rfid", methods=["POST"])
     def api_add_rfid(name: str):

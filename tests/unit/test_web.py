@@ -543,7 +543,14 @@ def test_delete_user_ok(setup):
         r = c.delete("/api/users/alice")
         assert r.status_code == 200, r.data
         body = r.get_json()
-        assert body == {"ok": True, "name": "alice"}
+        # New contract (Task 3 RFID overhaul) — body now includes ESP
+        # cascade results. With no uart wired into the test fixture, the
+        # cascade is a no-op: empty lists, link_down=False.
+        assert body["ok"] is True
+        assert body["name"] == "alice"
+        assert body["removed_uids"] == []
+        assert body["failed_uids"] == []
+        assert body["link_down"] is False
     assert db.get_user_id_by_name("alice") is None
 
 

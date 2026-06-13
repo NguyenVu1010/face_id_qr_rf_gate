@@ -105,3 +105,79 @@ def test_get_user_rfid_json_link_down(monkeypatch):
     # This is acceptable because the UI shows "no cards" either way.
     assert r.status_code == 200
     assert r.get_json() == {"uids": []}
+
+
+def test_delete_user_cascades_remove_uid():
+    """DELETE /api/users/<name> first removes ESP allowlist entries."""
+    from smart_gate.web.app import create_app
+    db = Mock()
+    db.delete_user.return_value = True
+    hub = Mock()
+    uart = Mock()
+    # First call (list_uids): two UIDs; subsequent calls (remove_uid each): ok
+    uart.send_cmd.side_effect = [
+        _ack([{"uid": "AAAA", "name": "alice"},
+              {"uid": "BBBB", "name": "alice"}]),
+        {"data": {"ok": True}},
+        {"data": {"ok": True}},
+    ]
+
+    app = create_app(db=db, hub=hub, uart=uart, data_dir="/tmp")
+    client = app.test_client()
+
+    r = client.delete("/api/users/alice")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["ok"] is True
+    assert sorted(body["removed_uids"]) == ["AAAA", "BBBB"]
+    assert body.get("failed_uids", []) == []
+    # Verify the call ordering: list_uids then two remove_uid
+    calls = uart.send_cmd.call_args_list
+    assert calls[0].args[0] == "list_uids"
+    assert calls[1].args[0] == "remove_uid"
+    assert calls[2].args[0] == "remove_uid"
+    db.delete_user.assert_called_once_with("alice")
+
+
+def test_delete_user_link_down_still_deletes_sqlite():
+    from smart_gate.web.app import create_app
+    db = Mock()
+    db.delete_user.return_value = True
+    hub = Mock()
+    uart = Mock()
+    uart.send_cmd.side_effect = LinkDown("no esp")
+
+    app = create_app(db=db, hub=hub, uart=uart, data_dir="/tmp")
+    client = app.test_client()
+
+    r = client.delete("/api/users/alice")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["removed_uids"] == []
+    assert body.get("link_down") is True
+    db.delete_user.assert_called_once_with("alice")
+
+
+def test_delete_user_partial_uid_failure():
+    from smart_gate.web.app import create_app
+    db = Mock()
+    db.delete_user.return_value = True
+    hub = Mock()
+    uart = Mock()
+    # list_uids ok, first remove_uid ok, second raises
+    uart.send_cmd.side_effect = [
+        _ack([{"uid": "AAAA", "name": "alice"},
+              {"uid": "BBBB", "name": "alice"}]),
+        {"data": {"ok": True}},
+        LinkTimeout("esp slow"),
+    ]
+
+    app = create_app(db=db, hub=hub, uart=uart, data_dir="/tmp")
+    client = app.test_client()
+
+    r = client.delete("/api/users/alice")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["removed_uids"] == ["AAAA"]
+    assert body["failed_uids"] == ["BBBB"]
+    db.delete_user.assert_called_once_with("alice")
