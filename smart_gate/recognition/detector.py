@@ -86,6 +86,13 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
             "pyzbar": _pz,
         }
 
+    # Rate-limit per-frame exception logging. A malformed encoding in the
+    # matcher can raise on every frame (~20 Hz) and blow ~50 MB/min into
+    # app.log via log.exception's traceback. If errors exceed 5/s, emit a
+    # single warning and sleep 500 ms to throttle.
+    err_window_start = time.monotonic()
+    err_count = 0
+
     while not shutdown.is_set():
         bgr = hub.wait_bgr(timeout=1.0)
         if bgr is None:
@@ -100,6 +107,15 @@ def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
                 fps_counter.tick()
         except Exception as e:
             log.exception("detector frame failed: %s", e)
+            now = time.monotonic()
+            if now - err_window_start > 1.0:
+                err_window_start = now
+                err_count = 0
+            err_count += 1
+            if err_count > 5:
+                log.warning("detector: errors >5/s, sleeping 0.5s")
+                time.sleep(0.5)
+                err_count = 0   # reset after the sleep
 
 
 def _process_frame(bgr, cfg, matcher, bus, deps, *, overlay=None,

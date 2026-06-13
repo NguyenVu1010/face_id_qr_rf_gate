@@ -96,16 +96,24 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
     def stream():
         """MJPEG with face-detection bbox overlay drawn from OverlayState."""
         def gen():
-            try:
-                while True:
-                    jpg = _annotated_jpeg(hub, overlay, cv2_module)
-                    if jpg is None:
-                        jpg = _PLACEHOLDER_JPEG
+            while True:
+                try:
+                    jpg = _annotated_jpeg(hub, overlay, cv2_module,
+                                          timeout=0.5)
+                except Exception:
+                    # Don't let a single bad frame kill the stream.
+                    continue
+                if jpg is None:
+                    jpg = _PLACEHOLDER_JPEG
+                try:
                     yield (b"--FRAME\r\nContent-Type: image/jpeg\r\n"
                            b"Content-Length: " + str(len(jpg)).encode() + b"\r\n\r\n"
                            + jpg + b"\r\n")
-            except (GeneratorExit, OSError):
-                return
+                except (GeneratorExit, OSError, BrokenPipeError):
+                    # Browser tab closed / nginx upstream gone — exit the
+                    # generator within one wait cycle (~0.5 s) instead of
+                    # holding for the old 2 s timeout per frame.
+                    break
         return Response(gen(),
                         mimetype="multipart/x-mixed-replace; boundary=FRAME")
 
@@ -638,19 +646,22 @@ def _encode_face(bgr, cv2_module, fr):
     return encs[0] if encs else None
 
 
-def _annotated_jpeg(hub, overlay, cv2_module=None):
+def _annotated_jpeg(hub, overlay, cv2_module=None, timeout: float = 2.0):
     """Return a JPEG (bytes) with the latest BGR frame + bbox overlay drawn.
 
     If cv2 is unavailable, falls back to raw cap-thread JPEG (no overlay).
+    `timeout` controls the underlying frame wait — the MJPEG generator
+    passes a short value (0.5 s) so the loop wakes promptly on client
+    disconnect.
     """
     if cv2_module is None:
         try:
             import cv2 as cv2_module
         except ImportError:
-            jpg = hub.wait_jpeg(timeout=2.0)
+            jpg = hub.wait_jpeg(timeout=timeout)
             return jpg
 
-    bgr = hub.wait_bgr(timeout=2.0)
+    bgr = hub.wait_bgr(timeout=timeout)
     if bgr is None:
         return None
 

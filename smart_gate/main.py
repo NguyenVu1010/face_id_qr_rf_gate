@@ -54,6 +54,12 @@ def _cap_rfid_fields(d: dict) -> tuple[str, str]:
 
 def main(argv=None) -> int:
     global _current_shutdown
+    # Cap per-thread stack from glibc's 8 MB default to 256 KB. Werkzeug's
+    # threaded server spawns one thread per request; a leaked/long-lived
+    # thread otherwise reserves 8 MB of VM each, making RSS balloon under
+    # tab churn. Must be set BEFORE any thread starts.
+    threading.stack_size(256 * 1024)
+
     p = argparse.ArgumentParser(prog="smart_gate")
     p.add_argument("--config", default="/etc/smart-gate/config.toml")
     args = p.parse_args(argv)
