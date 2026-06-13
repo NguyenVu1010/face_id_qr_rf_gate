@@ -203,14 +203,6 @@
         `<span class="msg">${escape(r.msg)}</span>`;
       logList.insertBefore(li, logList.firstChild);
       while (logList.children.length > CAPACITY) logList.lastChild.remove();
-      // RFID bind popup hook — only wired on the dashboard, where
-      // window.smartGateBindPrompt is set. No-op on the system page.
-      if (r.tag === 'rfid' && (r.lvl === 'warn' || r.lvl === 'error')) {
-        const m = (r.msg || '').match(/denied uid=([0-9A-Fa-f]{4,24})/);
-        if (m && window.smartGateBindPrompt) {
-          window.smartGateBindPrompt(m[1]);
-        }
-      }
     });
     es.onopen = () => {
       if (!status) return;

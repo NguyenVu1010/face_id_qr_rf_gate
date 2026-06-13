@@ -450,13 +450,20 @@ def test_dashboard_has_stream_quickstats_events(setup):
 
 
 def test_dashboard_preserves_enroll_button(setup):
-    """The 'Tạo user mới' / /api/enroll workflow must survive the rewrite."""
+    """The 'Tạo user mới' / /api/enroll workflow must survive the rewrite.
+
+    The button is now click-driven (opens the unified add-user modal) rather
+    than HTMX-driven, but it must still trigger the /api/enroll path with a
+    face_capture flag and surface results via the #enroll-result fallback.
+    """
     app, *_ = setup
     with app.test_client() as c:
         r = c.get("/")
-        assert b'hx-post="/api/enroll"' in r.data
-        assert b'face_capture' in r.data           # hx-vals
-        assert b'enroll-result' in r.data          # response card target
+        assert b'id="open-add-user-modal"' in r.data    # new entry point
+        assert b'id="add-user-modal"' in r.data         # new modal
+        assert b'/api/enroll' in r.data                 # endpoint still called
+        assert b'face_capture' in r.data                # mode payload key
+        assert b'enroll-result' in r.data               # response card target
 
 
 def test_dashboard_preserves_gate_badge(setup):

@@ -77,14 +77,7 @@
               hx-swap="none"
               data-toast-ok="Gate closing…"
               data-toast-err="Gate command failed">&#9209; Close gate</button>
-      <button class="btn btn-secondary"
-              hx-post="/api/enroll"
-              hx-headers='{"Content-Type": "application/json"}'
-              hx-vals='{"face_capture": false}'
-              hx-target="#enroll-result"
-              hx-swap="innerHTML"
-              hx-indicator="#enroll-spinner"
-              hx-confirm="Tạo user mới + QR? Sau đó user quẹt QR/RFID lúc đứng trước cam để bind face.">
+      <button type="button" class="btn btn-secondary" id="open-add-user-modal">
         + Tạo user mới
       </button>
       <span id="enroll-spinner" class="htmx-indicator muted">&#9203; creating…</span>
@@ -141,57 +134,60 @@
   <span id="dashlog-sse-status" class="toast-stack-status">connecting…</span>
 </div>
 
-<!-- RFID bind popup: opens when SSE log shows `denied uid=<hex>`. Operator
-     either binds the UID to an existing user (dropdown) OR spins up a fresh
-     user_NNN via /api/enroll and binds in one click (no /users round-trip).
-     30s auto-close. -->
-<dialog id="rfid-bind-modal" class="rfid-bind-modal">
-  <form id="rfid-bind-form" method="dialog">
-    <h3>Thẻ RFID mới</h3>
-    <p class="muted">Phát hiện thẻ chưa enroll.</p>
-    <p>UID: <code id="rfid-bind-uid" class="mono"></code></p>
+<!-- Unified Add-user modal: admin clicks "+ Tạo user mới" → picks Face or
+     RFID mode → submits. Face mode captures 3 samples via /api/enroll.
+     RFID mode enrolls a placeholder user then binds the typed UID. -->
+<dialog id="add-user-modal" class="add-user-modal">
+  <form id="add-user-form" method="dialog">
+    <h3>Thêm user mới</h3>
 
-    <div class="rfid-bind-mode">
-      <label><input type="radio" name="rfid-bind-mode" value="existing" checked> User có sẵn</label>
-      <label><input type="radio" name="rfid-bind-mode" value="new"> Tạo user mới</label>
+    <div class="add-user-mode">
+      <label><input type="radio" name="au-mode" value="face" checked> Face</label>
+      <label><input type="radio" name="au-mode" value="rfid"> RFID</label>
     </div>
 
-    <div id="rfid-bind-existing-section">
+    <div id="au-face-section">
+      <p class="muted">Đứng trước camera + nhìn vào ống kính.<br>
+         Hệ thống sẽ chụp <strong>3 frames</strong> và lưu face encoding.</p>
+      <p class="muted">Không cần tự đặt tên — server tự sinh <code>user_NNN</code>.</p>
+    </div>
+
+    <div id="au-rfid-section" style="display:none;">
       <label>
-        <span>User:</span>
-        <select id="rfid-bind-user">
-          <option value="" disabled selected>— chọn user —</option>
-        </select>
+        <span>UID hex:</span>
+        <input id="au-rfid-uid" type="text"
+               pattern="[0-9A-Fa-f]{4,24}"
+               maxlength="24"
+               placeholder="vd 23ac9f11">
       </label>
+      <p class="muted">Quẹt thẻ trước đầu đọc → copy UID từ live-log, hoặc gõ trực tiếp.<br>
+         Server tạo <code>user_NNN</code> + bind UID này. KHÔNG capture face.</p>
     </div>
 
-    <div id="rfid-bind-new-section" style="display:none;">
-      <p class="muted">Hệ thống sẽ tự đặt tên (user_NNN) và sinh QR.</p>
-    </div>
-
-    <div class="rfid-bind-actions">
-      <button type="button" id="rfid-bind-reject" class="btn btn-secondary">Reject</button>
-      <button type="submit" id="rfid-bind-add" class="btn btn-accent">ADD</button>
+    <div class="add-user-actions">
+      <button type="button" class="btn btn-secondary" id="au-cancel">Hủy</button>
+      <button type="submit" class="btn btn-accent" id="au-submit">Tạo</button>
     </div>
   </form>
 </dialog>
 
 <style>
-.rfid-bind-modal {
+.add-user-modal {
   padding: 0; border: none; border-radius: 8px;
   background: var(--card-bg, #1f2937); color: var(--text, #e5e7eb);
   box-shadow: 0 12px 48px rgba(0,0,0,0.5);
-  max-width: 420px;
+  max-width: 460px;
 }
-.rfid-bind-modal::backdrop { background: rgba(0,0,0,0.55); }
-.rfid-bind-modal form { padding: 24px; display: grid; gap: 14px; }
-.rfid-bind-modal h3 { margin: 0; }
-.rfid-bind-modal code { font-size: 18px; padding: 4px 8px;
-                       background: rgba(255,255,255,0.06); border-radius: 4px; }
-.rfid-bind-modal select { padding: 6px 8px; min-width: 180px; }
-.rfid-bind-mode { display: flex; gap: 16px; }
-.rfid-bind-mode label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.rfid-bind-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.add-user-modal::backdrop { background: rgba(0,0,0,0.55); }
+.add-user-modal form { padding: 24px; display: grid; gap: 14px; }
+.add-user-modal h3 { margin: 0; }
+.add-user-modal label { display: flex; gap: 6px; align-items: center; }
+.add-user-modal input[type=text] {
+  padding: 6px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  width: 100%; box-sizing: border-box;
+}
+.add-user-mode { display: flex; gap: 18px; }
+.add-user-actions { display: flex; gap: 10px; justify-content: flex-end; }
 </style>
 
 <script>
@@ -273,16 +269,6 @@
       var item;
       try { item = JSON.parse(ev.data); } catch (e) { return; }
       pushToast(item);
-      // RFID bind popup: when ESP denies a swipe (unknown UID), the daemon
-      // emits `denied uid=<hex> name=…` at warn. Pop the bind modal so the
-      // operator can enroll the card on the spot. The popup itself lives in
-      // a separate IIFE further down and exposes window.smartGateBindPrompt.
-      if (item.tag === 'rfid' && (item.lvl === 'warn' || item.lvl === 'error')) {
-        var m = (item.msg || '').match(/denied uid=([0-9A-Fa-f]{4,24})/);
-        if (m && window.smartGateBindPrompt) {
-          window.smartGateBindPrompt(m[1]);
-        }
-      }
     }
     es.addEventListener('log', handleEvent);
     es.onmessage = handleEvent;
@@ -290,192 +276,136 @@
   open();
 })();
 
-// --- RFID bind popup: opens via window.smartGateBindPrompt(uid) when an
-// unenrolled card is swiped. Two modes:
-//   - "existing": pick from /api/users.json dropdown, POST UID to that name.
-//   - "new":      POST /api/enroll (auto-allocates user_NNN + QR), then bind
-//                 the UID to the returned name. One click, no /users detour.
-// Reject just dismisses. 30s auto-close so an abandoned modal doesn't trap
-// subsequent swipes.
+// --- Unified Add-user modal: admin clicks "+ Tạo user mới" → picks mode →
+// submits. Face mode: POST /api/enroll {face_capture:true, samples:3} —
+// server creates user_NNN and captures 3 face samples. RFID mode: POST
+// /api/enroll {face_capture:false} → server returns name → POST
+// /api/users/<name>/rfid {uid:...}. Cancel button + backdrop click dismiss.
 (function () {
-  var bindShowing = false;
-  var bindTimeoutId = null;
-  var modal   = document.getElementById('rfid-bind-modal');
-  var uidEl   = document.getElementById('rfid-bind-uid');
-  var userSel = document.getElementById('rfid-bind-user');
-  var form    = document.getElementById('rfid-bind-form');
-  var rejectBtn = document.getElementById('rfid-bind-reject');
-  var addBtn  = document.getElementById('rfid-bind-add');
-  var existingSection = document.getElementById('rfid-bind-existing-section');
-  var newSection      = document.getElementById('rfid-bind-new-section');
-  if (!modal || !form || !uidEl || !userSel || !rejectBtn || !addBtn ||
-      !existingSection || !newSection) return;
-  var modeRadios = form.elements['rfid-bind-mode'];
+  const modal      = document.getElementById('add-user-modal');
+  const form       = document.getElementById('add-user-form');
+  const openBtn    = document.getElementById('open-add-user-modal');
+  const cancelBtn  = document.getElementById('au-cancel');
+  const submitBtn  = document.getElementById('au-submit');
+  const faceSec    = document.getElementById('au-face-section');
+  const rfidSec    = document.getElementById('au-rfid-section');
+  const uidInput   = document.getElementById('au-rfid-uid');
+  if (!modal || !openBtn) return;
 
   function currentMode() {
-    var checked = form.querySelector('input[name="rfid-bind-mode"]:checked');
-    return (checked && checked.value) || 'existing';
+    const r = form.querySelector('input[name="au-mode"]:checked');
+    return r ? r.value : 'face';
   }
-
   function applyMode() {
-    var mode = currentMode();
-    if (mode === 'new') {
-      existingSection.style.display = 'none';
-      newSection.style.display = '';
-      addBtn.textContent = '+ Tạo + Bind';
-      userSel.required = false;
+    const m = currentMode();
+    if (m === 'face') {
+      faceSec.style.display = '';
+      rfidSec.style.display = 'none';
+      submitBtn.textContent = 'Chụp + Tạo';
+      uidInput.required = false;
     } else {
-      existingSection.style.display = '';
-      newSection.style.display = 'none';
-      addBtn.textContent = 'ADD';
-      userSel.required = true;
+      faceSec.style.display = 'none';
+      rfidSec.style.display = '';
+      submitBtn.textContent = 'Tạo + Bind';
+      uidInput.required = true;
     }
   }
-  // modeRadios is a RadioNodeList when 2+ radios share a name; for-each it.
-  Array.prototype.forEach.call(modeRadios, function (r) {
+  Array.prototype.forEach.call(form.elements['au-mode'], function (r) {
     r.addEventListener('change', applyMode);
   });
 
-  // Local toast shim — the dashboard's pushToast() is scoped inside another
-  // IIFE, and app.js's toast() expects HTMX attributes. Both inaccessible
-  // from here. Render a one-off toast directly into #toast-stack instead.
-  function flashToast(msg, lvl) {
-    var stack = document.getElementById('toast-stack');
-    if (!stack) return;
-    var cls = lvl === 'err' || lvl === 'error' ? 'toast-err'
-            : lvl === 'warn' ? 'toast-warn' : 'toast-info';
-    var el = document.createElement('div');
-    el.className = 'toast ' + cls;
-    el.innerHTML =
-      '<span class="toast-dir">·</span>' +
-      '<span class="toast-tag">bind</span>' +
-      '<span class="toast-msg"></span>';
-    el.querySelector('.toast-msg').textContent = msg;
+  openBtn.addEventListener('click', function () {
+    // reset to face mode each open
+    form.reset();
+    form.querySelector('input[name="au-mode"][value="face"]').checked = true;
+    applyMode();
+    modal.showModal();
+  });
+  cancelBtn.addEventListener('click', function () {
+    if (modal.open) modal.close();
+  });
+
+  // Lightweight toast that injects into the dashboard's existing #toast-stack.
+  function flashToast(msg, kind) {
+    const stack = document.getElementById('toast-stack');
+    if (!stack) {
+      alert(msg);
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'toast toast-' + (kind || 'info');
+    el.textContent = msg;
     stack.appendChild(el);
     requestAnimationFrame(function () { el.classList.add('show'); });
     setTimeout(function () {
+      el.classList.remove('show');
       el.classList.add('leave');
-      setTimeout(function () {
-        if (el.parentNode) el.parentNode.removeChild(el);
-      }, 300);
-    }, 4000);
-  }
-
-  async function loadUsers() {
-    userSel.innerHTML =
-      '<option value="" disabled selected>— chọn user —</option>';
-    try {
-      var r = await fetch('/api/users.json');
-      if (!r.ok) return;
-      var users = await r.json();
-      users.forEach(function (u) {
-        var opt = document.createElement('option');
-        opt.value = u.name;
-        opt.textContent = u.name;
-        userSel.appendChild(opt);
-      });
-    } catch (e) { /* silent — dropdown stays at placeholder */ }
-  }
-
-  async function showBindFor(uid) {
-    // Already-open modal wins; ignore re-triggers for any UID. This prevents
-    // a stack of swipes from blowing through several enrollments accidentally.
-    if (bindShowing) return;
-    bindShowing = true;
-    uidEl.textContent = uid;
-    // Always start in "existing" mode — safer default; "new" allocates a
-    // user_NNN row irreversibly.
-    var existingRadio = form.querySelector(
-      'input[name="rfid-bind-mode"][value="existing"]');
-    if (existingRadio) existingRadio.checked = true;
-    applyMode();
-    await loadUsers();
-    if (typeof modal.showModal === 'function') modal.showModal();
-    bindTimeoutId = setTimeout(function () {
-      if (modal.open) modal.close();
-    }, 30000);
-  }
-
-  function closeBind() {
-    if (modal.open) modal.close();
-    bindShowing = false;
-    if (bindTimeoutId) { clearTimeout(bindTimeoutId); bindTimeoutId = null; }
+      setTimeout(function () { el.remove(); }, 350);
+    }, 4500);
   }
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    var uid  = uidEl.textContent;
-    var mode = currentMode();
-    var targetName = null;
-
+    const mode = currentMode();
+    submitBtn.disabled = true;
     try {
-      if (mode === 'new') {
-        // Step 1: allocate user_NNN + QR + capture 3 face samples from the
-        // live stream. face_capture=true is essential — admin almost always
-        // has the new user standing in front of the camera when binding a
-        // card, and without face capture the new user would only be
-        // recognizable via RFID/QR (no face-alone open).
+      if (mode === 'face') {
         flashToast('Đang capture mặt — đứng yên ~2s', 'info');
-        var enrollResp = await fetch('/api/enroll', {
+        const r = await fetch('/api/enroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ face_capture: true, samples: 3 }),
         });
-        if (!enrollResp.ok) {
-          var et = await enrollResp.text();
-          flashToast('✗ enroll fail: ' + et.slice(0, 100), 'err');
-          return;  // keep modal open so admin can retry
-        }
-        var enrollData = await enrollResp.json();
-        targetName = enrollData && enrollData.name;
-        if (!targetName) {
-          flashToast('✗ enroll trả về thiếu name', 'err');
+        if (!r.ok) {
+          const t = await r.text();
+          flashToast('✗ ' + t.slice(0, 100), 'err');
           return;
         }
-        if (typeof enrollData.captured === 'number' && enrollData.captured === 0) {
-          flashToast('⚠ Tạo ' + targetName + ' nhưng KHÔNG bắt được mặt — chỉ RFID/QR mới mở được', 'warn');
+        const d = await r.json();
+        if (typeof d.captured === 'number' && d.captured === 0) {
+          flashToast('⚠ Tạo ' + d.name + ' nhưng KHÔNG bắt được mặt — không có người trong frame', 'warn');
+        } else {
+          flashToast('✓ Tạo ' + d.name + ' (' + (d.captured || 0) + ' face samples)', 'info');
         }
       } else {
-        targetName = userSel.value;
-        if (!targetName) return;
-      }
-
-      // Step 2: bind the captured UID to the (possibly brand-new) name.
-      var bindResp = await fetch(
-        '/api/users/' + encodeURIComponent(targetName) + '/rfid',
-        {
+        const uid = (uidInput.value || '').trim();
+        if (!/^[0-9A-Fa-f]{4,24}$/.test(uid)) {
+          flashToast('✗ UID phải là 4-24 ký tự hex', 'err');
+          return;
+        }
+        // 1) create user_NNN
+        const r1 = await fetch('/api/enroll', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: uid }),
+          body: JSON.stringify({ face_capture: false }),
         });
-      if (bindResp.ok) {
-        var msg = (mode === 'new')
-          ? '✓ Tạo ' + targetName + ' + bind ' + uid
-          : '✓ ' + uid + ' → ' + targetName;
-        flashToast(msg, 'info');
-        closeBind();
-      } else {
-        var bt = await bindResp.text();
-        flashToast('✗ bind fail: ' + bt.slice(0, 100), 'err');
-        // Keep modal open — admin can pick a different user or retry. In
-        // "new" mode the user_NNN row is already created; admin can also
-        // dismiss and bind it later from /users.
+        if (!r1.ok) {
+          const t = await r1.text();
+          flashToast('✗ enroll: ' + t.slice(0, 100), 'err');
+          return;
+        }
+        const d1 = await r1.json();
+        const name = d1.name;
+        // 2) bind UID
+        const r2 = await fetch('/api/users/' + encodeURIComponent(name) + '/rfid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: uid.toLowerCase() }),
+        });
+        if (!r2.ok) {
+          const t = await r2.text();
+          flashToast('✗ Tạo ' + name + ' OK nhưng bind fail: ' + t.slice(0, 80), 'err');
+          return;
+        }
+        flashToast('✓ Tạo ' + name + ' + bind ' + uid.toLowerCase(), 'info');
       }
+      if (modal.open) modal.close();
     } catch (err) {
-      flashToast('✗ network error', 'err');
+      flashToast('✗ network error: ' + (err && err.message ? err.message : ''), 'err');
+    } finally {
+      submitBtn.disabled = false;
     }
   });
-
-  // The dialog's own close (Escape key, backdrop) clears the flag too.
-  modal.addEventListener('close', function () {
-    bindShowing = false;
-    if (bindTimeoutId) { clearTimeout(bindTimeoutId); bindTimeoutId = null; }
-  });
-
-  rejectBtn.addEventListener('click', function () { closeBind(); });
-
-  // Hook consumed by the SSE log handler above.
-  window.smartGateBindPrompt = showBindFor;
 })();
 
 // --- Recent events panel: dismiss button ---
