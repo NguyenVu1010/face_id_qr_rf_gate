@@ -9,6 +9,7 @@ void lcd_show_name(const char* name);
 void lcd_show_warn();
 void lcd_show_denied();
 void lcd_show_closing();
+void lcd_show_recovery();
 
 // Presence-icon overlay on row 0 cols 18-19 (writes only on state change).
 void lcd_update_icons(bool obstacle_present, bool card_present);

@@ -33,6 +33,12 @@ TimerHandle_t g_lcd_restore_timer     = nullptr;
 TimerHandle_t g_lcd_icon_timer        = nullptr;
 TimerHandle_t g_obstacle_warn_timer   = nullptr;
 TimerHandle_t g_servo_stall_timer     = nullptr;
+TimerHandle_t g_recovery_timer        = nullptr;
+
+// Captured once at boot before gate_fsm_init() so it can decide whether to enter
+// the brown-out recovery path (Tasks 3.9 + 3.10). Pointer to a static string in
+// reset_reason_string()'s switch — safe to share across translation units.
+const char* g_reset_reason_str = "unknown";
 
 static void cb_lcd_restore(TimerHandle_t) {
   event_t e{}; e.kind = EV_T_LCD_RESTORE;
@@ -51,6 +57,11 @@ static void cb_obstacle_warn(TimerHandle_t) {
 
 static void cb_servo_stall(TimerHandle_t) {
   event_t e{}; e.kind = EV_T_SERVO_STALL;
+  xQueueSend(g_event_q, &e, 0);
+}
+
+static void cb_recovery(TimerHandle_t) {
+  event_t e{}; e.kind = EV_T_RECOVERY_FALLBACK;
   xQueueSend(g_event_q, &e, 0);
 }
 
@@ -120,8 +131,13 @@ void setup() {
   // Stall watchdog period is rewritten on each arm (2× expected travel); the
   // 2000 ms here is a safe placeholder for the create-time period.
   g_servo_stall_timer     = xTimerCreate("svStl", pdMS_TO_TICKS(2000),                      pdFALSE, nullptr, cb_servo_stall);
+  g_recovery_timer        = xTimerCreate("recov", pdMS_TO_TICKS(RECOVERY_HOLD_MS),           pdFALSE, nullptr, cb_recovery);
 
-  // 7. FSM init (loads NVS config, applies servo angles)
+  // 7. FSM init (loads NVS config, applies servo angles).
+  //    Capture reset_reason FIRST so gate_fsm_init() can branch into the
+  //    brown-out recovery path (Tasks 3.9 + 3.10) when the last persisted
+  //    FSM state was mid-motion (OPENING/OPEN_WAIT/TIMEOUT_WARN/CLOSING).
+  g_reset_reason_str = reset_reason_string();
   gate_fsm_init();
 
   // 8. Task watchdog: 8s timeout, panic on expiry

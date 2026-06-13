@@ -18,6 +18,7 @@ enum EventKind : uint8_t {
   EV_T_LCD_ICON_TICK,   // 200 ms periodic — refresh top-right LCD icons
   EV_T_OBSTACLE_WARN_FIRED, // timer: obstacle persisted 5s; start warn buzzer
   EV_T_SERVO_STALL,         // timer: servo neither reached OPEN nor CLOSED within 2× expected travel
+  EV_T_RECOVERY_FALLBACK,   // timer: 5s hold-at-90° brown-out recovery expired → close normally
 };
 
 struct event_t {

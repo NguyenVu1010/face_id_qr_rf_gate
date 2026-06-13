@@ -18,6 +18,31 @@
 
 static GateState s_state = S_IDLE;
 static uint32_t s_passage_timeout_ms = DEFAULT_PASSAGE_TIMEOUT_MS;
+
+// NVS namespace persisting the last FSM state across reboots so a brown-out
+// mid-motion can be detected on the next boot (Tasks 3.9 + 3.10).
+// Opened in gate_fsm_init() and held open for the life of the program — every
+// transition calls persist_state() and Preferences flushes on each putUChar.
+static Preferences s_state_prefs;
+static bool s_state_prefs_ok = false;
+
+static void persist_state(GateState st) {
+  if (!s_state_prefs_ok) return;
+  s_state_prefs.putUChar("last_state", (uint8_t)st);
+  s_state_prefs.putULong("last_ts", millis());
+}
+
+static void emit_evt_gate_unknown(const char* reason) {
+  JsonDocument doc;
+  doc["type"] = "evt";
+  doc["v"]    = "gate";
+  doc["data"]["state"]        = "unknown";
+  doc["data"]["reset_reason"] = reason;
+  outbound_msg_t out;
+  size_t w = serializeJson(doc, out.json, sizeof out.json);
+  if (w > 0 && w < sizeof out.json) outbound_send(out);
+}
+
 // True when buzzer warn pattern is sounding due to obstacle persisting >5s in S_OPEN_WAIT.
 static bool s_obstacle_warn_active = false;
 // Timestamp (millis()) of entry into S_OPEN_WAIT — used to ignore spurious
@@ -162,12 +187,14 @@ static void handle_config(const event_t& e) {
 
 static void enter_idle() {
   s_state = S_IDLE;
+  persist_state(s_state);
   emit_evt_gate("closed");
   lcd_show_idle();
 }
 
 static void start_open() {
   s_state = S_OPENING;
+  persist_state(s_state);
   emit_evt_gate("opening");
   lcd_show_opening();
   servo_command_async(servo_open_deg(), SERVO_EXPECTED_TRAVEL_MS);
@@ -182,6 +209,7 @@ static void on_open_reached() {
   xTimerStop(g_servo_stall_timer, 0);
   if (s_state != S_OPENING) return;
   s_state = S_OPEN_WAIT;
+  persist_state(s_state);
   s_open_wait_entered_ms = millis();
   emit_evt_gate("open");
   buzzer_beep_ok_async();
@@ -247,6 +275,7 @@ static void start_closing() {
   if (s_obstacle_warn_active) buzzer_stop_warn_pattern();
   s_obstacle_warn_active = false;
   s_state = S_CLOSING;
+  persist_state(s_state);
   emit_evt_gate("closing");
   lcd_show_closing();
   servo_command_async(servo_close_deg(), SERVO_EXPECTED_TRAVEL_MS);
@@ -266,6 +295,7 @@ static void on_close_reached() {
 static void on_passage_timeout() {
   if (s_state != S_OPEN_WAIT) return;
   s_state = S_TIMEOUT_WARN;
+  persist_state(s_state);
   emit_evt_gate("timeout_warn");
   lcd_show_warn();
   buzzer_start_warn_pattern();
@@ -380,6 +410,15 @@ static void handle_event(const event_t& e) {
     force_close(0);
     return;
   }
+
+  if (e.kind == EV_T_RECOVERY_FALLBACK) {
+    LOGI("recovery", "fallback to idle — closing at normal speed from 90°");
+    // Move from neutral 90° → close_deg at normal speed. enter_idle() then
+    // re-persists S_IDLE so the next boot sees a safe last_state.
+    servo_command_async(servo_close_deg(), SERVO_EXPECTED_TRAVEL_MS);
+    enter_idle();
+    return;
+  }
 }
 
 // === Timer callbacks ===
@@ -422,7 +461,51 @@ void gate_fsm_init() {
   int cd = cfg.getInt("close_deg", DEFAULT_SERVO_CLOSE_DEG);
   cfg.end();
   servo_set_angles(od, cd);
+
+  // Open the gate_state namespace and hold it open for the program's life — every
+  // FSM transition writes here, so re-opening per call would burn NVS cycles.
+  s_state_prefs_ok = s_state_prefs.begin(NVS_NS_GATE_STATE, false);
+  if (!s_state_prefs_ok) {
+    LOGE("nvs", "gate_state begin failed");
+    // Safe default: skip the recovery path, fall back to normal idle (preserve
+    // pre-Task-3.10 behavior: no extra evt:gate emit on boot).
+    s_state = S_IDLE;
+    return;
+  }
+
+  uint8_t last = s_state_prefs.getUChar("last_state", (uint8_t)S_IDLE);
+  extern const char* g_reset_reason_str;   // captured in main.cpp::setup()
+
+  bool risky_reset = (strcmp(g_reset_reason_str, "brownout") == 0 ||
+                      strcmp(g_reset_reason_str, "panic")    == 0 ||
+                      strcmp(g_reset_reason_str, "watchdog") == 0);
+  bool risky_state = (last == S_OPENING || last == S_OPEN_WAIT ||
+                      last == S_TIMEOUT_WARN || last == S_CLOSING);
+
+  if (risky_reset && risky_state) {
+    LOGW("recovery", "risky reboot reason=%s last_state=%u — holding 90°",
+         g_reset_reason_str, (unsigned)last);
+    // Hold the servo at mid-travel — neither slamming closed (which could crush
+    // a person standing in the doorway) nor leaving it open.
+    servo_command_async(RECOVERY_NEUTRAL_DEG, SERVO_EXPECTED_TRAVEL_MS);
+    lcd_show_recovery();
+    emit_evt_gate_unknown(g_reset_reason_str);
+    // Logical state is S_IDLE so other handlers behave sanely; the LCD/servo
+    // override the visual state for RECOVERY_HOLD_MS until the recovery timer
+    // fires EV_T_RECOVERY_FALLBACK and enter_idle() closes normally.
+    s_state = S_IDLE;
+    persist_state(s_state);
+    if (g_recovery_timer) {
+      xTimerChangePeriod(g_recovery_timer, pdMS_TO_TICKS(RECOVERY_HOLD_MS), 0);
+      xTimerStart(g_recovery_timer, 0);
+    }
+    return;
+  }
+
+  // Normal boot: preserve pre-Task-3.10 behavior (no extra evt:gate emit on
+  // boot; lcd_init() already showed idle; the boot event covers the Pi banner).
   s_state = S_IDLE;
+  persist_state(s_state);
 }
 
 void gate_fsm_task(void* /*arg*/) {

@@ -55,8 +55,15 @@
 // === NVS ===
 #define NVS_NS_ALLOWLIST          "allowlist"
 #define NVS_NS_CONFIG             "config"
+#define NVS_NS_GATE_STATE         "gate_state"
 #define NVS_INDEX_KEY             "_index"
 #define ALLOWLIST_MAX_ENTRIES     100
+
+// === Brown-out recovery ===
+// Hold servo at 90° neutral for this long before falling through to enter_idle(),
+// giving any person in the doorway time to step clear.
+#define RECOVERY_HOLD_MS          5000
+#define RECOVERY_NEUTRAL_DEG      90
 
 // === UART / JSON ===
 #define UART_BAUD                 115200

@@ -118,6 +118,12 @@ void lcd_show_closing() {
   write_row(0, "Closing...", ROW0_TEXT_COLS);
 }
 
+void lcd_show_recovery() {
+  s_lcd.clear();
+  write_row(0, "Recovery", ROW0_TEXT_COLS);
+  write_row(1, "verify clear");
+}
+
 void lcd_update_icons(bool obstacle_present, bool card_present) {
   static bool s_last_obs = false;
   static bool s_last_rfid = false;
