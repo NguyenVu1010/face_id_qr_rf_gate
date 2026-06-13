@@ -142,19 +142,33 @@
 </div>
 
 <!-- RFID bind popup: opens when SSE log shows `denied uid=<hex>`. Operator
-     picks a user from the dropdown → ADD calls POST /api/users/<name>/rfid
-     (Task 2.5.A endpoint). 30s auto-close. -->
+     either binds the UID to an existing user (dropdown) OR spins up a fresh
+     user_NNN via /api/enroll and binds in one click (no /users round-trip).
+     30s auto-close. -->
 <dialog id="rfid-bind-modal" class="rfid-bind-modal">
   <form id="rfid-bind-form" method="dialog">
     <h3>Thẻ RFID mới</h3>
-    <p class="muted">Phát hiện thẻ chưa enroll. Bind cho user nào?</p>
+    <p class="muted">Phát hiện thẻ chưa enroll.</p>
     <p>UID: <code id="rfid-bind-uid" class="mono"></code></p>
-    <label>
-      <span>User:</span>
-      <select id="rfid-bind-user" required>
-        <option value="" disabled selected>— chọn user —</option>
-      </select>
-    </label>
+
+    <div class="rfid-bind-mode">
+      <label><input type="radio" name="rfid-bind-mode" value="existing" checked> User có sẵn</label>
+      <label><input type="radio" name="rfid-bind-mode" value="new"> Tạo user mới</label>
+    </div>
+
+    <div id="rfid-bind-existing-section">
+      <label>
+        <span>User:</span>
+        <select id="rfid-bind-user">
+          <option value="" disabled selected>— chọn user —</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="rfid-bind-new-section" style="display:none;">
+      <p class="muted">Hệ thống sẽ tự đặt tên (user_NNN) và sinh QR.</p>
+    </div>
+
     <div class="rfid-bind-actions">
       <button type="button" id="rfid-bind-reject" class="btn btn-secondary">Reject</button>
       <button type="submit" id="rfid-bind-add" class="btn btn-accent">ADD</button>
@@ -175,6 +189,8 @@
 .rfid-bind-modal code { font-size: 18px; padding: 4px 8px;
                        background: rgba(255,255,255,0.06); border-radius: 4px; }
 .rfid-bind-modal select { padding: 6px 8px; min-width: 180px; }
+.rfid-bind-mode { display: flex; gap: 16px; }
+.rfid-bind-mode label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .rfid-bind-actions { display: flex; gap: 10px; justify-content: flex-end; }
 </style>
 
@@ -275,9 +291,12 @@
 })();
 
 // --- RFID bind popup: opens via window.smartGateBindPrompt(uid) when an
-// unenrolled card is swiped. Loads /api/users.json into the dropdown; ADD
-// posts to /api/users/<name>/rfid (Task 2.5.A); Reject just dismisses.
-// 30s auto-close so an abandoned modal doesn't trap subsequent swipes.
+// unenrolled card is swiped. Two modes:
+//   - "existing": pick from /api/users.json dropdown, POST UID to that name.
+//   - "new":      POST /api/enroll (auto-allocates user_NNN + QR), then bind
+//                 the UID to the returned name. One click, no /users detour.
+// Reject just dismisses. 30s auto-close so an abandoned modal doesn't trap
+// subsequent swipes.
 (function () {
   var bindShowing = false;
   var bindTimeoutId = null;
@@ -286,7 +305,36 @@
   var userSel = document.getElementById('rfid-bind-user');
   var form    = document.getElementById('rfid-bind-form');
   var rejectBtn = document.getElementById('rfid-bind-reject');
-  if (!modal || !form || !uidEl || !userSel || !rejectBtn) return;
+  var addBtn  = document.getElementById('rfid-bind-add');
+  var existingSection = document.getElementById('rfid-bind-existing-section');
+  var newSection      = document.getElementById('rfid-bind-new-section');
+  if (!modal || !form || !uidEl || !userSel || !rejectBtn || !addBtn ||
+      !existingSection || !newSection) return;
+  var modeRadios = form.elements['rfid-bind-mode'];
+
+  function currentMode() {
+    var checked = form.querySelector('input[name="rfid-bind-mode"]:checked');
+    return (checked && checked.value) || 'existing';
+  }
+
+  function applyMode() {
+    var mode = currentMode();
+    if (mode === 'new') {
+      existingSection.style.display = 'none';
+      newSection.style.display = '';
+      addBtn.textContent = '+ Tạo + Bind';
+      userSel.required = false;
+    } else {
+      existingSection.style.display = '';
+      newSection.style.display = 'none';
+      addBtn.textContent = 'ADD';
+      userSel.required = true;
+    }
+  }
+  // modeRadios is a RadioNodeList when 2+ radios share a name; for-each it.
+  Array.prototype.forEach.call(modeRadios, function (r) {
+    r.addEventListener('change', applyMode);
+  });
 
   // Local toast shim — the dashboard's pushToast() is scoped inside another
   // IIFE, and app.js's toast() expects HTMX attributes. Both inaccessible
@@ -335,6 +383,12 @@
     if (bindShowing) return;
     bindShowing = true;
     uidEl.textContent = uid;
+    // Always start in "existing" mode — safer default; "new" allocates a
+    // user_NNN row irreversibly.
+    var existingRadio = form.querySelector(
+      'input[name="rfid-bind-mode"][value="existing"]');
+    if (existingRadio) existingRadio.checked = true;
+    applyMode();
     await loadUsers();
     if (typeof modal.showModal === 'function') modal.showModal();
     bindTimeoutId = setTimeout(function () {
@@ -351,26 +405,60 @@
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     var uid  = uidEl.textContent;
-    var name = userSel.value;
-    if (!name) return;
+    var mode = currentMode();
+    var targetName = null;
+
     try {
-      var r = await fetch(
-        '/api/users/' + encodeURIComponent(name) + '/rfid',
+      if (mode === 'new') {
+        // Step 1: ask the server to allocate a fresh user_NNN + QR. Body
+        // {face_capture:false} matches what the "+ Tạo user mới" footer
+        // button sends; /api/enroll defaults face_capture=False so an empty
+        // POST would also work, but the explicit flag documents intent.
+        var enrollResp = await fetch('/api/enroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ face_capture: false }),
+        });
+        if (!enrollResp.ok) {
+          var et = await enrollResp.text();
+          flashToast('✗ enroll fail: ' + et.slice(0, 100), 'err');
+          return;  // keep modal open so admin can retry
+        }
+        var enrollData = await enrollResp.json();
+        targetName = enrollData && enrollData.name;
+        if (!targetName) {
+          flashToast('✗ enroll trả về thiếu name', 'err');
+          return;
+        }
+      } else {
+        targetName = userSel.value;
+        if (!targetName) return;
+      }
+
+      // Step 2: bind the captured UID to the (possibly brand-new) name.
+      var bindResp = await fetch(
+        '/api/users/' + encodeURIComponent(targetName) + '/rfid',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: uid }),
         });
-      if (r.ok) {
-        flashToast('✓ ' + uid + ' → ' + name, 'info');
+      if (bindResp.ok) {
+        var msg = (mode === 'new')
+          ? '✓ Tạo ' + targetName + ' + bind ' + uid
+          : '✓ ' + uid + ' → ' + targetName;
+        flashToast(msg, 'info');
+        closeBind();
       } else {
-        var text = await r.text();
-        flashToast('✗ ' + text.slice(0, 100), 'err');
+        var bt = await bindResp.text();
+        flashToast('✗ bind fail: ' + bt.slice(0, 100), 'err');
+        // Keep modal open — admin can pick a different user or retry. In
+        // "new" mode the user_NNN row is already created; admin can also
+        // dismiss and bind it later from /users.
       }
     } catch (err) {
       flashToast('✗ network error', 'err');
     }
-    closeBind();
   });
 
   // The dialog's own close (Escape key, backdrop) clears the flag too.
