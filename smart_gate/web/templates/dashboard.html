@@ -153,6 +153,16 @@
     </div>
 
     <div id="au-rfid-section" style="display:none;">
+      <div class="au-rfid-target">
+        <label><input type="radio" name="au-rfid-target" value="new" checked> Tạo user mới</label>
+        <label><input type="radio" name="au-rfid-target" value="existing"> Bind vào user có sẵn</label>
+      </div>
+      <div id="au-rfid-existing-row" style="display:none;">
+        <label>
+          <span>User:</span>
+          <select id="au-rfid-existing-select"></select>
+        </label>
+      </div>
       <label>
         <span>UID hex:</span>
         <input id="au-rfid-uid" type="text"
@@ -160,8 +170,7 @@
                maxlength="24"
                placeholder="vd 23ac9f11">
       </label>
-      <p class="muted">Quẹt thẻ trước đầu đọc → copy UID từ live-log, hoặc gõ trực tiếp.<br>
-         Server tạo <code>user_NNN</code> + bind UID này. KHÔNG capture face.</p>
+      <p class="muted">Quẹt thẻ trước đầu đọc → UID tự fill vào ô trên. Hoặc gõ trực tiếp.</p>
     </div>
 
     <div class="add-user-actions">
@@ -188,6 +197,12 @@
 }
 .add-user-mode { display: flex; gap: 18px; }
 .add-user-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.au-rfid-target { display: flex; gap: 18px; }
+@keyframes au-rfid-flash-kf {
+  0%   { box-shadow: 0 0 0 2px #10b981; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.au-rfid-flash { animation: au-rfid-flash-kf 800ms ease-out; }
 </style>
 
 <script>
@@ -290,7 +305,61 @@
   const faceSec    = document.getElementById('au-face-section');
   const rfidSec    = document.getElementById('au-rfid-section');
   const uidInput   = document.getElementById('au-rfid-uid');
+  const targetRadios = form.elements['au-rfid-target'];
+  const existingRow  = document.getElementById('au-rfid-existing-row');
+  const existingSel  = document.getElementById('au-rfid-existing-select');
   if (!modal || !openBtn) return;
+
+  // Auto-fill UID from /api/esp_log/stream while modal is in RFID mode.
+  const UID_RE = /uid=([0-9A-Fa-f]{4,24})\b/;
+  let rfidEs = null;
+  function startRfidListen() {
+    if (rfidEs) return;
+    try { rfidEs = new EventSource('/api/esp_log/stream'); }
+    catch (e) { rfidEs = null; return; }
+    rfidEs.addEventListener('log', function (ev) {
+      let item;
+      try { item = JSON.parse(ev.data); } catch (e) { return; }
+      if (item.tag !== 'rfid') return;
+      const m = UID_RE.exec(item.msg || '');
+      if (!m) return;
+      uidInput.value = m[1].toUpperCase();
+      uidInput.classList.remove('au-rfid-flash');
+      void uidInput.offsetWidth;
+      uidInput.classList.add('au-rfid-flash');
+    });
+  }
+  function stopRfidListen() {
+    if (!rfidEs) return;
+    rfidEs.close();
+    rfidEs = null;
+  }
+
+  function currentTarget() {
+    const r = form.querySelector('input[name="au-rfid-target"]:checked');
+    return r ? r.value : 'new';
+  }
+  function applyTarget() {
+    const t = currentTarget();
+    existingRow.style.display = (t === 'existing') ? '' : 'none';
+    if (t === 'existing' && existingSel.options.length === 0) {
+      // Lazy-load on first show.
+      fetch('/api/users.json').then(function (r) { return r.json(); })
+        .then(function (j) {
+          const users = (j && j.users) || [];
+          existingSel.innerHTML = '';
+          users.forEach(function (u) {
+            const opt = document.createElement('option');
+            opt.value = u.name;
+            opt.textContent = u.name;
+            existingSel.appendChild(opt);
+          });
+        }).catch(function () { /* leave empty; submit will 404 */ });
+    }
+  }
+  Array.prototype.forEach.call(targetRadios, function (r) {
+    r.addEventListener('change', applyTarget);
+  });
 
   function currentMode() {
     const r = form.querySelector('input[name="au-mode"]:checked');
@@ -303,11 +372,14 @@
       rfidSec.style.display = 'none';
       submitBtn.textContent = 'Chụp + Tạo';
       uidInput.required = false;
+      stopRfidListen();
     } else {
       faceSec.style.display = 'none';
       rfidSec.style.display = '';
       submitBtn.textContent = 'Tạo + Bind';
       uidInput.required = true;
+      applyTarget();
+      startRfidListen();
     }
   }
   Array.prototype.forEach.call(form.elements['au-mode'], function (r) {
@@ -323,7 +395,9 @@
   });
   cancelBtn.addEventListener('click', function () {
     if (modal.open) modal.close();
+    stopRfidListen();
   });
+  modal.addEventListener('close', stopRfidListen);
 
   // Lightweight toast that injects into the dashboard's existing #toast-stack.
   function flashToast(msg, kind) {
@@ -367,43 +441,54 @@
         } else {
           flashToast('✓ Tạo ' + d.name + ' (' + (d.captured || 0) + ' face samples)', 'info');
         }
+        if (modal.open) modal.close();
       } else {
-        const uid = (uidInput.value || '').trim();
-        if (!/^[0-9A-Fa-f]{4,24}$/.test(uid)) {
-          flashToast('✗ UID phải là 4-24 ký tự hex', 'err');
+        // RFID mode — branch on target
+        const target = currentTarget();
+        const uidVal = (uidInput.value || '').trim();
+        if (!/^[0-9A-Fa-f]{4,24}$/.test(uidVal)) {
+          flashToast('✗ UID hex không hợp lệ (4-24 hex chars)', 'err');
           return;
         }
-        // 1) create user_NNN
-        const r1 = await fetch('/api/enroll', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ face_capture: false }),
-        });
-        if (!r1.ok) {
-          const t = await r1.text();
-          flashToast('✗ enroll: ' + t.slice(0, 100), 'err');
-          return;
+        let name;
+        if (target === 'existing') {
+          name = existingSel.value;
+          if (!name) {
+            flashToast('✗ Chưa chọn user', 'err');
+            return;
+          }
+        } else {
+          // Create new user_NNN first
+          flashToast('Đang tạo user mới…', 'info');
+          const r1 = await fetch('/api/enroll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ face_capture: false }),
+          });
+          if (!r1.ok) {
+            flashToast('✗ enroll: ' + (await r1.text()).slice(0, 100), 'err');
+            return;
+          }
+          const d1 = await r1.json();
+          name = d1.name;
         }
-        const d1 = await r1.json();
-        const name = d1.name;
-        // 2) bind UID
         const r2 = await fetch('/api/users/' + encodeURIComponent(name) + '/rfid', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: uid.toLowerCase() }),
+          body: JSON.stringify({ uid: uidVal }),
         });
         if (!r2.ok) {
-          const t = await r2.text();
-          flashToast('✗ Tạo ' + name + ' OK nhưng bind fail: ' + t.slice(0, 80), 'err');
+          flashToast('✗ bind UID: ' + (await r2.text()).slice(0, 100), 'err');
           return;
         }
-        flashToast('✓ Tạo ' + name + ' + bind ' + uid.toLowerCase(), 'info');
+        flashToast('✓ ' + name + ' + UID ' + uidVal.toUpperCase(), 'info');
+        modal.close();
       }
-      if (modal.open) modal.close();
     } catch (err) {
       flashToast('✗ network error: ' + (err && err.message ? err.message : ''), 'err');
     } finally {
       submitBtn.disabled = false;
+      stopRfidListen();
     }
   });
 })();
