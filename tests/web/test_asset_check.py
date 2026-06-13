@@ -2,8 +2,6 @@
 import os
 from pathlib import Path
 
-import pytest
-
 from smart_gate.web.asset_check import (
     CRITICAL_ASSETS,
     check_static_assets,

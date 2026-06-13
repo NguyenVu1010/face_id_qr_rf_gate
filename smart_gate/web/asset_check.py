@@ -9,7 +9,6 @@ names so the UI can render a banner and the boot log can record an ERROR.
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 log = logging.getLogger(__name__)

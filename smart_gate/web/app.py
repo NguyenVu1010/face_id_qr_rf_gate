@@ -18,6 +18,8 @@ from flask import (Flask, Response, abort, jsonify, render_template, request,
 
 from smart_gate.link.uart_client import LinkDown, LinkTimeout
 
+from .asset_check import check_static_assets
+
 log = logging.getLogger(__name__)
 
 _PLACEHOLDER_JPEG = (
@@ -83,6 +85,18 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
     app = Flask(__name__,
                 template_folder=str(Path(__file__).parent / "templates"),
                 static_folder=str(Path(__file__).parent / "static"))
+
+    _asset_warnings = check_static_assets(Path(app.static_folder))
+    app.config["ASSET_WARNINGS"] = _asset_warnings
+    if _asset_warnings:
+        log.error(
+            "web static assets degraded: %s — dashboard buttons will not work",
+            ", ".join(_asset_warnings),
+        )
+
+    @app.context_processor
+    def _inject_asset_warnings():
+        return {"asset_warnings": _asset_warnings}
 
     @app.route("/")
     def dashboard():
