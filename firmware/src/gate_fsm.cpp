@@ -20,6 +20,9 @@ static GateState s_state = S_IDLE;
 static uint32_t s_passage_timeout_ms = DEFAULT_PASSAGE_TIMEOUT_MS;
 // True when buzzer warn pattern is sounding due to obstacle persisting >5s in S_OPEN_WAIT.
 static bool s_obstacle_warn_active = false;
+// Timestamp (millis()) of entry into S_OPEN_WAIT — used to ignore spurious
+// passage events while the arm is still sweeping through the HC-SR04 cone.
+static uint32_t s_open_wait_entered_ms = 0;
 
 // Forward declarations for internal handlers used before definition:
 static void start_closing();
@@ -174,6 +177,7 @@ static void start_open() {
 static void on_open_reached() {
   if (s_state != S_OPENING) return;
   s_state = S_OPEN_WAIT;
+  s_open_wait_entered_ms = millis();
   emit_evt_gate("open");
   buzzer_beep_ok_async();
   xTimerChangePeriod(g_passage_timeout_timer, pdMS_TO_TICKS(s_passage_timeout_ms), 0);
@@ -181,6 +185,16 @@ static void on_open_reached() {
 }
 
 static void on_passage(const event_t& e) {
+  // Arm-settle window: during the first 500 ms after the gate reaches OPEN,
+  // the arm is still sweeping through the HC-SR04 cone and emits a spurious
+  // EV_PASSAGE_DETECTED. Drop it WITHOUT touching the no-passage timeout
+  // family — the original passage-timeout fallback must keep running so the
+  // gate still closes if no real person arrives.
+  if (s_state == S_OPEN_WAIT &&
+      millis() - s_open_wait_entered_ms < 500) {
+    return;
+  }
+
   // Obstacle detected — stop the no-passage timeout family (someone is now in the beam).
   xTimerStop(g_passage_timeout_timer, 0);
   xTimerStop(g_warn_giveup_timer, 0);
