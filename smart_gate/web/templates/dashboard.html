@@ -346,7 +346,7 @@
       // Lazy-load on first show.
       fetch('/api/users.json').then(function (r) { return r.json(); })
         .then(function (j) {
-          const users = (j && j.users) || [];
+          const users = Array.isArray(j) ? j : ((j && j.users) || []);
           existingSel.innerHTML = '';
           users.forEach(function (u) {
             const opt = document.createElement('option');
