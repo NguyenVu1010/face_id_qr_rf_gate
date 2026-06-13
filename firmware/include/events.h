@@ -23,7 +23,7 @@ struct event_t {
   EventSrc  src;
   EventKind kind;
   uint32_t  cmd_id;          // ack correlation; 0 if N/A
-  char      uid[16];         // RFID UID hex or cmd payload. Sized for ISO 14443-A (max 7-byte UID = 14 hex chars + NUL).
+  char      uid[24];         // RFID UID hex or cmd payload. Sized for ISO 14443 (max 10-byte UID = 20 hex chars + NUL).
   char      name[32];        // add_uid name or RFID matched name
   int32_t   i1, i2, i3;      // generic ints; INT32_MIN sentinel = "unset" for cmd_config
 };

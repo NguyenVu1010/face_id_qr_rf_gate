@@ -93,7 +93,16 @@ void rfid_task(void* /*arg*/) {
 
     if (!s_rc522.PICC_ReadCardSerial()) continue;
 
-    char uid_hex[16];
+    // Reject unexpected UID sizes before consuming the per-UID rate-limit slot.
+    if (s_rc522.uid.size != 4 && s_rc522.uid.size != 7 && s_rc522.uid.size != 10) {
+      LOGW("rfid", "unexpected uid size=%u", s_rc522.uid.size);
+      s_rc522.PICC_HaltA();
+      s_rc522.PCD_StopCrypto1();
+      vTaskDelay(pdMS_TO_TICKS(50));
+      continue;
+    }
+
+    char uid_hex[24];
     uid_to_hex(s_rc522.uid, uid_hex, sizeof uid_hex);
 
     // Per-UID rate limit: same UID within 1 s → skip silently.
