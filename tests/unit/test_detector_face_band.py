@@ -23,9 +23,9 @@ from smart_gate.recognition.detector import (
 )
 
 
-FACE_THRESHOLD = 0.55
-BAND_LO = 0.55
-BAND_HI = 0.65
+FACE_THRESHOLD = 0.25
+BAND_LO = 0.25
+BAND_HI = 0.40
 REQUIRED_CONSEC = 3
 
 
@@ -71,25 +71,25 @@ def counter():
 def test_face_under_strict_threshold_fires_immediately(counter):
     """distance < face_threshold → CheckInEvent, no consecutive needed."""
     bus = []
-    _decide(uid=42, distance=0.40, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.18, counter=counter, bus=bus)
     assert len(bus) == 1
     assert bus[0].method == "face"
     assert bus[0].user_id == 42
-    assert bus[0].face_distance == pytest.approx(0.40)
+    assert bus[0].face_distance == pytest.approx(0.18)
 
 
 def test_strict_match_resets_uncertain_counter(counter):
-    """user_a at 0.6 (count=1), then user_a at 0.4 (strict) → CheckInEvent
+    """user_a at 0.30 (count=1), then user_a at 0.18 (strict) → CheckInEvent
     fires AND counter reset (so subsequent borderline restarts from 1)."""
     bus = []
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert bus == []                       # still building consec
     assert counter.count(42) == 1
-    _decide(uid=42, distance=0.40, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.18, counter=counter, bus=bus)
     assert len(bus) == 1                   # strict fired
     assert counter.count(42) == 0          # cleared
     # And a follow-up borderline frame starts at 1, not 2.
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert counter.count(42) == 1
 
 
@@ -99,18 +99,18 @@ def test_strict_match_resets_uncertain_counter(counter):
 
 
 def test_face_in_uncertain_band_requires_3_consecutive(counter):
-    """3 frames at distance=0.60 for same user_id → CheckInEvent on the 3rd."""
+    """3 frames at distance=0.30 for same user_id → CheckInEvent on the 3rd."""
     bus = []
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert bus == []
     assert counter.count(42) == 1
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert bus == []
     assert counter.count(42) == 2
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert len(bus) == 1
     assert bus[0].user_id == 42
-    assert bus[0].face_distance == pytest.approx(0.60)
+    assert bus[0].face_distance == pytest.approx(0.30)
     # Counter cleared after fire so the 4th borderline frame restarts at 1.
     assert counter.count(42) == 0
 
@@ -120,20 +120,20 @@ def test_face_in_uncertain_band_at_boundaries_counts(counter):
     bus = []
     _decide(uid=42, distance=BAND_LO, counter=counter, bus=bus)
     _decide(uid=42, distance=BAND_HI, counter=counter, bus=bus)
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert len(bus) == 1
 
 
 def test_face_in_uncertain_band_resets_on_user_change(counter):
-    """user_a at 0.6, user_b at 0.6, user_a at 0.6 → no CheckInEvent —
+    """user_a at 0.30, user_b at 0.30, user_a at 0.30 → no CheckInEvent —
     each user_id swap resets the consecutive counter to 1."""
     bus = []
-    _decide(uid=1, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=1, distance=0.30, counter=counter, bus=bus)
     assert counter.count(1) == 1
-    _decide(uid=2, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=2, distance=0.30, counter=counter, bus=bus)
     assert counter.count(2) == 1
     assert counter.count(1) == 0           # different last_uid
-    _decide(uid=1, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=1, distance=0.30, counter=counter, bus=bus)
     assert counter.count(1) == 1
     assert bus == []                       # never reached 3 in a row
 
@@ -147,10 +147,10 @@ def test_face_above_upper_threshold_rejects(counter):
     """distance > band_hi → no event, counter cleared."""
     bus = []
     # Prime the counter first.
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert counter.count(42) == 2
-    _decide(uid=42, distance=0.80, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.50, counter=counter, bus=bus)
     assert bus == []
     assert counter.count(42) == 0          # blown away by reject
 
@@ -158,8 +158,8 @@ def test_face_above_upper_threshold_rejects(counter):
 def test_no_match_clears_counter(counter):
     """uid is None (no candidate) → counter cleared even mid-borderline."""
     bus = []
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
-    _decide(uid=42, distance=0.60, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
+    _decide(uid=42, distance=0.30, counter=counter, bus=bus)
     assert counter.count(42) == 2
     _decide(uid=None, distance=float("inf"), counter=counter, bus=bus)
     assert bus == []
@@ -175,8 +175,8 @@ def test_cooldown_suppresses_strict_fire(counter):
     """Two strict matches inside the cooldown window → only the first fires."""
     bus = []
     cd = UserCooldown(window_s=5.0)
-    _decide(uid=42, distance=0.40, counter=counter, bus=bus, cooldown=cd)
-    _decide(uid=42, distance=0.40, counter=counter, bus=bus, cooldown=cd)
+    _decide(uid=42, distance=0.18, counter=counter, bus=bus, cooldown=cd)
+    _decide(uid=42, distance=0.18, counter=counter, bus=bus, cooldown=cd)
     assert len(bus) == 1
 
 
@@ -186,11 +186,11 @@ def test_cooldown_suppresses_borderline_fire(counter):
     bus = []
     cd = UserCooldown(window_s=5.0)
     for _ in range(3):
-        _decide(uid=42, distance=0.60, counter=counter, bus=bus, cooldown=cd)
+        _decide(uid=42, distance=0.30, counter=counter, bus=bus, cooldown=cd)
     assert len(bus) == 1
     # Counter is cleared on fire; build another 3 consec — still within cooldown.
     for _ in range(3):
-        _decide(uid=42, distance=0.60, counter=counter, bus=bus, cooldown=cd)
+        _decide(uid=42, distance=0.30, counter=counter, bus=bus, cooldown=cd)
     assert len(bus) == 1                   # cooldown blocked the second fire
 
 

@@ -123,6 +123,147 @@ def test_checkin_event_method_qr_with_no_face_distance():
 
 
 # ---------------------------------------------------------------------------
+# 3-tier face threshold (decided 2026-06-13):
+#   distance <  0.25            → strict accept, fire immediately
+#   0.25 <= distance <= 0.40    → uncertain band, fire after N=3 consecutive
+#                                  frames matching the same user_id
+#   distance >  0.40            → reject, reset counter
+# These exercise the same conditional ladder used in
+# detector._process_frame; the counter API mirrors the production
+# _UncertainCounter (touch() returns None, count(uid) returns the int).
+# ---------------------------------------------------------------------------
+
+
+def test_face_strict_accept_fires_immediately():
+    """distance=0.18 < face_threshold → CheckInEvent on the very first frame
+    (no consecutive-frame penalty for confident matches)."""
+    from smart_gate.recognition.cooldown import UserCooldown
+    from smart_gate.recognition.detector import (
+        CheckInEvent,
+        _UncertainCounter,
+    )
+
+    counter = _UncertainCounter()
+    cooldown = UserCooldown(window_s=5.0)
+    bus = []
+    face_threshold = 0.25
+    band_lo, band_hi = 0.25, 0.40
+    required = 3
+
+    matched, distance = 42, 0.18   # strict
+    accept = False
+    if matched is not None and distance < face_threshold:
+        counter.clear()
+        accept = True
+    elif matched is not None and band_lo <= distance <= band_hi:
+        counter.touch(matched)
+        if counter.count(matched) >= required:
+            counter.clear()
+            accept = True
+    else:
+        counter.clear()
+    if accept and cooldown.passed(matched):
+        cooldown.touch(matched)
+        bus.append(CheckInEvent(method="face", user_id=matched,
+                                face_distance=distance))
+    assert len(bus) == 1
+    assert bus[0].method == "face"
+    assert bus[0].user_id == 42
+
+
+def test_face_in_band_requires_3_consecutive():
+    """3 borderline frames (0.32, 0.30, 0.35) for the same user → fire on the 3rd."""
+    from smart_gate.recognition.cooldown import UserCooldown
+    from smart_gate.recognition.detector import (
+        CheckInEvent,
+        _UncertainCounter,
+    )
+
+    counter = _UncertainCounter()
+    cooldown = UserCooldown(window_s=5.0)
+    bus = []
+    face_threshold = 0.25
+    band_lo, band_hi = 0.25, 0.40
+    required = 3
+
+    def tick(matched, distance):
+        accept = False
+        if matched is not None and distance < face_threshold:
+            counter.clear()
+            accept = True
+        elif matched is not None and band_lo <= distance <= band_hi:
+            counter.touch(matched)
+            if counter.count(matched) >= required:
+                counter.clear()
+                accept = True
+        else:
+            counter.clear()
+        if accept and cooldown.passed(matched):
+            cooldown.touch(matched)
+            bus.append(CheckInEvent(method="face", user_id=matched,
+                                    face_distance=distance))
+
+    tick(42, 0.32); assert len(bus) == 0   # frame 1 in band
+    tick(42, 0.30); assert len(bus) == 0   # frame 2 in band
+    tick(42, 0.35); assert len(bus) == 1   # frame 3 → accept
+
+
+def test_face_in_band_resets_on_user_change():
+    """Different user_id between borderline frames must reset the streak —
+    spoof-defense: an attacker can't 'borrow' another user's counter."""
+    from smart_gate.recognition.detector import _UncertainCounter
+
+    counter = _UncertainCounter()
+    band_lo, band_hi = 0.25, 0.40
+    required = 3
+    bus = []
+
+    def tick(matched, distance):
+        if matched is not None and band_lo <= distance <= band_hi:
+            counter.touch(matched)
+            if counter.count(matched) >= required:
+                counter.clear()
+                bus.append(matched)
+        else:
+            counter.clear()
+
+    tick(42, 0.30); tick(99, 0.30); tick(42, 0.30)
+    assert bus == []   # never reached 3-streak for any single user
+
+
+def test_face_above_upper_threshold_rejects():
+    """distance > band_hi (0.40) → no event, counter not touched."""
+    from smart_gate.recognition.detector import _UncertainCounter
+
+    counter = _UncertainCounter()
+    band_lo, band_hi = 0.25, 0.40
+    accepted = []
+    matched, distance = 42, 0.50   # above band
+    if matched is not None and band_lo <= distance <= band_hi:
+        counter.touch(matched)
+        accepted.append(matched)
+    else:
+        counter.clear()
+    assert accepted == []
+
+
+def test_strict_match_resets_uncertain_counter():
+    """A strict match arriving mid-streak must blow away the borderline
+    counter so a single confident frame doesn't accumulate badly."""
+    from smart_gate.recognition.detector import _UncertainCounter
+
+    counter = _UncertainCounter()
+    face_threshold = 0.25
+    counter.touch(42); counter.touch(42)   # count = 2 in-band
+    assert counter.count(42) == 2
+    # Now a strict match arrives:
+    matched, distance = 42, 0.18
+    if matched is not None and distance < face_threshold:
+        counter.clear()
+    assert counter.count(42) == 0
+
+
+# ---------------------------------------------------------------------------
 # 1-of-3 _handle_checkin routing — face/qr send cmd:open, rfid does NOT.
 # ---------------------------------------------------------------------------
 
