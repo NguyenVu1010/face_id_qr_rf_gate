@@ -30,6 +30,10 @@ _PLACEHOLDER_JPEG = (
 
 _USER_NAME_RE = re.compile(r"^user_\d+$")
 
+# ISO 14443 UIDs come in 4/7/10 bytes → 8/14/20 hex chars. Accept the full
+# 8-20 range so 7-byte Mifare Ultralight / DESFire cards also work.
+_UID_RE = re.compile(r"^[0-9A-Fa-f]{8,20}$")
+
 
 def _int_param(name: str, default: int, lo: int, hi: int) -> int:
     """Parse `request.args[name]` as int with [lo, hi] bounds.
@@ -282,6 +286,96 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
             matcher.reload(db)
         log.info("deleted user %s (cascade encodings/tokens + qr png)", name)
         return jsonify({"ok": True, "name": name})
+
+    @app.route("/api/users/<name>/rfid", methods=["POST"])
+    def api_add_rfid(name: str):
+        """Bind an RFID UID to an existing user via cmd:add_uid over UART.
+
+        Body (JSON): {"uid": "<8-20 hex chars>"}
+
+        The firmware allowlist is the source of truth — the daemon does not
+        mirror this UID in the SQLite users table; subsequent swipes hit
+        the ESP32's NVS allowlist and emit `evt:rfid_swipe` with a name
+        the firmware looked up from its own table.
+
+        Returns:
+          200 {"ok": true, "uid": ..., "name": ..., "ack": ...} on success
+          400 — bad UID hex or missing/invalid name format
+          404 — user not in the SQLite users table
+          503 — UART unavailable, link down, or timeout
+        """
+        # 1. Validate user-name format (defensive, route matches free strings)
+        if not re.match(r"^[A-Za-z0-9_\-]+$", name):
+            return jsonify({"error": "invalid name"}), 400
+
+        # 2. Validate user exists (SQLite side) — keeps the daemon's user
+        # table in sync with the firmware allowlist.
+        user_id = db.get_user_id_by_name(name)
+        if user_id is None:
+            return jsonify({"error": f"user not found: {name}"}), 404
+
+        # 3. Validate UID hex
+        body = request.get_json(silent=True) or {}
+        uid_raw = (body.get("uid") or "").strip()
+        if not _UID_RE.match(uid_raw):
+            return jsonify({"error": "bad uid (expected 8-20 hex chars)"}), 400
+        uid = uid_raw.lower()
+
+        # 4. Send cmd to ESP
+        if uart is None:
+            return jsonify({"error": "uart not configured"}), 503
+        _emit_audit(esp_log_bus, "info", "cmd",
+                    f"add_uid uid={uid} name={name}", direction="→")
+        try:
+            ack = uart.send_cmd("add_uid", {"uid": uid, "name": name},
+                                timeout=2.0)
+        except (LinkDown, LinkTimeout) as e:
+            err = str(e) or e.__class__.__name__
+            _emit_audit(esp_log_bus, "err", "cmd",
+                        f"add_uid FAILED: {err}", direction="←")
+            return jsonify({"error": err}), 503
+        except Exception as e:        # noqa: BLE001 — defensive catch-all
+            log.exception("cmd:add_uid unexpected error")
+            return jsonify({"error": f"uart error: {e}"}), 503
+
+        _emit_audit(esp_log_bus, "info", "ack",
+                    f"add_uid OK uid={uid} ack={ack}", direction="←")
+        return jsonify({"ok": True, "uid": uid, "name": name, "ack": ack})
+
+    @app.route("/api/users/<name>/rfid/<uid>", methods=["DELETE"])
+    def api_remove_rfid(name: str, uid: str):
+        """Remove an RFID UID from the firmware allowlist (cmd:remove_uid).
+
+        `name` is included for symmetry with the add endpoint but the firmware
+        keys removal by UID only — `name` is not sent. We still 404 if the
+        user is unknown so the URL stays well-formed.
+        """
+        if not re.match(r"^[A-Za-z0-9_\-]+$", name):
+            return jsonify({"error": "invalid name"}), 400
+        if not _UID_RE.match(uid):
+            return jsonify({"error": "bad uid (expected 8-20 hex chars)"}), 400
+        if db.get_user_id_by_name(name) is None:
+            return jsonify({"error": f"user not found: {name}"}), 404
+        if uart is None:
+            return jsonify({"error": "uart not configured"}), 503
+
+        uid_lc = uid.lower()
+        _emit_audit(esp_log_bus, "info", "cmd",
+                    f"remove_uid uid={uid_lc}", direction="→")
+        try:
+            ack = uart.send_cmd("remove_uid", {"uid": uid_lc}, timeout=2.0)
+        except (LinkDown, LinkTimeout) as e:
+            err = str(e) or e.__class__.__name__
+            _emit_audit(esp_log_bus, "err", "cmd",
+                        f"remove_uid FAILED: {err}", direction="←")
+            return jsonify({"error": err}), 503
+        except Exception as e:        # noqa: BLE001
+            log.exception("cmd:remove_uid unexpected error")
+            return jsonify({"error": f"uart error: {e}"}), 503
+
+        _emit_audit(esp_log_bus, "info", "ack",
+                    f"remove_uid OK uid={uid_lc} ack={ack}", direction="←")
+        return jsonify({"ok": True, "uid": uid_lc, "name": name, "ack": ack})
 
     @app.route("/api/enroll", methods=["POST"])
     def enroll():

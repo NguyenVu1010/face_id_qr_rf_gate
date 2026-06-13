@@ -17,6 +17,7 @@
         <th>last seen</th>
         <th>#encodings</th>
         <th>QR</th>
+        <th>RFID</th>
         <th></th>
       </tr>
     </thead>
@@ -51,6 +52,24 @@
           {% endif %}
         </td>
         <td>
+          <form class="rfid-form"
+                onsubmit="return addRfid(event, '{{ name }}', {{ id_ }})"
+                style="display:flex;gap:var(--s-2);align-items:center;flex-wrap:wrap;">
+            <input id="rfid-input-{{ id_ }}" type="text"
+                   placeholder="UID hex (8-20)"
+                   pattern="[0-9A-Fa-f]{8,20}"
+                   maxlength="20"
+                   required
+                   style="font-family:var(--ff-mono);font-size:var(--fs-xs);padding:2px 6px;width:13em;">
+            <button type="submit" class="btn btn-secondary"
+                    style="padding:2px 10px;font-size:var(--fs-xs);">
+              + Thẻ
+            </button>
+            <span id="rfid-result-{{ id_ }}" class="muted"
+                  style="font-size:var(--fs-xs);"></span>
+          </form>
+        </td>
+        <td>
           <button class="btn btn-danger"
                   style="padding:2px 10px;font-size:var(--fs-xs);"
                   hx-delete="/api/users/{{ name }}"
@@ -74,6 +93,42 @@
 </article>
 
 <script>
+// RFID enrollment: POST /api/users/<name>/rfid {uid:"..."} → cmd:add_uid over UART.
+// Plain fetch avoids depending on htmx's json-enc extension (not bundled here).
+async function addRfid(evt, name, id) {
+  evt.preventDefault();
+  var input = document.getElementById('rfid-input-' + id);
+  var result = document.getElementById('rfid-result-' + id);
+  var uid = (input.value || '').trim();
+  if (!uid) return false;
+  result.textContent = '...';
+  result.style.color = 'var(--muted)';
+  try {
+    var resp = await fetch('/api/users/' + encodeURIComponent(name) + '/rfid', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({uid: uid}),
+    });
+    if (resp.ok) {
+      result.textContent = '✓ ' + uid.toLowerCase();
+      result.style.color = 'var(--ok)';
+      input.value = '';
+    } else {
+      var msg = 'HTTP ' + resp.status;
+      try {
+        var body = await resp.json();
+        if (body && body.error) msg = body.error;
+      } catch (e) { /* not JSON */ }
+      result.textContent = '✗ ' + msg;
+      result.style.color = 'var(--danger)';
+    }
+  } catch (e) {
+    result.textContent = '✗ ' + e;
+    result.style.color = 'var(--danger)';
+  }
+  return false;
+}
+
 // After a DELETE /api/users/<name>, the server returns JSON. We just need
 // to remove the row from the DOM and decrement the user counter. HTMX's
 // hx-swap="outerHTML" on the row would replace the row content with the

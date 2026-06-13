@@ -591,3 +591,153 @@ def test_esp_log_negative_limit_returns_400(setup):
     with app.test_client() as c:
         resp = c.get("/api/esp_log?limit=-1")
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# RFID UID enrollment — POST /api/users/<name>/rfid + DELETE counterpart
+# ---------------------------------------------------------------------------
+def test_add_rfid_uid_happy_path(setup):
+    """POST /api/users/alice/rfid → cmd:add_uid sent, UID lowercased."""
+    app, _db, _hub, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    uart.send_cmd.return_value = {"count": 1}
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "23AC9F11"})
+        assert r.status_code == 200, r.data
+        body = r.get_json()
+        assert body["ok"] is True
+        assert body["uid"] == "23ac9f11"
+        assert body["name"] == "alice"
+        assert body["ack"] == {"count": 1}
+    uart.send_cmd.assert_called_once_with(
+        "add_uid", {"uid": "23ac9f11", "name": "alice"}, timeout=2.0)
+
+
+def test_add_rfid_uid_accepts_7byte_uid(setup):
+    """ISO 14443 7-byte UIDs are 14 hex chars — must be accepted."""
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    uart.send_cmd.return_value = {"count": 1}
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "04A1B2C3D4E5F6"})
+        assert r.status_code == 200
+    payload = uart.send_cmd.call_args[0][1]
+    assert payload["uid"] == "04a1b2c3d4e5f6"
+
+
+def test_add_rfid_uid_rejects_bad_hex(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "not-hex!"})
+        assert r.status_code == 400
+
+
+def test_add_rfid_uid_rejects_too_short(setup):
+    """7 hex chars (< 8) should be rejected."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "1234567"})
+        assert r.status_code == 400
+
+
+def test_add_rfid_uid_rejects_too_long(setup):
+    """21 hex chars (> 20) should be rejected."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid",
+                   json={"uid": "1" * 21})
+        assert r.status_code == 400
+
+
+def test_add_rfid_uid_rejects_missing_uid(setup):
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={})
+        assert r.status_code == 400
+
+
+def test_add_rfid_uid_rejects_unknown_user(setup):
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    with app.test_client() as c:
+        r = c.post("/api/users/does_not_exist/rfid",
+                   json={"uid": "23ac9f11"})
+        assert r.status_code == 404
+    uart.send_cmd.assert_not_called()
+
+
+def test_add_rfid_uid_handles_link_timeout(setup):
+    """send_cmd raises LinkTimeout → 503 with error body."""
+    app, _, _, uart, _ = setup
+    from smart_gate.link.uart_client import LinkTimeout
+    uart.send_cmd.side_effect = LinkTimeout("no ack for add_uid")
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "23ac9f11"})
+        assert r.status_code == 503
+        assert "no ack" in r.get_json()["error"]
+
+
+def test_add_rfid_uid_handles_link_down(setup):
+    app, _, _, uart, _ = setup
+    from smart_gate.link.uart_client import LinkDown
+    uart.send_cmd.side_effect = LinkDown("serial closed")
+    with app.test_client() as c:
+        r = c.post("/api/users/alice/rfid", json={"uid": "23ac9f11"})
+        assert r.status_code == 503
+
+
+def test_add_rfid_uid_invalid_name_format(setup):
+    """Path-traversal-y name → 400 before any DB or UART work."""
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    with app.test_client() as c:
+        # werkzeug routing will reject names with '/', so test with a name
+        # that hits our route but fails our format check.
+        r = c.post("/api/users/has spaces/rfid", json={"uid": "23ac9f11"})
+        # Either werkzeug 404 (route mismatch) or our 400 — both prove the
+        # bad name never reached send_cmd.
+        assert r.status_code in (400, 404)
+    uart.send_cmd.assert_not_called()
+
+
+def test_remove_rfid_uid_happy_path(setup):
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    uart.send_cmd.return_value = {"removed": True}
+    with app.test_client() as c:
+        r = c.delete("/api/users/alice/rfid/23AC9F11")
+        assert r.status_code == 200, r.data
+        body = r.get_json()
+        assert body["ok"] is True
+        assert body["uid"] == "23ac9f11"
+    uart.send_cmd.assert_called_once_with(
+        "remove_uid", {"uid": "23ac9f11"}, timeout=2.0)
+
+
+def test_remove_rfid_uid_rejects_bad_hex(setup):
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    with app.test_client() as c:
+        r = c.delete("/api/users/alice/rfid/zzzz")
+        assert r.status_code == 400
+    uart.send_cmd.assert_not_called()
+
+
+def test_remove_rfid_uid_unknown_user(setup):
+    app, _, _, uart, _ = setup
+    uart.send_cmd.reset_mock()
+    with app.test_client() as c:
+        r = c.delete("/api/users/nobody/rfid/23ac9f11")
+        assert r.status_code == 404
+    uart.send_cmd.assert_not_called()
+
+
+def test_users_page_has_rfid_form(setup):
+    """The /users page must render a per-user RFID input + button."""
+    app, *_ = setup
+    with app.test_client() as c:
+        r = c.get("/users")
+        assert r.status_code == 200
+        assert b"rfid-input-" in r.data
+        assert b"rfid-form" in r.data
+        assert b"addRfid" in r.data
