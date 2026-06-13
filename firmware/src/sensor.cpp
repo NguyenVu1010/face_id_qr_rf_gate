@@ -7,6 +7,12 @@
 
 static volatile bool s_obstacle_present = false;
 
+// Phase 3.4 — median-of-3 over the last 3 valid samples + persistent fault notify.
+static int s_last3[3] = {-1, -1, -1};
+static int s_last3_idx = 0;
+static int s_no_echo_streak = 0;     // consecutive no-echo samples
+static bool s_fault_emitted = false;  // one-shot per fault session
+
 static int read_distance_cm() {
   digitalWrite(PIN_SR04_TRIG, LOW);
   delayMicroseconds(2);
@@ -14,13 +20,46 @@ static int read_distance_cm() {
   delayMicroseconds(10);
   digitalWrite(PIN_SR04_TRIG, LOW);
   unsigned long us = pulseIn(PIN_SR04_ECHO, HIGH, 30000UL);
-  if (us == 0) return -1;  // timeout
+  if (us == 0)    return -1;  // timeout / no echo
+  if (us < 116)   return -1;  // < 2 cm: physically impossible for HC-SR04
+  if (us > 23200) return -1;  // > 400 cm: ghost echo, out of spec
   return (int)(us / 58UL);
+}
+
+static int median3(int a, int b, int c) {
+  if ((a <= b && b <= c) || (c <= b && b <= a)) return b;
+  if ((b <= a && a <= c) || (c <= a && a <= b)) return a;
+  return c;
+}
+
+// Returns -1 on no echo; otherwise the median of the last 3 valid samples
+// (or the raw value while the window is still warming up).
+static int sensor_read_filtered_cm() {
+  int raw = read_distance_cm();
+  if (raw < 0) {
+    s_no_echo_streak++;
+    // 150 s threshold at SENSOR_POLL_INTERVAL_MS cadence. Emit once per fault session.
+    if (!s_fault_emitted &&
+        (uint32_t)s_no_echo_streak * SENSOR_POLL_INTERVAL_MS >= 150000UL) {
+      LOGW("sensor", "sensor_fault no echo persistent");
+      s_fault_emitted = true;
+    }
+    return -1;
+  }
+  // Valid sample — reset fault tracking and slot into ring buffer.
+  s_no_echo_streak = 0;
+  s_fault_emitted = false;
+  s_last3[s_last3_idx] = raw;
+  s_last3_idx = (s_last3_idx + 1) % 3;
+  if (s_last3[0] < 0 || s_last3[1] < 0 || s_last3[2] < 0) return raw;
+  return median3(s_last3[0], s_last3[1], s_last3[2]);
 }
 
 void sensor_init() {
   pinMode(PIN_SR04_TRIG, OUTPUT);
-  pinMode(PIN_SR04_ECHO, INPUT);
+  // INPUT_PULLDOWN: a disconnected ECHO wire reads idle-low instead of
+  // floating, preventing spurious "very close" pulses.
+  pinMode(PIN_SR04_ECHO, INPUT_PULLDOWN);
   digitalWrite(PIN_SR04_TRIG, LOW);
 }
 
@@ -34,7 +73,7 @@ void sensor_task(void* /*arg*/) {
 
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(SENSOR_POLL_INTERVAL_MS));
-    int cm = read_distance_cm();
+    int cm = sensor_read_filtered_cm();
     uint32_t now = millis();
 
     if (cm < 0) {
