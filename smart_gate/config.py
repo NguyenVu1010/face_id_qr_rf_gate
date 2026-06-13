@@ -40,6 +40,7 @@ class VideoCfg:
 class RecognitionCfg:
     face_threshold: float = 0.55
     uncertain_band: tuple[float, float] = (0.55, 0.65)
+    uncertain_required_consecutive: int = 3
     stranger_cooldown_s: int = 30
     mediapipe_min_conf: float = 0.6
     face_samples_per_user: int = 5

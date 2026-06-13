@@ -99,10 +99,14 @@ def test_load_config_warns_when_file_missing(tmp_path, caplog):
 
 def test_packaging_default_toml_values():
     """Verifies the shipped config.default.toml — drift between dataclass and TOML
-    is a deployment bug (fresh installs would see the dataclass default, not TOML)."""
+    is a deployment bug (fresh installs would see the dataclass default, not TOML).
+    face_threshold was raised from 0.25 → 0.55 on 2026-06-13 when the 3-tier
+    band decision landed (see RecognitionCfg.uncertain_required_consecutive)."""
     repo_root = Path(__file__).resolve().parents[2]
     data = tomllib.loads((repo_root / "packaging" / "config.default.toml").read_text())
-    assert data["recognition"]["face_threshold"] == 0.25
+    assert data["recognition"]["face_threshold"] == 0.55
+    assert data["recognition"]["uncertain_band"] == [0.55, 0.65]
+    assert data["recognition"]["uncertain_required_consecutive"] == 3
     assert data["link"]["port"] == "/dev/serial0"
 
 

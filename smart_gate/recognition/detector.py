@@ -49,6 +49,34 @@ class CheckInEvent:
     ts_mono: float = dataclasses.field(default_factory=time.monotonic)
 
 
+class _UncertainCounter:
+    """Tracks consecutive frames where a borderline (uncertain-band) match
+    keeps pointing at the same user_id. Resets the moment the user_id
+    changes, no match is reported, or a strict (sub-threshold) match
+    arrives. See the 3-tier face decision in `_process_frame`.
+    """
+    def __init__(self) -> None:
+        self._last_uid: int | None = None
+        self._count: int = 0
+
+    def touch(self, uid: int) -> None:
+        if uid != self._last_uid:
+            self._last_uid = uid
+            self._count = 1
+        else:
+            self._count += 1
+
+    def count(self, uid: int) -> int:
+        return self._count if uid == self._last_uid else 0
+
+    def clear(self) -> None:
+        self._last_uid = None
+        self._count = 0
+
+
+_uncertain_counter = _UncertainCounter()
+
+
 def run_detector(cfg, hub, matcher, event_bus, shutdown: threading.Event,
                  *, deps=None, overlay=None,
                  face_cooldown: UserCooldown | None = None,
@@ -153,9 +181,20 @@ def _process_frame(bgr, cfg, matcher, bus, deps, *, overlay=None,
                        if distance != float("inf") else "unknown")
                 overlay.set(bbox, lbl, color=(0, 0, 255))
 
-        # 1-of-3 face channel: fire directly on a match, gated by cooldown.
+        # 1-of-3 face channel: 3-tier decision (decided 2026-06-13).
+        #   strict   (distance < face_threshold)              → fire now
+        #   borderline (face_threshold <= distance <= band_hi) → fire only
+        #     after N consecutive frames matching the same user_id
+        #   reject   (distance > band_hi or no candidate)      → clear band
+        # All fires are still gated by `face_cooldown` (per-user).
         matched_user_id = user_id if is_match else None
-        if matched_user_id is not None and distance < cfg.recognition.face_threshold:
+        band_lo, band_hi = cfg.recognition.uncertain_band
+        required_consec = cfg.recognition.uncertain_required_consecutive
+
+        if (matched_user_id is not None
+                and distance < cfg.recognition.face_threshold):
+            # Strict accept — short-circuit, reset borderline tracker.
+            _uncertain_counter.clear()
             if face_cooldown is None or face_cooldown.passed(matched_user_id):
                 if face_cooldown is not None:
                     face_cooldown.touch(matched_user_id)
@@ -164,6 +203,23 @@ def _process_frame(bgr, cfg, matcher, bus, deps, *, overlay=None,
                     user_id=matched_user_id,
                     face_distance=float(distance),
                 ))
+        elif (user_id is not None
+                and band_lo <= distance <= band_hi):
+            # Borderline — accumulate consecutive frames for the same user.
+            _uncertain_counter.touch(user_id)
+            if _uncertain_counter.count(user_id) >= required_consec:
+                _uncertain_counter.clear()
+                if face_cooldown is None or face_cooldown.passed(user_id):
+                    if face_cooldown is not None:
+                        face_cooldown.touch(user_id)
+                    bus.put(CheckInEvent(
+                        method="face",
+                        user_id=user_id,
+                        face_distance=float(distance),
+                    ))
+        else:
+            # No candidate, or distance > band_hi — explicit reject.
+            _uncertain_counter.clear()
 
         # Auto-enroll signal — fires only if a fresh RFID grant is pending.
         if auto_enroll_state is not None:
