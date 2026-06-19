@@ -26,3 +26,21 @@ htmlcov/
 data/
 !smart_gate/data/
 /var/
+
+# PlatformIO (ESP32 build cache + downloaded libs)
+firmware/.pio/
+
+# KiCad generated outputs (re-emit via build_combined.py / KiCad export)
+kicad/**/*.svg
+kicad/**/*.svg.json
+kicad/**/no_zone-*
+kicad/**/*.erc
+kicad/**/*.dsn
+kicad/**/*.ses
+kicad/**/*.rules
+kicad/**/skidl_REPL.*
+kicad/**/drc_report.txt
+
+# FreeCAD generated exports (sources are *.FCStd)
+freecad/exports/
+*.step

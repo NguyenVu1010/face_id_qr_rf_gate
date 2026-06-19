@@ -1,0 +1,25 @@
+Nhóm,Tên,Thông số / Loại,SL,Ref PCB,Ghi chú
+A. Nguồn,Module hạ áp LM2596,Loại mini (không màn hình),1,J_BUCK,Hạ 12V -> 5V. Dùng adapter 12V/2A đã có (đủ dòng). Nên gắn miếng tản nhiệt nhỏ cho IC
+A. Nguồn,Jack DC nguồn cái,Barrel jack 5.5x2.1mm gắn PCB chân ngang,1,J_PWR,Dương ở giữa (center-positive)
+B. Cảm biến,Cảm biến siêu âm HC-SR04,5V 4 chân,1,J_USR,
+C. Tụ,Tụ gốm 100nF,104 / 50V,3,C_5V_BYP / C_ESP_3V3_1 / C_PI_BYP,
+C. Tụ,Tụ 10uF,Gốm hoặc hóa,1,C_ESP_3V3_2,
+C. Tụ,Tụ hóa 1000uF,10V (16V cũng được),2,C_5V_BULK / C_PI_BULK,
+C. Tụ,Tụ hóa 470uF,16V,1,C_SVO,Gần servo - hút dòng khởi động
+C. Tụ,Tụ hóa 100uF,25V,1,C_BULK,
+C. Điện trở,Điện trở 1k,1/4W,2,R_BUZ / R_USR1,
+C. Điện trở,Điện trở 2k,1/4W,1,R_USR2,
+C. Điện trở,Điện trở 4.7k,1/4W,2,R_SCL / R_SDA,Pull-up I2C
+C. Bán dẫn,Diode Schottky 1N5817,DO-201,1,D_REV,Chống ngược nguồn
+C. Bán dẫn,Transistor 2N3904,TO-92,1,Q_BUZ,Lái còi
+C. Bán dẫn,Diode TVS SA5.0A,DO-15 chân cắm,1,D_TVS,Loại THT thay cho SMAJ5.0A (SMD). Hết thì dùng P6KE6.8A
+D. Đầu nối,Header cái 2x20,2.54mm,1,J_PI,Đế cắm Pi 4 GPIO
+D. Đầu nối,Header cái 1x15,2.54mm,2,J_ESP,Đế cắm ESP32 DevKit 30 chân
+D. Đầu nối,Rào đực 1x40,2.54mm,2,J_RFID / J_LCD / J_USR / J_SVO / J_BUZ / J_EXP,Bẻ ra dùng cho các đầu ngoại vi
+D. Đầu nối,Dây Dupont cái-cái,Bộ 40 sợi,1,,Nối cảm biến vào header trên board
+E. Vỏ in 3D,Insert ren ép nhiệt M3,OD 4.6mm dài 5mm,8,,Heat-set insert (4 nắp + 4 plate)
+E. Vỏ in 3D,Vít M3x12,Phillips,4,,Bắt nắp
+E. Vỏ in 3D,Vít M3x8,Phillips,4,,Bắt tấm connector plate
+E. Vỏ in 3D,Vít M3x6,Phillips,8,,Bắt PCB lên standoff (4) + bắt LCD (4)
+F. Gia công,Gia công PCB motherboard,Gửi file Gerber,1,,JLCPCB hoặc đơn vị trong nước
+F. Gia công,In 3D vỏ hộp,3 mảnh STL,1,,File trong smart_gate_enclosure_print.zip
