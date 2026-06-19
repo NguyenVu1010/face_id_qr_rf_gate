@@ -11,7 +11,7 @@
   <table class="table" id="users-table">
     <thead>
       <tr>
-        <th>id</th>
+        <th>stt</th>
         <th>name</th>
         <th>created</th>
         <th>last seen</th>
@@ -29,8 +29,8 @@
       {% set last_seen = u[3] %}
       {% set n_enc = u[4] %}
       {% set has_qr = u[5] %}
-      <tr data-user="{{ name }}">
-        <td class="mono">{{ id_ }}</td>
+      <tr data-user="{{ name }}" data-user-id="{{ id_ }}">
+        <td class="mono stt">{{ loop.index }}</td>
         <td>{{ name }}</td>
         <td class="mono ts"><span class="ts-utc-full" data-utc="{{ created }}">{{ created }}</span></td>
         <td class="mono ts">
@@ -149,6 +149,7 @@ document.body.addEventListener('htmx:beforeSwap', function(evt) {
       var n = Math.max(0, parseInt(counter.textContent, 10) - 1);
       counter.textContent = n + ' enrolled';
     }
+    renumberRows();
   } else {
     // Display server error
     try {
@@ -205,6 +206,15 @@ function removeUid(name, uid, chipEl) {
     .catch(function (e) {
       alert('Xóa UID thất bại: ' + e.message);
     });
+}
+
+function renumberRows() {
+  var tbody = document.querySelector('#users-table tbody');
+  if (!tbody) return;
+  Array.prototype.forEach.call(
+    tbody.querySelectorAll('tr td.stt'),
+    function (cell, i) { cell.textContent = (i + 1).toString(); }
+  );
 }
 
 document.querySelectorAll('.uid-chips').forEach(loadUidChips);

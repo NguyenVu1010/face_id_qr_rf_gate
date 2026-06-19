@@ -90,10 +90,12 @@ def _list_uids_for_user(uart, name: str) -> list[str]:
     except Exception:  # noqa: BLE001 — defensive catch-all
         log.exception("list_uids: unexpected error")
         return []
-    data = ack.get("data") if isinstance(ack, dict) else None
-    if not isinstance(data, dict):
+    # UartClient.send_cmd returns the unwrapped `data` field already
+    # (uart_client.py:135 → `holder.get("data")`), so `ack` IS the dict
+    # whose `uids` array we want. Don't double-unwrap.
+    if not isinstance(ack, dict):
         return []
-    entries = data.get("uids")
+    entries = ack.get("uids")
     if not isinstance(entries, list):
         return []
     return [e["uid"] for e in entries
@@ -354,7 +356,7 @@ def create_app(*, db, hub, uart, data_dir: Path, start_time: float | None = None
         if uart is not None:
             try:
                 ack = uart.send_cmd("list_uids", {}, timeout=2.0)
-                entries = (ack.get("data") or {}).get("uids") or []
+                entries = (ack or {}).get("uids") or []
                 uids_to_remove = [
                     e["uid"] for e in entries
                     if isinstance(e, dict)

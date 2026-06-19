@@ -8,9 +8,14 @@ from smart_gate.link.uart_client import LinkDown, LinkTimeout
 
 
 def _ack(uids):
-    """Build a fake ack object matching what UartClient.send_cmd returns
-    for the `list_uids` verb: a dict whose 'data' carries the uid list."""
-    return {"data": {"uids": uids}}
+    """Build a fake ack matching UartClient.send_cmd's return contract.
+
+    send_cmd already unwraps the ack envelope and returns just the `data`
+    field (see uart_client.py:135 → `holder.get("data")`), so the helper
+    sees a dict shaped like `{"uids": [...]}` directly — NOT
+    `{"data": {"uids": [...]}}`.
+    """
+    return {"uids": uids}
 
 
 def test_list_uids_for_user_filters_by_name():
@@ -41,7 +46,7 @@ def test_list_uids_for_user_returns_empty_on_timeout():
 def test_list_uids_for_user_returns_empty_on_malformed_ack():
     from smart_gate.web.app import _list_uids_for_user
     uart = Mock()
-    uart.send_cmd.return_value = {"data": {}}
+    uart.send_cmd.return_value = {}
     assert _list_uids_for_user(uart, "alice") == []
 
 
