@@ -149,22 +149,22 @@ void lcd_init() {
 void lcd_show_idle() {
   if (!lcd_ensure_bus_ok()) return;
   s_lcd.clear();
-  write_row(0, "smart_gate ready", ROW0_TEXT_COLS);
-  write_row(1, "Tap RFID or wait");
-  write_row(2, "for face auth");
-  write_row(3, "");
+  write_row(0, "Xin moi quet:", ROW0_TEXT_COLS);
+  write_row(1, " Khuon mat");
+  write_row(2, " QR code");
+  write_row(3, " The chip RFID");
 }
 
 void lcd_show_opening() {
   if (!lcd_ensure_bus_ok()) return;
   s_lcd.clear();
-  write_row(0, "Opening gate...", ROW0_TEXT_COLS);
+  write_row(0, "Xin moi vao", ROW0_TEXT_COLS);
 }
 
 void lcd_show_name(const char* name) {
   if (!lcd_ensure_bus_ok()) return;
   s_lcd.clear();
-  write_row(0, "Welcome:", ROW0_TEXT_COLS);
+  write_row(0, "Xin moi vao:", ROW0_TEXT_COLS);
   // Name goes on row 1 (full width); row 0 already shrunk to 18 cols for icons.
   write_row(1, name);
 }
@@ -179,7 +179,7 @@ void lcd_show_warn() {
 void lcd_show_denied() {
   if (!lcd_ensure_bus_ok()) return;
   s_lcd.clear();
-  write_row(0, "Access denied", ROW0_TEXT_COLS);
+  write_row(0, "Vui long thu lai", ROW0_TEXT_COLS);
 }
 
 void lcd_show_closing() {
