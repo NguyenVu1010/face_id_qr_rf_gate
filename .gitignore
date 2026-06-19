@@ -11,6 +11,11 @@ kicad/**/netlist/
 kicad/**/bom/
 kicad/**/gerber/
 
+# Claude Code working files — not tracked
+.claude/
+docs/superpowers/
+docs/claude_code_workflow.html
+
 # Brainstorm session content
 .superpowers/
 
